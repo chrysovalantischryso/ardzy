@@ -1,0 +1,135 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AI in the FPGA: a neural network that reads handwritten digits</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Computing &middot; intermediate</div><h1>AI in the FPGA: a neural network that reads handwritten digits</h1><p class="lead">A real neural network inside the FPGA: 64 multipliers work at the same time and read a handwritten digit in 10 microseconds, far faster than the ARM. Draw digits in your browser or on your phone and watch the FPGA read them, see what the network sees and its 64 hidden neurons, and train your own network on the PC.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 10 of 10 checks on the real board (October 2026), with nothing connected: every score and hidden value equal to the Python integer math, 50 of 50 test digits right, 963 clocks (9.6 microseconds) per digit, 365 times faster than numpy on the ARM.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Neural network engine (784 -&gt; 64 -&gt; 10, 8-bit weights)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr></table><h3>Parts</h3><ul><li>nothing: everything happens inside the FPGA</li><li>a PC or a phone with a web browser, on the same network as the board, to draw digits</li></ul><h2>What it does</h2>
+<p>A <b>neural network</b>, the same kind of AI that reads handwriting and recognises faces, runs <b>inside the FPGA</b>. It looks at a picture of a handwritten digit and says which digit it is:</p>
+<ul><li><b>64 multipliers work at the same time</b>, and one digit takes <b>963 clocks = 9.6 microseconds</b>. The ARM with numpy needs far longer for the same math.</li><li><b>Draw digits in your browser</b> (PC or phone): the board serves a drawing page at <code>http://ardzy.local:8080</code>. You see the answer, how sure the network is, the 28 x 28 picture it really looks at, and its 64 hidden neurons.</li><li>The FPGA's answer is checked against the same math in Python: <b>every number equal, to the last bit</b>.</li><li><b>Train your own network</b> on the PC with <code>make_model.py</code> (numpy only, about 2 minutes).</li></ul>
+<p>Nothing to connect. LED 0 flashes for every digit.</p>
+<h2>How it works</h2>
+<h3>1. A neuron</h3>
+<p>A neuron multiplies each input by a <b>weight</b>, adds everything up, adds a <b>bias</b>, and keeps the result only if it is positive (this is called <b>ReLU</b>). Learning means finding weights that make the right neurons fire.</p>
+<figure>
+<svg viewBox="0 0 860 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="One neuron">
+<defs><marker id="ah16" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="currentColor"/></marker></defs>
+<rect x="10" y="20" width="120" height="34" rx="6" class="d-box"/><text x="70" y="42" class="d-mono" text-anchor="middle">pixel 0</text>
+<rect x="10" y="70" width="120" height="34" rx="6" class="d-box"/><text x="70" y="92" class="d-mono" text-anchor="middle">pixel 1</text>
+<text x="70" y="130" class="d-small" text-anchor="middle">...</text>
+<rect x="10" y="146" width="120" height="34" rx="6" class="d-box"/><text x="70" y="168" class="d-mono" text-anchor="middle">pixel 783</text>
+<path d="M130 37 L356 95" class="d-arrow" marker-end="url(#ah16)" color="#b8860b"/><text x="240" y="55" class="d-small" text-anchor="middle">x weight</text>
+<path d="M130 87 L356 100" class="d-arrow" marker-end="url(#ah16)" color="#b8860b"/>
+<path d="M130 163 L356 108" class="d-arrow" marker-end="url(#ah16)" color="#b8860b"/>
+<rect x="360" y="60" width="170" height="80" rx="8" class="d-pl"/><text x="445" y="92" class="d-title" text-anchor="middle">add them all</text><text x="445" y="114" class="d-small" text-anchor="middle">+ bias</text>
+<path d="M530 100 H596" class="d-arrow" marker-end="url(#ah16)" color="#b8860b"/>
+<rect x="600" y="60" width="120" height="80" rx="8" class="d-box"/><text x="660" y="92" class="d-title" text-anchor="middle">ReLU</text><text x="660" y="114" class="d-small" text-anchor="middle">below 0 -> 0</text>
+<path d="M720 100 H786" class="d-arrow" marker-end="url(#ah16)" color="#b8860b"/><text x="820" y="104" class="d-mono" text-anchor="middle">h</text>
+</svg>
+<figcaption>One neuron of the hidden layer: 784 multiplications and additions.</figcaption>
+</figure>
+<h3>2. The network</h3>
+<table>
+<tr><th>Layer</th><th>Neurons</th><th>Each one looks at</th><th>Multiplications</th></tr>
+<tr><td>input</td><td>784</td><td>the 28 x 28 pixels, 0 (black) .. 255 (white)</td><td></td></tr>
+<tr><td>hidden</td><td>64</td><td>all 784 pixels</td><td>64 x 784 = 50 176</td></tr>
+<tr><td>output</td><td>10 (one per digit)</td><td>all 64 hidden neurons</td><td>10 x 64 = 640</td></tr>
+</table>
+<p>The answer is the output neuron with the highest <b>score</b>. The page turns the scores into percentages (softmax).</p>
+<p>The weights are <b>8-bit integers</b> (-127 .. 127), the sums 32-bit. A network trained with floats on the PC is turned into these integers by <code>make_model.py</code>; it reads digits just as well, and integers are what hardware does fast and small.</p>
+<h3>3. Why the FPGA is fast at this</h3>
+<p>The FPGA has <b>16 lanes</b>. Each lane has its own block RAM with the weights of 4 hidden neurons, and reads <b>4 weights per clock</b> (one 32-bit word). The same 4 pixels go to all 16 lanes at once, so <b>64 multiplications happen in every clock</b>:</p>
+<figure>
+<svg viewBox="0 0 860 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The 16 lanes">
+<defs><marker id="ah16b" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="currentColor"/></marker></defs>
+<rect x="10" y="80" width="140" height="70" rx="8" class="d-ps"/><text x="80" y="108" class="d-title" text-anchor="middle">picture</text><text x="80" y="128" class="d-small" text-anchor="middle">4 pixels per clock</text>
+<path d="M150 115 H196" class="d-arrow" marker-end="url(#ah16b)" color="#b8860b"/>
+<rect x="200" y="20" width="250" height="40" rx="6" class="d-pl"/><text x="325" y="45" class="d-mono" text-anchor="middle">lane 0: RAM + 4 multipliers</text>
+<rect x="200" y="68" width="250" height="40" rx="6" class="d-pl"/><text x="325" y="93" class="d-mono" text-anchor="middle">lane 1: RAM + 4 multipliers</text>
+<text x="325" y="130" class="d-small" text-anchor="middle">...</text>
+<rect x="200" y="150" width="250" height="40" rx="6" class="d-pl"/><text x="325" y="175" class="d-mono" text-anchor="middle">lane 15: RAM + 4 multipliers</text>
+<path d="M450 105 H526" class="d-arrow" marker-end="url(#ah16b)" color="#b8860b"/>
+<rect x="530" y="60" width="150" height="90" rx="8" class="d-box"/><text x="605" y="92" class="d-title" text-anchor="middle">16 sums</text><text x="605" y="114" class="d-small" text-anchor="middle">16 neurons ready</text><text x="605" y="132" class="d-small" text-anchor="middle">every 196 clocks</text>
+<path d="M680 105 H726" class="d-arrow" marker-end="url(#ah16b)" color="#b8860b"/>
+<rect x="730" y="60" width="120" height="90" rx="8" class="d-acc"/><text x="790" y="92" class="d-title" text-anchor="middle">layer 2</text><text x="790" y="114" class="d-small" text-anchor="middle">10 scores</text>
+<text x="430" y="218" class="d-small" text-anchor="middle">layer 1: 4 rounds of 196 clocks (16 neurons per round); layer 2: 10 x 16 clocks; plus the pipeline = 963 clocks</text>
+</svg>
+<figcaption>Spatial parallelism: the same small circuit 16 times, all working in the same clock.</figcaption>
+</figure>
+<p>Each lane is a <b>pipeline</b>: clock 1 the RAMs answer, clock 2 four products, clock 3 their sum, clock 4 add it to the neuron's total. A new word enters every clock, so the pipeline never waits. At the end of a neuron: add the bias, divide by 2^SHIFT (a shift), keep 0 .. 255.</p>
+<h3>4. How it learned</h3>
+<p>There is no downloaded data set: <code>make_model.py</code> makes 60 000 training digits itself, written in about 250 Windows fonts and drawn as pen strokes, each turned, slanted, thinner or bolder. Then it trains the network (24 rounds, a few seconds each with numpy) and checks it on digits from fonts it never saw: <b>99.9 % right</b>. Real handwriting is harder: draw some and see.</p>
+<h2>Try it</h2>
+<p>Nothing to wire. <b>Upload and run</b>. The Monitor shows 50 test digits with the FPGA's answers, the speed against the ARM, and then:</p>
+<p>    3. Draw a digit: open  http://ardzy.local:8080  in a browser</p>
+<p>Open that page on the PC or on a phone, draw a digit big and in the middle, lift the pen. <b>Show an example</b> draws one of the test digits.</p>
+<h2>Program it</h2>
+<pre><code>import nn_model
+from blocks import Bus, DigitAI, nn_load_model, nn_reference, digit_preprocess
+ai = DigitAI(Bus(), slot=1)
+m = nn_load_model(nn_model)
+ai.load(m)                          # 50 KB of weights into the FPGA
+d = ai.run(m['test'][0])            # a 28 x 28 picture (784 values 0..255) -&gt; the digit
+print(d, ai.scores(), ai.cycles())  # the 10 scores, the clocks it took
+print(nn_reference(m, m['test'][0]))   # the same math in Python: (digit, scores, hidden)
+x = digit_preprocess(img)           # any drawing (2-D array, ink bright) -&gt; 28 x 28 like the training</code></pre>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>write 1: start (write the picture first)</td></tr>
+<tr><td>1</td><td>STATUS</td><td>[0] busy [1] a result is ready</td></tr>
+<tr><td>2, 3</td><td>RESULT, CYCLES</td><td>the digit; the clocks it took</td></tr>
+<tr><td>4</td><td>SHIFT</td><td>the hidden layer's scale (divide by 2^SHIFT)</td></tr>
+<tr><td>5</td><td>COUNT</td><td>digits read since power-on</td></tr>
+<tr><td>6, 7</td><td>WADDR, WDATA</td><td>load weights: the address, then words (the address counts up)</td></tr>
+<tr><td>16 .. 25</td><td>SCORE[k]</td><td>the 10 scores (signed)</td></tr>
+<tr><td>64 .. 79</td><td>HIDDEN</td><td>the 64 hidden values, 4 per word</td></tr>
+<tr><td>128 .. 191, 192 .. 201</td><td>B1, B2</td><td>the biases</td></tr>
+<tr><td>256 .. 451</td><td>PICTURE</td><td>196 words, 4 pixels each</td></tr>
+<tr><td>1023</td><td>ID</td><td>"NNET"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>A neuron = multiply, add, bias, ReLU</td><td><code>nn_reference()</code> in <code>blocks.py</code> (5 lines of numpy)</td></tr>
+<tr><td>Spatial parallelism: 16 lanes</td><td><code>nn_engine.v</code>: <code>generate for (l = 0; l &lt; LANES ...)</code></td></tr>
+<tr><td>A pipeline: one word per clock</td><td><code>dv</code>, <code>pv</code>, <code>sv</code>, <code>f1</code>, <code>f2</code></td></tr>
+<tr><td>Integers instead of floats (quantisation)</td><td><code>quantize()</code> in <code>make_model.py</code></td></tr>
+<tr><td>Training: gradient descent</td><td><code>train()</code> in <code>make_model.py</code></td></tr>
+<tr><td>Bit-exact checking against a model</td><td><code>selftest.py</code>, <code>sim/run_sim.py</code></td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li><b>How many operations per second?</b> One digit is 50 816 multiplications in 9.6 microseconds. How many per second is that?</li></ol>
+<details><summary>Answer</summary>
+About 5.3 billion multiply-adds per second (64 per clock at 100 MHz = 6.4 billion when the pipeline is full), from a chip of a few watts.
+</details>
+<ol><li><b>Make it fail.</b> Draw a 7 with a cross bar, a 1 with a long flag, a very small digit in a corner. Which ones does it read wrong? Why does the cut-out and centring (<code>digit_preprocess</code>) help with the small one?</li></ol>
+<ol><li><b>More neurons.</b> In <code>make_model.py</code> set <code>HID = 32</code> and train. How right is it? What would <code>HID = 128</code> need in the FPGA? (Hint: 8 rows per lane, 1568 words per RAM.)</li></ol>
+<details><summary>Answer</summary>
+With 32 neurons it is still above 99 % on the made-up test digits but weaker on real drawings. 128 neurons need 2 block RAMs per lane (32 of the 60) and twice the clocks for layer 1, about 1750 in all: still under 20 microseconds.
+</details>
+<ol><li><b>Look inside.</b> Read <code>ai.hidden()</code> for a 1 and for an 8. Which neurons fire for both? Which only for one?</li></ol>
+<h2>Ideas</h2>
+<ul><li>Letters: train on A .. Z (26 outputs) with the same fonts.</li><li>A camera (USB webcam on the board) reading digits on paper.</li><li>Show the drawing and the answer on a VGA monitor (project 07).</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>The page does not open</b>: is the demo running (the Monitor shows "3. Draw a digit")? Use the address it prints. A phone must be on the same network as the board.</li><li><b>Wrong digits</b>: draw big, in the middle, one digit at a time. Thin lines and digits touching the edge are harder.</li><li><b>"The FPGA does not hold the NNET project"</b>: upload this project again.</li></ul></main></body></html>

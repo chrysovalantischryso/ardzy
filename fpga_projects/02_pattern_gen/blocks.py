@@ -1267,3 +1267,132 @@ class Life(Block):
             a, b = grid[r], grid[r + 1] if r + 1 < 64 else 0
             out.append(''.join(' ▀▄█'[((a >> c) & 1) | (((b >> c) & 1) << 1)] for c in range(64)))
         return '\n'.join(out)
+
+
+# ---------------------------------------------------------------------------------------- AI: digit network
+def digit_preprocess(img):
+    """A drawing (2-D array, ink = high values, any size) -> 28 x 28 pixels 0..255 the way the network
+    was trained: cut out the ink, scale the longer side to 20 pixels, centre the ink's weight in 28 x 28."""
+    import numpy as np
+    a = np.asarray(img, dtype=np.float64)
+    a = a / a.max() if a.max() > 0 else a
+    ys, xs = np.nonzero(a > 0.05)
+    out = np.zeros((28, 28))
+    if len(ys) == 0:
+        return out.astype(np.uint8)
+    a = a[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    h, w = a.shape
+    f = 20.0 / max(h, w)
+    nh, nw = max(1, int(round(h * f))), max(1, int(round(w * f)))
+
+    def area(n_in, n_out):                # each output pixel = the average of the input it covers
+        m = np.zeros((n_out, n_in))
+        step = n_in / n_out
+        for i in range(n_out):
+            lo, hi = i * step, (i + 1) * step
+            for j in range(int(lo), min(n_in, int(np.ceil(hi)))):
+                m[i, j] = min(hi, j + 1) - max(lo, j)
+            m[i] /= m[i].sum()
+        return m
+
+    small = area(h, nh) @ a @ area(w, nw).T
+    small = small / small.max() if small.max() > 0 else small
+    top, left = (28 - nh) // 2, (28 - nw) // 2
+    out[top:top + nh, left:left + nw] = small
+    tot = out.sum()
+    cy = (out.sum(1) * np.arange(28)).sum() / tot
+    cx = (out.sum(0) * np.arange(28)).sum() / tot
+    dy = int(np.clip(round(13.5 - cy), -top, 28 - top - nh))
+    dx = int(np.clip(round(13.5 - cx), -left, 28 - left - nw))
+    out = np.roll(np.roll(out, dy, 0), dx, 1)
+    return np.clip(np.round(out * 255), 0, 255).astype(np.uint8)
+
+
+def nn_load_model(mod):
+    """The network from nn_model.py (made by make_model.py) as numpy arrays."""
+    import base64
+    import numpy as np
+    dec = lambda s, t, shape: np.frombuffer(base64.b64decode(''.join(s)), dtype=t).reshape(shape)
+    return {'hid': mod.HID, 'shift': mod.SHIFT, 'accuracy': mod.ACCURACY, 'scale': getattr(mod, 'SCALE', 0.01),
+            'w1': dec(mod.W1, np.int8, (mod.HID, 784)), 'b1': np.array(mod.B1, dtype=np.int64),
+            'w2': dec(mod.W2, np.int8, (10, mod.HID)), 'b2': np.array(mod.B2, dtype=np.int64),
+            'test': dec(mod.TEST, np.uint8, (-1, 784)), 'labels': list(mod.TEST_LABELS)}
+
+
+def nn_reference(m, x):
+    """Exactly the FPGA's integer math: (digit, the 10 scores, the hidden values)."""
+    import numpy as np
+    x = np.asarray(x, dtype=np.int64).ravel()
+    acc = m['w1'].astype(np.int64) @ x + m['b1']
+    h = np.clip(acc >> m['shift'], 0, 255)
+    s = m['w2'].astype(np.int64) @ h + m['b2']
+    return int(np.argmax(s)), [int(v) for v in s], [int(v) for v in h]
+
+
+class DigitAI(Block):
+    """The neural network engine (project 16): 64 multipliers, one digit in about 10 microseconds."""
+    LANES, ROWS, WORDS = 16, 4, 196
+
+    def load(self, m):
+        """Send the network (from nn_load_model) into the FPGA: 50 KB of weights."""
+        import numpy as np
+        w1 = np.ascontiguousarray(m['w1'], dtype=np.int8)
+        for lane in range(self.LANES):
+            words = np.concatenate([w1[r * 16 + lane] for r in range(self.ROWS)]).view('<u4')
+            self.w(6, lane * 1024)
+            for v in words.tolist():
+                self.w(7, v)
+        self.w(6, 0x8000)
+        for v in np.ascontiguousarray(m['w2'], dtype=np.int8).reshape(-1).view('<u4').tolist():
+            self.w(7, v)
+        for j, b in enumerate(m['b1']):
+            self.w(128 + j, int(b))
+        for k, b in enumerate(m['b2']):
+            self.w(192 + k, int(b))
+        self.w(4, m['shift'])
+
+    def picture(self, x):
+        """Write a 28 x 28 picture (784 values 0..255)."""
+        import numpy as np
+        for i, v in enumerate(np.asarray(x, dtype=np.uint8).ravel().view('<u4').tolist()):
+            self.w(256 + i, v)
+
+    def run(self, x=None, timeout=0.1):
+        """Recognise a picture (or the one already written): the digit 0..9."""
+        if x is not None:
+            self.picture(x)
+        self.w(0, 1)
+        t0 = time.time()
+        while self.r(1) & 1:
+            if time.time() - t0 > timeout:
+                raise RuntimeError('the network engine does not finish')
+        return self.r(2)
+
+    def scores(self):
+        return [self.rs(16 + k) for k in range(10)]
+
+    def hidden(self):
+        out = []
+        for i in range(16):
+            v = self.r(64 + i)
+            out += [(v >> (8 * b)) & 255 for b in range(4)]
+        return out
+
+    def cycles(self):
+        return self.r(3)
+
+    def count(self):
+        return self.r(5)
+
+
+def digit_text(x):
+    """A 28 x 28 picture (784 values, flat or 28 x 28) as text, two pixel rows per line."""
+    x = [int(v) for v in (x.ravel() if hasattr(x, 'ravel') else x)]
+    out = []
+    for r in range(0, 28, 2):
+        line = ''
+        for c in range(28):
+            a, b = x[r * 28 + c] > 100, x[(r + 1) * 28 + c] > 100
+            line += ' ▀▄█'[a | (b << 1)]
+        out.append(line)
+    return '\n'.join(out)
