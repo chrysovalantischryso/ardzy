@@ -1084,6 +1084,25 @@ def board_file(project, name):
         return None
 
 
+AI_PORT = 8080                  # project 16_digit_ai: its demo (main.py) serves the drawing page and /guess here
+
+
+def ai_call(path, data=None, timeout=5):
+    """Talk to the AI demo on the board (through the engine: works over IPv6 link-local too)."""
+    if not board.host:
+        return {'ok': False, 'running': False, 'out': 'no board connected'}
+    req = urllib.request.Request(http_base(board.host, AI_PORT) + path, data=json.dumps(data).encode() if data is not None else None,
+                                 headers={'Content-Type': 'application/json'})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            out = json.loads(r.read() or b'{}')
+        out.setdefault('ok', True)
+        return out
+    except (urllib.error.URLError, OSError, ValueError) as e:
+        return {'ok': False, 'running': False, 'out': 'the AI demo does not answer (%s)' % getattr(e, 'reason', e),
+                'current': board.info.get('current') if board.info else None}
+
+
 def radio_state(project):
     st = board_file(project, 'status.json')
     cfg = board_file(project, 'radio.json')
@@ -1398,6 +1417,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == '/api/gallery/open':
             startfile(gallery_path(a['name']))
             return {'ok': True}
+        if path == '/api/ai/state':
+            r = ai_call('/state')
+            r['current'] = board.info.get('current') if board.info else None
+            return r
+        if path == '/api/ai/guess':
+            return ai_call('/guess', {'px': a.get('px', '')})
+        if path == '/api/ai/example':
+            return ai_call('/example')
         if path == '/api/radio/state':
             return radio_state(a.get('p') or RADIO_PROJECT)
         if path == '/api/radio/config':

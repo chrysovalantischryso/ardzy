@@ -936,3 +936,51 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
   html[lang="ru"] .board-pill, html[lang="el"] .board-pill { max-width: 150px; }
 }
 @media (max-width: 1240px) { html[lang="ru"] #btnSettings span, html[lang="el"] #btnSettings span { display: none; } }
+
+/* ---- AI view (project 16): draw a digit, the FPGA reads it */
+.ai-page { padding: 14px; overflow: auto; flex: 1; min-height: 0; }
+.ai-off { max-width: 640px; margin-bottom: 14px; }
+.ai-grid { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.ai-grid.dim { opacity: .45; pointer-events: none; }
+.ai-grid h3 { margin: 0 0 10px; font-size: 14px; }
+.ai-draw { grid-row: span 2; }
+.ai-draw canvas { width: 100%; aspect-ratio: 1; display: block; background: #000; border-radius: 8px; touch-action: none; cursor: crosshair; }
+.ai-draw .row { margin-top: 10px; }
+.ai-draw .hint { margin-top: 8px; }
+.ai-pen { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.ai-pen input { width: 80px; }
+.ai-answer { grid-column: span 2; }
+.ai-top { display: flex; align-items: center; gap: 18px; }
+.ai-big { font-size: 76px; font-weight: 700; line-height: 1; min-width: 64px; text-align: center; color: var(--accent); }
+.ai-say > div:first-child { font-size: 16px; font-weight: 600; }
+.ai-judge { margin-top: 8px; }
+.ai-bars { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 22px; }
+.ai-bar, .ai-race { display: grid; grid-template-columns: 34px 1fr 64px; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; }
+.ai-bar span, .ai-race span { height: 12px; background: var(--hover); border-radius: 4px; overflow: hidden; }
+.ai-bar i, .ai-race i { display: block; height: 100%; width: 0; background: var(--muted); border-radius: 4px; transition: width .2s; }
+.ai-bar.top i, .ai-race i { background: var(--accent); }
+.ai-bar.top b { color: var(--accent); }
+.ai-bar em, .ai-race em { font-style: normal; text-align: right; color: var(--muted); font-size: 13px; }
+.ai-race { margin: 6px 0; }
+.ai-race.arm i { background: var(--warn); }
+.ai-x { margin: 8px 0 6px; font-size: 18px; font-weight: 700; color: var(--accent); }
+.ai-pics { display: flex; gap: 16px; flex-wrap: wrap; }
+.ai-pics figure { margin: 0; }
+.ai-pics canvas { width: 140px; height: 140px; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 6px; background: #000; display: block; }
+.ai-pics figcaption { font-size: 12px; color: var(--muted); max-width: 140px; margin-top: 4px; }
+.ai-hist { grid-column: 2 / span 2; }
+.ai-hist h3 { margin: 0; }
+.ai-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.ai-item { position: relative; border: 2px solid var(--line); border-radius: 6px; overflow: hidden; }
+.ai-item canvas { width: 56px; height: 56px; display: block; image-rendering: pixelated; background: #000; }
+.ai-item b { position: absolute; right: 3px; bottom: 1px; font-size: 13px; color: #fff; text-shadow: 0 0 3px #000; }
+.ai-item.good { border-color: var(--ok); }
+.ai-item.bad { border-color: var(--err); }
+@media (max-width: 1180px) {
+  .ai-grid { grid-template-columns: minmax(240px, 320px) minmax(0, 1fr); }
+  .ai-answer, .ai-hist { grid-column: auto; }
+  .ai-bars { grid-template-columns: 1fr; }
+}
+.ai-view { display: flex; flex-direction: column; min-height: 0; }
+.ai-view .view-head { flex-wrap: wrap; row-gap: 6px; }
+.ai-grid .dcard h3 { text-transform: uppercase; letter-spacing: 1px; font-size: 12px; color: var(--muted); }

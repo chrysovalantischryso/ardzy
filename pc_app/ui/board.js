@@ -11,11 +11,11 @@ const bar = (pct, id) => `<div class="bar ${pct > 90 ? 'err' : pct > 75 ? 'warn'
 const NOMINAL = { vccint: ['VCCINT (FPGA core)', 1.0], vccpint: ['VCCPINT (ARM core)', 1.0], vccbram: ['VCCBRAM (block RAM)', 1.0],
   vccaux: ['VCCAUX (FPGA aux)', 1.8], vccpaux: ['VCCPAUX (ARM aux)', 1.8], vccoddr: ['VCC_DDR (memory)', 1.5] };
 
-const VIEW_PANES = { board: 'viewBoard', io: 'viewIO', tools: 'viewTools', gallery: 'viewGallery', learn: 'viewLearn', radio: 'viewRadio',
+const VIEW_PANES = { board: 'viewBoard', io: 'viewIO', tools: 'viewTools', gallery: 'viewGallery', learn: 'viewLearn', radio: 'viewRadio', ai: 'viewAI',
   map: 'viewMap', system: 'viewSystem', blocks: 'viewBlocks' };
 function showView(v) {
   BV.view = v;
-  const tab = v === 'radio' ? 'gallery' : v;            // the radio is a project page inside Projects
+  const tab = (v === 'radio' || v === 'ai') ? 'gallery' : v;   // project pages inside Projects
   document.querySelectorAll('.views button').forEach(b => b.classList.toggle('active', b.dataset.view === tab));
   for (const [k, id] of Object.entries(VIEW_PANES)) $(id).hidden = v !== k;
   document.querySelector('.center').classList.toggle('alt-view', v !== 'code');
@@ -26,6 +26,8 @@ function showView(v) {
   if (v === 'gallery' && window.galleryShow) galleryShow();
   if (v === 'learn' && window.learnShow) learnShow();
   if (v === 'radio' && window.radioShow) radioShow();
+  if (window.aiLeave && v !== 'ai') aiLeave();
+  if (v === 'ai' && window.aiShow) aiShow();
   if (v === 'map' && window.mapShow) mapShow();
   if (v === 'system' && window.sysShow) sysShow();
   if (v === 'blocks' && window.blocksShow) blocksShow();

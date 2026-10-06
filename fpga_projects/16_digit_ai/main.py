@@ -61,7 +61,7 @@ def guess(px):
     top = max(z)
     e = [math.exp(v - top) for v in z]
     hmax = max(h) or 1
-    print('%s\n   drawn in the browser: the FPGA reads %d (%.0f %% sure)' % (digit_text(x), d, 100 * e[d] / sum(e)), flush=True)
+    print('%s\n   a drawing: the FPGA reads %d (%.0f %% sure)' % (digit_text(x), d, 100 * e[d] / sum(e)), flush=True)
     return {'digit': d, 'prob': [v / sum(e) for v in e], 'pixels': [int(v) for v in x.ravel()],
             'hidden': [int(255 * v / hmax) for v in h], 'cycles': cycles, 'fpga_us': cycles / 100.0,
             'arm_us': arm_us, 'count': count}
@@ -78,9 +78,15 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
+        if self.path.startswith('/state'):            # for the Ardzy app's AI page
+            with lock:
+                st = {'running': True, 'count': ai.count(), 'cycles': ai.cycles()}
+            st.update({'fpga_us': fpga_us, 'arm_us': arm_us, 'per_second': int(1e6 / total_us), 'test_right': right,
+                       'trained': round(100 * m['accuracy'], 1), 'hidden': m['hid'], 'weights': 64 * 784 + 640})
+            return self.send(200, json.dumps(st), 'application/json')
         if self.path.startswith('/example'):
             i = int(time.time() * 7) % len(m['test'])
-            return self.send(200, json.dumps({'pixels': [int(v) for v in m['test'][i]]}), 'application/json')
+            return self.send(200, json.dumps({'pixels': [int(v) for v in m['test'][i]], 'label': m['labels'][i]}), 'application/json')
         self.send(200, PAGE, 'text/html; charset=utf-8')
 
     def do_POST(self):
