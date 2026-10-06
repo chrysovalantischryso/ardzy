@@ -1641,14 +1641,31 @@ def main():
             webbrowser.open(url)
         while True:
             time.sleep(3600)
+    unblock_downloaded_files()
     try:
         import webview
-    except ImportError:
-        webbrowser.open(url)
-        while True:
-            time.sleep(3600)
-    webview.create_window('Ardzy %s %s' % (APP_VERSION, APP_STAGE), url, width=1360, height=860, min_size=(900, 600))
-    webview.start()
+        webview.create_window('Ardzy %s %s' % (APP_VERSION, APP_STAGE), url, width=1360, height=860, min_size=(900, 600))
+        webview.start()
+        return
+    except Exception as e:                      # no window possible: the same app in the web browser
+        log('app window not available (%s): opening Ardzy in the web browser' % e, 'warn')
+    webbrowser.open(url)
+    while True:
+        time.sleep(3600)
+
+
+def unblock_downloaded_files():
+    """Files unzipped from a downloaded zip carry Windows' "from the internet" mark (Zone.Identifier), and .NET
+    refuses to load a marked DLL, so the app window (pythonnet) could not start. Remove the mark from our own files."""
+    if os.name != 'nt' or not getattr(sys, 'frozen', False):
+        return
+    for d, _, files in os.walk(os.path.dirname(sys.executable)):     # the Ardzy folder (with _internal)
+        for f in files:
+            if f.lower().endswith(('.dll', '.exe', '.pyd')):
+                try:
+                    os.remove(os.path.join(d, f) + ':Zone.Identifier')
+                except OSError:
+                    pass
 
 
 if __name__ == '__main__':
