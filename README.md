@@ -38,6 +38,8 @@ an Ethernet cable and a Windows PC.
 1. Download from [Releases](../../releases): `Ardzy-0.2-BETA-windows.zip` and `Ardzy-0.2-sdcard.img.xz`.
 2. Unzip the app and start `Ardzy.exe`. Press **SD card**, choose the image and your card, Write.
    (balenaEtcher works too.)
+   The app is not code-signed, so the first time Windows may show "Windows protected your PC":
+   click **More info**, then **Run anyway**.
 3. Set the boot jumpers to SD card (**JP2 = 1, JP4 = 1**), put the card in, connect Ethernet, power on.
 4. Wait about 2 minutes. The app finds **ardzy.local** by itself.
 
