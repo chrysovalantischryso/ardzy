@@ -14,6 +14,9 @@ python -m PyInstaller --noconfirm --windowed --name Ardzy --icon "%~dp0ardzy.ico
   --add-data "%~dp0fpga\hdl;fpga\hdl" --add-data "%~dp0tools\fpga;tools\fpga" ^
   --add-data "%~dp0fpga\simlib;fpga\simlib" --add-data "%~dp0tools\icarus;tools\icarus" ^
   --add-data "%~dp0..\arduino\examples;arduino\examples" --add-data "%~dp0..\fpga_projects;fpga_projects" ^
+  --add-data "%~dp0..\projects\ardzy_io;starter\ardzy_io" --add-data "%~dp0..\projects\blink;starter\blink" ^
+  --add-data "%~dp0..\projects\board_hello;starter\board_hello" --add-data "%~dp0..\projects\fpga_ramtest;starter\fpga_ramtest" ^
+  --add-data "%~dp0..\projects\fpga_selftest;starter\fpga_selftest" --add-data "%~dp0..\projects\leds_python;starter\leds_python" ^
   --paths "%~dp0fpga" --hidden-import fasm2bit --hidden-import aes67_pc --hidden-import pyaudiowpatch --hidden-import numpy ^
   --distpath "%OUT%" --workpath "%TEMP%\ardzy_pyi" --specpath "%TEMP%\ardzy_pyi" ^
   --hidden-import serial.tools.list_ports ardzy_app.py

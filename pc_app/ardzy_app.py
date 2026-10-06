@@ -108,7 +108,7 @@ def default_workspace():
 
 DEFAULTS = {
     'workspace': default_workspace(),
-    'vivado': r'D:\Vivado\Vivado\2021.1\bin\vivado.bat',
+    'vivado': r'C:\Xilinx\Vivado\2021.1\bin\vivado.bat',
     'last_board': '',          # {"host": ..., "port": ...} (IPv4, name, or IPv6 with zone)
     'manual_hosts': ['ardzy.local'],
     'fpga_tool': 'builtin',    # 'builtin' (Yosys + nextpnr, in the app) or 'vivado'
@@ -379,9 +379,22 @@ def resolve_all(names):
 
 
 # ------------------------------------------------------------------ projects (on the PC)
+STARTER_DIR = os.path.join(getattr(sys, '_MEIPASS', APP_DIR), 'starter')   # example projects inside the app
+
+
 def ws():
-    os.makedirs(settings['workspace'], exist_ok=True)
-    return settings['workspace']
+    w = settings['workspace']
+    empty = not os.path.isdir(w) or not os.listdir(w)
+    os.makedirs(w, exist_ok=True)
+    if empty and not settings.get('starter_done') and os.path.isdir(STARTER_DIR):
+        # first start with an empty projects folder: put the example projects in it (once)
+        for n in sorted(os.listdir(STARTER_DIR)):
+            if not os.path.exists(os.path.join(w, n)):
+                shutil.copytree(os.path.join(STARTER_DIR, n), os.path.join(w, n),
+                                ignore=shutil.ignore_patterns('__pycache__'))
+        settings['starter_done'] = True
+        settings.save()
+    return w
 
 
 def proj_path(name):
