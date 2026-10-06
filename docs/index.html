@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FPGA Documents</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="kicker">FPGA projects &middot; documents</div>
+  <h1>Antminer S9 Zynq board: all documents</h1>
+  <p>One document per project, plus a hardware guide. Each explains what was done, how it works, and how to use it.</p>
+</div></header>
+<main class="wrap">
+<div class="cards">
+  <a class="card" href="00_Hardware_Antminer_S9.html"><span class="n">Start here</span><h3>The board and the Zynq chip</h3>
+    <p>What is on the board, the ARM side and the FPGA side, how they talk, the memory map, connectors and pins, how the board starts.</p></a>
+  <a class="card" href="01_Clean_Linux.html"><span class="n">Project 1 &middot; 1_Clean_Linux</span><h3>Clean Linux (Debian 12)</h3>
+    <p>A fresh, small Debian on the proven old boot files. The safe first step.</p></a>
+  <a class="card" href="04_Board_Manual.html"><span class="n">Reference</span><h3>Board reference manual</h3>
+    <p>Everything about the board: every chip, power and start-up order, clocks, DDR3, NAND, SD, Ethernet, UART, JTAG, boot straps, all 54 ARM pins, measured values, limits.</p></a>
+  <a class="card" href="03_Pins_Plan.html"><span class="n">Reference</span><h3>Pins plan</h3>
+    <p>All 56 FPGA pins, the 9 connectors pin by pin, a suggested standard wiring plan, and the ARM-side LEDs, buzzer and buttons.</p></a>
+  <a class="card" href="02_Ardzy.html"><span class="n">Project 2 &middot; 2_Ardzy</span><h3>Ardzy: Zynq like an Arduino</h3>
+    <p>Everything built from source, empty FPGA at power-on, the Ardzy app with one-click Upload, Monitor and Vivado build.</p></a>
+  <a class="card" href="05_Ardzy_0.2.html"><span class="n">Project 2 &middot; version 0.2 BETA</span><h3>Ardzy 0.2 BETA: everything inside the app</h3>
+    <p>FPGA builds without Vivado, Arduino C++ sketches and libraries, FPGA instruments, the board drawn, Ardzy OS 0.2 with SD writer and safe updates.</p></a>
+  <a class="card" href="06_FPGA_Projects.html"><span class="n">Project 2 &middot; FPGA projects</span><h3>15 ready FPGA projects</h3>
+    <p>LED strips, patterns, encoders, steppers, SPI / I2C, signal generator, VGA, audio, sensors, a RISC-V, AXI-Stream, an FM radio with RDS, a SHA-256 miner, a FIR filter lab and the Game of Life: each with a guide and a self-test.</p></a>
+  <a class="card" href="07_Learn_FPGA.html"><span class="n">Learn &middot; start here if you are new to FPGAs</span><h3>Learn FPGA with Ardzy</h3><p>Ten lessons from logic gates to your own instrument: interactive drawings, a working project on the board for each, the code explained, questions with answers, challenges, and 24 ideas for your own projects.</p></a>
+</div>
+
+<h2>Where things are</h2>
+<table>
+<tr><th>What</th><th>Where</th></tr>
+<tr><td>Project folders</td><td><code>Desktop\FPGA\ANTMINER S9\1_Clean_Linux</code> and <code>...\2_Ardzy</code></td></tr>
+<tr><td>The Ardzy app</td><td><code>Desktop\FPGA\ANTMINER S9\Ardzy.lnk</code></td></tr>
+<tr><td>SD card image to flash (current)</td><td><code>2_Ardzy\out\release\Ardzy-0.2-sdcard.img.xz</code> (board name: <code>ardzy.local</code>); the app's SD card button writes it</td></tr>
+<tr><td>Update for a board already running Ardzy</td><td><code>2_Ardzy\out\release\Ardzy-0.2-update.tar.gz</code> (app: System, Settings and update)</td></tr>
+<tr><td>Previous image</td><td><code>2_Ardzy\out\Ardzy-0.1-sdcard.img.xz</code></td></tr>
+<tr><td>These documents</td><td><code>Desktop\FPGA\Documents</code> (open <code>index.html</code>)</td></tr>
+<tr><td>Older Vivado work (FM/AM transmitter, ZynqProjects manual)</td><td><code>Documents\VivadoProjects</code></td></tr>
+</table>
+
+<h2>Project history</h2>
+<ol class="steps">
+  <li><b>FM/AM transmitter</b> (earlier): the board as a radio transmitter, RDS text "TEST", web control page. Showed that the FPGA works and taught us the board's real chip (XC7Z010).</li>
+  <li><b>Clean Linux</b>: fresh Debian 12, old boot files kept. Small, clean, safe.</li>
+  <li><b>Ardzy 0.1</b>: everything from source, the boot loader's memory settings taken 1:1 from the proven one, Arduino-style upload system and the Ardzy app. Runs on the real board.</li>
+  <li><b>Ardzy 0.2 BETA</b>: FPGA designs built inside the app (no Vivado), Arduino C++ and libraries, instruments in the FPGA (logic analyzer, PWM, frequency meters, UART, I2C), Map and System views, Ardzy OS 0.2 written and updated from the app.</li>
+  <li><b>Next</b>: an FPGA block for WS2812 LEDs (NeoPixel timing), more instruments, your own designs.</li>
+</ol>
+</main>
+</body>
+</html>

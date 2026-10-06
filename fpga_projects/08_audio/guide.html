@@ -1,0 +1,97 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Audio: I2S out and in, PDM microphone</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Sound &middot; medium</div><h1>Audio: I2S out and in, PDM microphone</h1><p class="lead">Play sound through an I2S DAC or amplifier module (PCM5102A, MAX98357A), record from an I2S ADC, or from a digital PDM microphone with a CIC filter in hardware. 48.8 kHz stereo, 16 bit.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 5 of 5 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Audio block</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>mclk</code></td><td>J3 pin 5</td><td>T14</td></tr><tr><td><code>bclk</code></td><td>J3 pin 11</td><td>P14</td></tr><tr><td><code>dout</code></td><td>J3 pin 12</td><td>R14</td></tr><tr><td><code>lrclk</code></td><td>J3 pin 15</td><td>T15</td></tr><tr><td><code>din</code></td><td>J6 pin 5</td><td>U14</td></tr><tr><td><code>pdm_clk</code></td><td>J6 pin 11</td><td>U18</td></tr><tr><td><code>pdm_dat</code></td><td>J6 pin 12</td><td>U19</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J3 pin 11 (BCLK), pin 12 (DOUT), pin 15 (LRCLK)</td><td>DAC module BCK, DIN, LCK (PCM5102A) or BCLK, DIN, LRC (MAX98357A)</td><td>PCM5102A: SCK pin to GND (it makes its own clock), FMT to GND</td></tr><tr><td>J3 pin 5 (MCLK, 12.5 MHz)</td><td>DAC / ADC modules that need a master clock</td><td></td></tr><tr><td>J6 pin 5 (DIN)</td><td>I2S ADC module DOUT</td><td></td></tr><tr><td>J6 pin 11 / 12</td><td>PDM microphone CLK / DATA (SEL to GND = left)</td><td>for example an SPH0641 or MP34DT01 board</td></tr><tr><td>pin 16 (3.3 V), pin 1 (GND)</td><td>module VIN and GND</td><td>MAX98357A also works at 5 V from an outside supply</td></tr></table><h3>Parts</h3><ul><li>PCM5102A DAC board + headphones / amplifier, or a MAX98357A amplifier board + speaker</li><li>optional: PDM microphone board, I2S ADC board</li><li>nothing for the self-test</li></ul><h2>What it does</h2>
+<p>Digital sound in and out: I2S to a DAC or amplifier module (headphones, a speaker), I2S in from an ADC module, and a PDM microphone with the decimation filter in hardware. 48.8 kHz, 16-bit stereo. The demo plays a melody made in Python, a tone sweep, and <code>sound.wav</code> if you put one in the project.</p>
+<h2>How it works</h2>
+<p><b>I2S</b> is how chips pass sound: <b>BCLK</b> (bit clock), <b>LRCLK</b> (which channel: left or right, it is also the sample rate) and <b>DATA</b> (the bits, most significant first). Here one 100 MHz clock makes everything:</p>
+<table>
+<tr><th>Signal</th><th>Rate</th></tr>
+<tr><td>MCLK (for modules that need it)</td><td>12.5 MHz</td></tr>
+<tr><td>BCLK</td><td>3.125 MHz (64 bits per frame)</td></tr>
+<tr><td>LRCLK = sample rate</td><td>48828.125 Hz (100 MHz / 2048)</td></tr>
+</table>
+<p>That is not 48 kHz exactly, but DACs with their own PLL (PCM5102A, MAX98357A, UDA1334A) take any rate. Python resamples your sound to 48828 Hz.</p>
+<p>The ARM writes samples into a 2048-sample FIFO (42 ms); the FPGA sends one frame per LRCLK period. If the FIFO runs empty, the FPGA counts an underflow and sends silence. The <b>tone generator</b> (a DDS with a sine table) plays without the ARM.</p>
+<p>A <b>PDM microphone</b> sends 1-bit samples at 3.125 MHz: the density of ones is the sound. A CIC filter (sums and differences) in the FPGA turns them into 16-bit samples at 48.8 kHz.</p>
+<p>The DOUT pin is read back at its pad and received again: the self-test plays samples and checks they come back exactly.</p>
+<h2>Try it</h2>
+<table>
+<tr><th>Module</th><th>Wiring</th></tr>
+<tr><td>PCM5102A DAC</td><td>BCK to J3 pin 11, DIN to J3 pin 12, LCK to J3 pin 15, SCK to GND, VIN 3.3 V, GND</td></tr>
+<tr><td>MAX98357A amplifier</td><td>BCLK J3 pin 11, DIN J3 pin 12, LRC J3 pin 15, VIN 3.3 or 5 V, GND, a 4 to 8 ohm speaker</td></tr>
+<tr><td>PDM microphone</td><td>CLK J6 pin 11, DATA J6 pin 12, SEL to GND, 3.3 V, GND</td></tr>
+<tr><td>I2S ADC</td><td>its DOUT to J6 pin 5, its clocks from J3</td></tr>
+</table>
+<p><b>Upload and run</b>. Put a WAV file named <code>sound.wav</code> (16-bit PCM) in the project to hear it.</p>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, Audio
+import math
+a = Audio(Bus(), slot=1)
+a.setup(out=True)
+a.volume(0.5)
+fs = a.FS
+a.play((int(8000 * math.sin(2 * math.pi * 440 * n / fs)),) * 2 for n in range(int(fs)))   # 1 s of A4
+a.setup(out=True, tone=True)
+a.tone(1000)                         # the hardware tone generator
+a.setup(out=False, rx=True, rx_source='pdm')
+samples = a.record(48828)            # 1 s from the microphone</code></pre>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] out on [1] tone [3:2] in source: DIN, loop, DOUT pin, PDM [4] in on [5] PDM test</td></tr>
+<tr><td>1, 2</td><td>TX, TX_LEVEL</td><td>put a sample (R x 65536 + L) / samples waiting</td></tr>
+<tr><td>3, 4</td><td>RX, RX_LEVEL</td><td>take a received sample / waiting</td></tr>
+<tr><td>5, 6</td><td>TONE_INC, VOLUME</td><td>tone frequency, volume 0..256</td></tr>
+<tr><td>7, 8</td><td>UNDERFLOWS, OVERFLOWS</td><td>gaps / lost samples</td></tr>
+<tr><td>9, 10</td><td>LR_PERIOD, FS</td><td>measured at the pin; 48828</td></tr>
+<tr><td>11</td><td>ID</td><td>"AUD0"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Deriving clocks by division</td><td>MCLK, BCLK and LRCLK all from 100 MHz</td></tr>
+<tr><td>A FIFO absorbs the software's irregular timing</td><td>2048 samples = 42 ms in hand</td></tr>
+<tr><td>Serial audio (I2S)</td><td>DATA most significant bit first, LRCLK selects the channel</td></tr>
+<tr><td>Turning 1-bit PDM into samples</td><td>a CIC filter: sums and differences</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>Why can the board's I2S run at 48 828 Hz instead of 48 000 Hz?</li></ol>
+<details><summary>Answer</summary>
+100 MHz / 2048 = 48 828.125 Hz is a whole divider of the clock; DACs with their own PLL lock to whatever LRCLK they get. Python resamples the sound to match.
+</details>
+<ol><li>The FIFO holds 2048 samples. How long may Python pause before the sound breaks?</li></ol>
+<details><summary>Answer</summary>
+2048 / 48 828 = 42 ms: any pause shorter than that (minus what is still in the FIFO) is heard as nothing.
+</details>
+<ol><li>A PDM microphone sends 3.125 million bits per second. Why does a filter turn them into sound?</li></ol>
+<details><summary>Answer</summary>
+The density of ones follows the air pressure. A low-pass filter averages the bits: the average is the sound sample; decimating by 64 gives 48.8 kHz.
+</details>
+<h2>Ideas</h2>
+<ul><li>An internet radio player (the board has a network), a doorbell, sound effects for a game.</li><li>A spectrum analyzer on the VGA screen from the microphone.</li><li>Feed the FM radio (project 12) from the microphone: a live studio.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>Silence with a PCM5102A</b>: its SCK pin must go to GND (it then makes its own clock), FMT and XSMT as the module's instructions say (XSMT high = not muted).</li><li><b>Crackling</b>: the FIFO runs empty: write in bigger bursts (<code>play()</code> does that), and close other programs.</li></ul></main></body></html>

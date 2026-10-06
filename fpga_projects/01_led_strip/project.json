@@ -1,0 +1,43 @@
+{
+  "id": "LEDS",
+  "title": "LED strip (WS2812 / NeoPixel)",
+  "category": "Lights and display",
+  "level": "easy",
+  "summary": "Drive WS2812B / SK6812 RGB LED strips with exact timing from the FPGA: up to 1024 LEDs, brightness and colour order in hardware.",
+  "slots": {
+    "0": "Info",
+    "1": "LED strip registers",
+    "2": "LED strip pixels (1024 words)"
+  },
+  "pins": {
+    "ws_pin": "j7[0]",
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [
+    [
+      "J7 pin 5",
+      "strip DIN",
+      "through a 74AHCT125 level shifter (5 V strips), or a 330 ohm resistor for a short test"
+    ],
+    [
+      "J7 pin 1 or 2 (GND)",
+      "strip GND and the 5 V supply's GND",
+      "common ground is a must"
+    ],
+    [
+      "5 V supply",
+      "strip +5V",
+      "about 60 mA per LED at full white"
+    ]
+  ],
+  "parts": [
+    "WS2812B or SK6812 LED strip / ring",
+    "5 V power supply (1 A per 16 LEDs at full white)",
+    "74AHCT125 level shifter (or 330 ohm resistor)",
+    "1000 uF capacitor across the strip supply"
+  ],
+  "tested": "the self-test passed 13 of 13 checks on the real board (October 2026), with nothing connected."
+}

@@ -1,0 +1,138 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SHA-256 miner (what the Antminer was built for)</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Computing &middot; intermediate</div><h1>SHA-256 miner (what the Antminer was built for)</h1><p class="lead">SHA-256 in hardware, three units side by side: hash any message, then mine like Bitcoin (double SHA-256 over a block header, searching the nonce) and race the ARM. Finds the real nonce of Bitcoin block 125552.</p><div class="box ok"><b>Tested on the real board</b> 8/8 on the board 2026-10-05, 1 127 820 double hashes per second, 127.5 MHz</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>SHA-256 core and miner</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr></table><h3>Parts</h3><ul><li>nothing: everything happens inside the FPGA</li></ul><h2>What it does</h2>
+<p>This board was made to control a Bitcoin miner: the Antminer S9 sent work to 189 ASIC chips that did nothing but <b>SHA-256</b>. This project puts SHA-256 into the board's own FPGA:</p>
+<ul><li><b>Hash anything</b>: the FPGA compresses each 64-byte block of a message; the result equals Python's <code>hashlib.sha256</code> to the last bit.</li><li><b>Mine like Bitcoin</b>: give it an 80-byte block header and it tries nonce after nonce, hashing each header twice (double SHA-256), until the hash starts with enough zero bits. It finds the real nonce of Bitcoin block 125552.</li><li><b>Race the ARM</b>: three hashing units side by side do about 1.1 million double hashes per second, many times what Python on the ARM manages.</li></ul>
+<p>Nothing to connect. LED 0 blinks while mining, LED 1 lights when a nonce was found.</p>
+<h2>How it works</h2>
+<h3>1. A hash in one picture</h3>
+<p>A hash function turns any data into a fixed-size fingerprint (32 bytes for SHA-256). Change one bit of the input and about half the output bits change; there is no way back from the fingerprint to the data, and no shortcut to find data with a chosen fingerprint except trying.</p>
+<p>SHA-256 cuts the message into <b>blocks of 64 bytes</b> (the last one padded with a 1 bit, zeros and the message length) and runs a <b>compression</b> on each block. The compression mixes the block into an 8-word state (H0 .. H7). The state starts with fixed numbers (the square roots of the first 8 primes) and the final state is the hash.</p>
+<figure>
+<svg viewBox="0 0 860 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SHA-256 chains compressions">
+<defs><marker id="ah13" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="currentColor"/></marker></defs>
+<rect x="10" y="60" width="110" height="50" rx="8" class="d-box"/><text x="65" y="82" class="d-title" text-anchor="middle">IV</text><text x="65" y="100" class="d-small" text-anchor="middle">8 fixed words</text>
+<rect x="190" y="50" width="150" height="70" rx="8" class="d-pl"/><text x="265" y="80" class="d-title" text-anchor="middle">compress</text><text x="265" y="100" class="d-small" text-anchor="middle">64 rounds</text>
+<rect x="430" y="50" width="150" height="70" rx="8" class="d-pl"/><text x="505" y="80" class="d-title" text-anchor="middle">compress</text><text x="505" y="100" class="d-small" text-anchor="middle">64 rounds</text>
+<rect x="680" y="60" width="160" height="50" rx="8" class="d-acc"/><text x="760" y="82" class="d-title" text-anchor="middle">hash</text><text x="760" y="100" class="d-small" text-anchor="middle">H0 .. H7 = 32 bytes</text>
+<rect x="190" y="5" width="150" height="30" rx="6" class="d-ps"/><text x="265" y="25" class="d-small" text-anchor="middle">block 1 (64 bytes)</text>
+<rect x="430" y="5" width="150" height="30" rx="6" class="d-ps"/><text x="505" y="25" class="d-small" text-anchor="middle">block 2 (+ padding)</text>
+<path d="M120 85 H186" class="d-arrow" marker-end="url(#ah13)" color="#b8860b"/><path d="M340 85 H426" class="d-arrow" marker-end="url(#ah13)" color="#b8860b"/><path d="M580 85 H676" class="d-arrow" marker-end="url(#ah13)" color="#b8860b"/>
+<path d="M265 35 V46" class="d-line" marker-end="url(#ah13)" color="#888"/><path d="M505 35 V46" class="d-line" marker-end="url(#ah13)" color="#888"/>
+<text x="383" y="140" class="d-small" text-anchor="middle">state</text><text x="628" y="140" class="d-small" text-anchor="middle">state</text>
+<text x="430" y="163" class="d-small" text-anchor="middle">the state after block 1 is the "midstate": blocks after it only need the midstate, not block 1 again</text>
+</svg>
+<figcaption>SHA-256 = a chain of compressions, one per 64-byte block.</figcaption>
+</figure>
+<h3>2. One round of the compression</h3>
+<p>Inside a compression, 64 <b>rounds</b> each mix one word of the block (W[t]) and one constant (K[t], from the cube roots of the first 64 primes) into eight working words a .. h:</p>
+<pre><code>T1 = h + S1(e) + Ch(e, f, g) + K[t] + W[t]       S1(e) = e&gt;&gt;&gt;6 ^ e&gt;&gt;&gt;11 ^ e&gt;&gt;&gt;25    Ch = e chooses f or g
+T2 = S0(a) + Maj(a, b, c)                         S0(a) = a&gt;&gt;&gt;2 ^ a&gt;&gt;&gt;13 ^ a&gt;&gt;&gt;22    Maj = the majority of a, b, c
+h = g   g = f   f = e   e = d + T1   d = c   c = b   b = a   a = T1 + T2</code></pre>
+<p><code>&gt;&gt;&gt;</code> is a rotation (the bits that fall off the right come back on the left). Only 16 words of W come from the block; W[16] .. W[63] are made from the earlier ones as the rounds go (the <b>message schedule</b>). The file <code>sha256_model.py</code> has the whole algorithm in 25 lines of Python, the same steps the hardware takes.</p>
+<h3>3. Why a round takes two clocks here</h3>
+<p>In software a round is a few instructions. In hardware every line above is wires and adders that settle in a certain time. The longest path, <code>a = h + S1 + Ch + K + W + S0 + Maj</code>, adds seven 32-bit numbers: about 13 ns in this FPGA, but the clock ticks every 10 ns (100 MHz). The first version of this project did a round per clock and the build tools reported only 75 to 90 MHz: it would have computed wrong hashes.</p>
+<p>The fix is a <b>pipeline stage</b>: the first clock computes T1, T2 and the next schedule word into registers, the second clock adds them into a .. h. Each half is short, so 100 MHz is easy. A compression now takes 129 clocks (1.29 us).</p>
+<div class="box info">This is the most important trade-off in digital design: a shorter path between registers lets the clock run faster, a longer one does more per clock. The build log tells you which one you have: "clock 'clk' 75.4 MHz (FAIL at 100 MHz)" means the longest path is too long.</div>
+<h3>4. Mining</h3>
+<p>A Bitcoin block header is 80 bytes: version, the previous block's hash, the merkle root (a hash of all transactions), the time, the difficulty ("bits") and a 4-byte <b>nonce</b>. Miners change the nonce and compute <code>SHA-256(SHA-256(header))</code> until the result, read as a little-endian number, is below the target: in other words it <b>starts with enough zero bits</b> when shown the usual way.</p>
+<figure>
+<svg viewBox="0 0 860 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The miner">
+<defs><marker id="bh13" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="currentColor"/></marker></defs>
+<rect x="10" y="20" width="200" height="80" rx="8" class="d-ps"/><text x="110" y="45" class="d-title" text-anchor="middle">ARM (Python)</text>
+<text x="110" y="65" class="d-small" text-anchor="middle">header bytes 0..63 -&gt; midstate</text><text x="110" y="83" class="d-small" text-anchor="middle">bytes 64..75 -&gt; tail</text>
+<path d="M210 60 H266" class="d-arrow" marker-end="url(#bh13)" color="#b8860b"/>
+<rect x="270" y="10" width="330" height="230" rx="10" class="d-box"/><text x="435" y="30" class="d-title" text-anchor="middle">FPGA: 3 units side by side</text>
+<g><rect x="285" y="42" width="300" height="40" rx="6" class="d-pl"/><text x="300" y="67" class="d-small">unit 0: nonce n    compress(midstate, tail+n) -&gt; compress(IV, ...)</text></g>
+<g><rect x="285" y="90" width="300" height="40" rx="6" class="d-pl"/><text x="300" y="115" class="d-small">unit 1: nonce n+1  ...</text></g>
+<g><rect x="285" y="138" width="300" height="40" rx="6" class="d-pl"/><text x="300" y="163" class="d-small">unit 2: nonce n+2  ...</text></g>
+<path d="M600 134 H656" class="d-arrow" marker-end="url(#bh13)" color="#b8860b"/>
+<rect x="660" y="94" width="190" height="80" rx="8" class="d-acc"/><text x="755" y="120" class="d-title" text-anchor="middle">enough zero bits?</text>
+<text x="755" y="140" class="d-small" text-anchor="middle">yes: report the first one</text><text x="755" y="158" class="d-small" text-anchor="middle">no: n = n + 3, again</text>
+</svg>
+<figcaption>The ARM does the part that never changes (the midstate) once; the FPGA does the part that changes with every nonce.</figcaption>
+</figure>
+<p>Two tricks every miner uses, and this one too:</p>
+<ul><li><b>Midstate</b>: the first 64 header bytes do not depend on the nonce, so their compression is done once (by the ARM). Each nonce then needs only 2 compressions instead of 3.</li><li><b>Many units</b>: units do not need each other, so more units means more hashes. Three units here, about 1.1 million double hashes per second. The S9's 189 chips did 14 thousand billion (14 TH/s); the demo measures how many Python on the ARM manages.</li></ul>
+<p>Every extra zero bit doubles the work: 20 bits take about a million tries (under a second here), 32 bits about 4 billion (about an hour). Bitcoin needed about 78 zero bits in 2024.</p>
+<h2>Try it</h2>
+<p>Nothing to wire. <b>Upload and run</b>. The Monitor shows:</p>
+<ol><li>The SHA-256 of a text from the FPGA and from <code>hashlib</code>: the same.</li><li>Bitcoin block 125552: the FPGA searches a million nonces and stops at the block's real nonce, whose hash starts with 16 zero hex digits.</li><li>A 2-second race on a made-up header: Python on the ARM against the FPGA.</li><li>Mining for ever on a header that changes its time field: every "block" with 28 zero bits is printed.</li></ol>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, ShaMiner
+import hashlib
+sha = ShaMiner(Bus(), slot=1)
+print(sha.sha256(b'hello').hex())               # = hashlib.sha256(b'hello').hexdigest()
+header = bytes(80)                               # any 80 bytes
+r = sha.mine(header, start=0, count=0, zero_bits=20, timeout=10)
+print(r['found'], r['nonce'], r['hash'], r['rate'])</code></pre>
+<p><code>mine()</code> returns <code>found</code>, <code>nonce</code>, <code>hash</code> (shown the Bitcoin way), <code>hashes</code> tried, <code>seconds</code> and <code>rate</code>. <code>stop()</code> ends a search, <code>result()</code> reads one without waiting.</p>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>write: [0] start raw [1] start mining [2] stop</td></tr>
+<tr><td>1</td><td>STATUS</td><td>[0] raw busy [1] mining [2] found [3] finished</td></tr>
+<tr><td>2, 3, 4</td><td>NONCE_START, NONCE_COUNT, ZERO_BITS</td><td>the search (count 0 = all 2^32)</td></tr>
+<tr><td>5, 6, 7</td><td>FOUND_NONCE, HASHES, CYCLES</td><td>the result, nonces tried, clocks used</td></tr>
+<tr><td>8 .. 15</td><td>MIDSTATE</td><td>the state after the header's first 64 bytes</td></tr>
+<tr><td>16 .. 18</td><td>TAIL</td><td>header bytes 64 .. 75</td></tr>
+<tr><td>24 .. 31, 32 .. 47</td><td>H_IN, BLOCK</td><td>raw mode: one compression of any state and block</td></tr>
+<tr><td>48 .. 55</td><td>H_OUT</td><td>raw mode result</td></tr>
+<tr><td>56 .. 63</td><td>FOUND_HASH</td><td>the double hash of the nonce found</td></tr>
+<tr><td>126, 127</td><td>UNITS, ID</td><td>4, "SHA2"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Pipelining: cut a long path with registers to run the clock faster</td><td><code>sha256_core</code>: the first and second half of a round</td></tr>
+<tr><td>Parallelism: copies of a block work at the same time</td><td><code>generate for</code> in <code>sha_miner</code>: NU units</td></tr>
+<tr><td>Precomputing what does not change</td><td>the midstate, made once by the ARM</td></tr>
+<tr><td>Hardware and software sharing a job</td><td><code>blocks.py ShaMiner.mine()</code>: Python prepares, the FPGA searches</td></tr>
+<tr><td>Checking hardware against a model</td><td><code>selftest.py</code> and <code>sim/run_sim.py</code> compare with <code>hashlib</code></td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li><b>Count the clocks.</b> A compression takes 129 clocks, a nonce needs two, and three units work at once. Estimate the hashes per second at 100 MHz, then compare with what the demo prints.</li></ol>
+<details><summary>Answer</summary>
+Each batch of 3 nonces takes 2 x 129 = 258 clocks plus a few for starting and checking (about 264): 3 / 264 x 100 000 000 = about 1.14 million per second.
+</details>
+<ol><li><b>How long for N bits?</b> On average a hash with N leading zero bits takes 2^N tries. How long does the FPGA need for 24, 28 and 32 bits?</li></ol>
+<details><summary>Answer</summary>
+2^24 = 16.8 million tries: about 15 s. 2^28: about 4 minutes. 2^32: about 63 minutes (and then all nonces are used: miners change the time or other fields and start again).
+</details>
+<ol><li><b>More units.</b> <code>top.v</code> makes 3 units: <code>sha_miner #(.SLOT(1), .NU(3))</code>. Change it to 2, <b>Build FPGA</b>, upload and run the demo: is it 2/3 of the speed? Then look at the LUT and flip-flop counts in the build log. With 4 units the design needs about 9 500 LUTs and 13 000 flip-flops, and the open-source placer gives up ("unable to find legal placement") even though the chip has 17 600 LUTs: why can a chip be "full" before every LUT is used?</li></ol>
+<details><summary>Answer</summary>
+A unit is about 2 600 LUTs and 3 600 flip-flops. LUTs and flip-flops are grouped in slices (4 LUTs and 8 flip-flops each), and the flip-flops of one slice must share the same clock enable and reset. Registers with many different enables cannot share slices, so slices run out before LUTs do; the long wires between them also get crowded. Vivado packs more tightly, so it may fit 4.
+</details>
+<ol><li><b>Avalanche.</b> In Python, hash <code>b'Ardzy'</code> and <code>b'Ardzz'</code> with <code>sha.sha256()</code> and count the bits that differ (<code>bin(a ^ b).count('1')</code> on the two digests as integers). Why is it close to 128?</li></ol>
+<details><summary>Answer</summary>
+Each output bit depends on every input bit through 64 rounds of mixing, so a changed input bit flips each output bit with a probability of one half: about 128 of 256 bits.
+</details>
+<ol><li><b>One clock per round, done right.</b> Real miners do a round (or more) per clock. Read <code>sha256_core</code>: which additions could be made in the clock before (as <code>hkw</code> already is), so that the remaining path fits in 10 ns? (Hint: <code>d + T1</code> and <code>T1 + T2</code> share T1.)</li></ol>
+<h2>Ideas</h2>
+<ul><li>Show the hash rate live in the app's Plotter: print <code>rate:</code> once a second.</li><li>Make a "proof of work" for your own messages: find a nonce that makes the hash of your text start with 20 zero bits, and let a friend check it with Python.</li><li>Add a SHA-256 stream block to project 11 (AXI-Stream) to hash files as they arrive over the network.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>"The FPGA does not hold the SHA2 project"</b>: upload this project first (Upload and run).</li><li><b>Hashes differ from hashlib</b>: run the self-test; the simulation test (<code>python sim/run_sim.py</code> on the PC, needs Icarus Verilog) shows whether the design or the board is at fault.</li><li><b>Mining never finds anything</b>: each extra zero bit doubles the time; try 20 bits first.</li></ul></main></body></html>

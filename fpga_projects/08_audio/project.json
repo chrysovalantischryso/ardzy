@@ -1,0 +1,57 @@
+{
+  "id": "AUD0",
+  "title": "Audio: I2S out and in, PDM microphone",
+  "category": "Sound",
+  "level": "medium",
+  "summary": "Play sound through an I2S DAC or amplifier module (PCM5102A, MAX98357A), record from an I2S ADC, or from a digital PDM microphone with a CIC filter in hardware. 48.8 kHz stereo, 16 bit.",
+  "slots": {
+    "0": "Info",
+    "1": "Audio block"
+  },
+  "pins": {
+    "mclk": "j3[0]",
+    "bclk": "j3[1]",
+    "dout": "j3[2]",
+    "lrclk": "j3[3]",
+    "din": "j6[0]",
+    "pdm_clk": "j6[1]",
+    "pdm_dat": "j6[2]",
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [
+    [
+      "J3 pin 11 (BCLK), pin 12 (DOUT), pin 15 (LRCLK)",
+      "DAC module BCK, DIN, LCK (PCM5102A) or BCLK, DIN, LRC (MAX98357A)",
+      "PCM5102A: SCK pin to GND (it makes its own clock), FMT to GND"
+    ],
+    [
+      "J3 pin 5 (MCLK, 12.5 MHz)",
+      "DAC / ADC modules that need a master clock",
+      ""
+    ],
+    [
+      "J6 pin 5 (DIN)",
+      "I2S ADC module DOUT",
+      ""
+    ],
+    [
+      "J6 pin 11 / 12",
+      "PDM microphone CLK / DATA (SEL to GND = left)",
+      "for example an SPH0641 or MP34DT01 board"
+    ],
+    [
+      "pin 16 (3.3 V), pin 1 (GND)",
+      "module VIN and GND",
+      "MAX98357A also works at 5 V from an outside supply"
+    ]
+  ],
+  "parts": [
+    "PCM5102A DAC board + headphones / amplifier, or a MAX98357A amplifier board + speaker",
+    "optional: PDM microphone board, I2S ADC board",
+    "nothing for the self-test"
+  ],
+  "tested": "the self-test passed 5 of 5 checks on the real board (October 2026), with nothing connected."
+}

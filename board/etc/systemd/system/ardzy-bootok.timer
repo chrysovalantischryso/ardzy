@@ -1,0 +1,9 @@
+[Unit]
+Description=S9 mark the boot as good 90 s after start (ends safe-mode watch)
+
+[Timer]
+OnBootSec=90
+Unit=ardzy-bootok.service
+
+[Install]
+WantedBy=timers.target

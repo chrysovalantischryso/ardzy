@@ -1,0 +1,51 @@
+{
+  "id": "PATG",
+  "title": "Pattern generator",
+  "category": "Test and measurement",
+  "level": "easy",
+  "summary": "The opposite of the logic analyzer: play any digital pattern of up to 1024 steps on 16 pins, up to 100 million steps per second, checked at the pins.",
+  "slots": {
+    "0": "Info",
+    "1": "Pattern generator registers",
+    "2": "Pattern table (1024 words, bit n = pin n)"
+  },
+  "pins": {
+    "pins[0]": "j5[0]",
+    "pins[1]": "j5[1]",
+    "pins[2]": "j5[2]",
+    "pins[3]": "j5[3]",
+    "pins[4]": "j6[0]",
+    "pins[5]": "j6[1]",
+    "pins[6]": "j6[2]",
+    "pins[7]": "j6[3]",
+    "pins[8]": "j7[0]",
+    "pins[9]": "j7[1]",
+    "pins[10]": "j7[2]",
+    "pins[11]": "j7[3]",
+    "pins[12]": "j8[0]",
+    "pins[13]": "j8[1]",
+    "pins[14]": "j8[2]",
+    "pins[15]": "j8[3]",
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [
+    [
+      "J5..J8 pins 5, 11, 12, 15",
+      "the circuit under test, or a scope / logic analyzer",
+      "3.3 V levels, keep the current small (under 8 mA)"
+    ],
+    [
+      "J5..J8 pin 1 or 2 (GND)",
+      "the circuit's GND",
+      ""
+    ]
+  ],
+  "parts": [
+    "nothing for the self-test",
+    "a scope or logic analyzer to see the patterns"
+  ],
+  "tested": "the self-test passed 9 of 9 checks on the real board (October 2026), with nothing connected."
+}

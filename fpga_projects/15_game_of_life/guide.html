@@ -1,0 +1,144 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Game of Life (64 x 64 cells, 1.4 million generations per second)</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Computing &middot; beginner</div><h1>Game of Life (64 x 64 cells, 1.4 million generations per second)</h1><p class="lead">Conway&#x27;s Game of Life in hardware: 64 copies of the rule work side by side, a whole row per clock, so the FPGA runs about 1.4 million generations per second, thousands of times faster than Python. Draw patterns, watch gliders fly in the Monitor, find out what a still life, an oscillator and a spaceship are.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 11 of 11 checks on the real board (October 2026), with nothing connected: the rules against Python, a glider around the torus, 1 428 572 generations per second.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Life engine (two banks of 64 x 64 cells)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr></table><h3>Parts</h3><ul><li>nothing: everything happens inside the FPGA</li></ul><h2>What it does</h2>
+<p><b>Conway's Game of Life</b> (1970) is a grid of cells, each alive or dead, and four rules. From them come patterns that stay still, blink, fly across the grid, and even guns that shoot gliders for ever. This project runs it in hardware on a 64 x 64 grid whose edges wrap around (a torus):</p>
+<ul><li>A whole <b>row of 64 cells per clock</b>, about <b>1.43 million generations per second</b>, thousands of times faster than the same rules in Python.</li><li>Famous patterns by name (glider, spaceship, pulsar, Gosper glider gun, R-pentomino ...), random soup, your own drawings.</li><li>The grid shown in the Monitor with block characters.</li></ul>
+<p>Nothing to connect. LED 0 flickers while it runs.</p>
+<h2>How it works</h2>
+<h3>1. The rules</h3>
+<p>Every cell has 8 neighbours. For the next generation, at the same moment for all cells:</p>
+<table>
+<tr><th>This cell</th><th>Live neighbours</th><th>Next generation</th></tr>
+<tr><td>alive</td><td>2 or 3</td><td>stays alive</td></tr>
+<tr><td>alive</td><td>0, 1 (lonely) or 4 .. 8 (crowded)</td><td>dies</td></tr>
+<tr><td>dead</td><td>exactly 3</td><td>is born</td></tr>
+<tr><td>dead</td><td>any other number</td><td>stays dead</td></tr>
+</table>
+<figure>
+<svg viewBox="0 0 860 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A glider over four generations">
+<g transform="translate(20,20)">
+<text x="0" y="-5" class="d-small">generation 0</text>
+<rect x="0" y="0" width="100" height="100" class="d-box"/>
+<rect x="40" y="0" width="20" height="20" class="d-pl"/><rect x="60" y="20" width="20" height="20" class="d-pl"/><rect x="20" y="40" width="20" height="20" class="d-pl"/><rect x="40" y="40" width="20" height="20" class="d-pl"/><rect x="60" y="40" width="20" height="20" class="d-pl"/>
+</g>
+<g transform="translate(190,20)">
+<text x="0" y="-5" class="d-small">1</text>
+<rect x="0" y="0" width="100" height="100" class="d-box"/>
+<rect x="20" y="20" width="20" height="20" class="d-pl"/><rect x="60" y="20" width="20" height="20" class="d-pl"/><rect x="40" y="40" width="20" height="20" class="d-pl"/><rect x="60" y="40" width="20" height="20" class="d-pl"/><rect x="40" y="60" width="20" height="20" class="d-pl"/>
+</g>
+<g transform="translate(360,20)">
+<text x="0" y="-5" class="d-small">2</text>
+<rect x="0" y="0" width="100" height="100" class="d-box"/>
+<rect x="60" y="20" width="20" height="20" class="d-pl"/><rect x="20" y="40" width="20" height="20" class="d-pl"/><rect x="60" y="40" width="20" height="20" class="d-pl"/><rect x="40" y="60" width="20" height="20" class="d-pl"/><rect x="60" y="60" width="20" height="20" class="d-pl"/>
+</g>
+<g transform="translate(530,20)">
+<text x="0" y="-5" class="d-small">3</text>
+<rect x="0" y="0" width="100" height="100" class="d-box"/>
+<rect x="40" y="20" width="20" height="20" class="d-pl"/><rect x="60" y="40" width="20" height="20" class="d-pl"/><rect x="80" y="40" width="20" height="20" class="d-pl"/><rect x="40" y="60" width="20" height="20" class="d-pl"/><rect x="60" y="60" width="20" height="20" class="d-pl"/>
+</g>
+<g transform="translate(700,20)">
+<text x="0" y="-5" class="d-small">4: the same shape, 1 down and 1 right</text>
+<rect x="0" y="0" width="100" height="100" class="d-box"/>
+<rect x="60" y="20" width="20" height="20" class="d-pl"/><rect x="80" y="40" width="20" height="20" class="d-pl"/><rect x="40" y="60" width="20" height="20" class="d-pl"/><rect x="60" y="60" width="20" height="20" class="d-pl"/><rect x="80" y="60" width="20" height="20" class="d-pl"/>
+</g>
+<text x="430" y="160" class="d-small" text-anchor="middle">a glider: after 4 generations it is back, one cell further down and right. Nothing in the rules says "move".</text>
+</svg>
+<figcaption>Five cells and four rules make something that travels.</figcaption>
+</figure>
+<h3>2. Why hardware is fast at this</h3>
+<p>In Python, each of the 4096 cells needs its 8 neighbours counted one after the other: about 50 000 small steps per generation. In the FPGA, the rule for a cell is a little circuit (an 8-input adder and a compare, about 15 LUTs). The design has <b>64 copies</b> of it, one per column, all working in the same clock.</p>
+<figure>
+<svg viewBox="0 0 860 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The life engine">
+<defs><marker id="ah15" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="currentColor"/></marker></defs>
+<rect x="10" y="20" width="150" height="190" rx="8" class="d-ps"/><text x="85" y="45" class="d-title" text-anchor="middle">bank A</text><text x="85" y="65" class="d-small" text-anchor="middle">64 rows x 64 bits</text><text x="85" y="85" class="d-small" text-anchor="middle">(the grid now)</text>
+<path d="M160 115 H216" class="d-arrow" marker-end="url(#ah15)" color="#b8860b"/><text x="188" y="105" class="d-small" text-anchor="middle">a row</text><text x="188" y="135" class="d-small" text-anchor="middle">per clock</text>
+<rect x="220" y="40" width="190" height="34" rx="6" class="d-box"/><text x="315" y="62" class="d-mono" text-anchor="middle">above (row r-1)</text>
+<rect x="220" y="98" width="190" height="34" rx="6" class="d-box"/><text x="315" y="120" class="d-mono" text-anchor="middle">here  (row r)</text>
+<rect x="220" y="156" width="190" height="34" rx="6" class="d-box"/><text x="315" y="178" class="d-mono" text-anchor="middle">below (row r+1)</text>
+<path d="M410 115 H466" class="d-arrow" marker-end="url(#ah15)" color="#b8860b"/>
+<rect x="470" y="60" width="180" height="110" rx="8" class="d-pl"/><text x="560" y="95" class="d-title" text-anchor="middle">64 x the rule</text><text x="560" y="117" class="d-small" text-anchor="middle">count 8 neighbours,</text><text x="560" y="135" class="d-small" text-anchor="middle">alive or dead</text>
+<path d="M650 115 H696" class="d-arrow" marker-end="url(#ah15)" color="#b8860b"/>
+<rect x="700" y="20" width="150" height="190" rx="8" class="d-acc"/><text x="775" y="45" class="d-title" text-anchor="middle">bank B</text><text x="775" y="65" class="d-small" text-anchor="middle">new row r</text><text x="775" y="85" class="d-small" text-anchor="middle">(the next grid)</text>
+<text x="430" y="222" class="d-small" text-anchor="middle">after row 63 the banks swap: B becomes the grid, A receives the next generation</text>
+</svg>
+<figcaption>A generation: 64 rows, one per clock, plus 6 clocks to start, finish and swap = 70 clocks, 0.7 microseconds.</figcaption>
+</figure>
+<p>Three ideas make it work:</p>
+<ul><li><b>Two banks (double buffering)</b>: all cells must change at the same moment, so the new generation is written into the other bank while the old one is still read. Then they swap.</li><li><b>A sliding window of three rows</b>: to make row r, only rows r-1, r and r+1 are needed. Each clock the window slides down by one row.</li><li><b>Wrap-around</b>: column 0's left neighbour is column 63, row 0's upper neighbour is row 63; a glider leaving the right edge comes back on the left.</li><li><b>A pipeline</b>: the row below is read from memory one clock ahead into a register, and each new row is written (and its live cells counted) one clock after it was made. The first version did the memory read, the rule, the count and the write in a single clock: the build tools reported only 61 MHz, too slow for the 100 MHz clock. Split over three clocks, each part has 10 ns to itself.</li></ul>
+<h2>Try it</h2>
+<p>Nothing to wire. <b>Upload and run</b>. The Monitor shows still lifes, oscillators and spaceships, then a race (100 generations in Python against the FPGA), then a Gosper glider gun, then random soup for ever.</p>
+<p>Draw your own pattern in <code>main.py</code>:</p>
+<pre><code>life.clear()
+life.place(['.##', '##.', '.#.'], row=30, col=30)    # the R-pentomino: 5 cells, 1103 generations of chaos
+life.steps(100)
+print(Life.text(life.read()))</code></pre>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, Life, LIFE_PATTERNS
+life = Life(Bus(), slot=1)
+life.clear()                    # or life.randomize(), life.randomize(sparse=True)
+life.place('glider', 5, 5)      # a name from LIFE_PATTERNS or rows of '#' and '.'
+life.steps(10)                  # 10 generations (waits)
+g = life.read()                 # 64 ints, bit c of row r = the cell
+life.run(per_second=10)         # runs on its own; life.run() = flat out; life.stop()
+print(life.generation(), life.population(), life.per_second())</code></pre>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>write: [0] clear [1] run [2] random fill [3] sparse fill</td></tr>
+<tr><td>1</td><td>STATUS</td><td>[0] busy [1] running</td></tr>
+<tr><td>2</td><td>STEPS</td><td>write n: do n generations</td></tr>
+<tr><td>3, 4</td><td>GENERATION, POPULATION</td><td>counters</td></tr>
+<tr><td>5</td><td>RATE</td><td>clocks between generations while running</td></tr>
+<tr><td>6</td><td>PER_SEC</td><td>generations in the last second</td></tr>
+<tr><td>64 + 2r, 65 + 2r</td><td>row r</td><td>bits 0 .. 31 and 32 .. 63</td></tr>
+<tr><td>1023</td><td>ID</td><td>"LIFE"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Spatial parallelism: one circuit per column</td><td><code>life.v</code>: the <code>for</code> loop that makes <code>next_row</code> (64 copies)</td></tr>
+<tr><td>Double buffering</td><td><code>bank0</code>, <code>bank1</code> and <code>cur</code></td></tr>
+<tr><td>A sliding window over memory</td><td><code>above</code>, <code>here</code>, <code>below</code></td></tr>
+<tr><td>A state machine that walks through memory</td><td><code>S_P0</code>, <code>S_P1</code>, <code>S_RUN</code>, <code>S_DONE</code></td></tr>
+<tr><td>Emergence: simple local rules, complex behaviour</td><td>run the R-pentomino or the acorn</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li><b>Still life or oscillator?</b> Place a <code>block</code>, a <code>beehive</code>, a <code>blinker</code> and a <code>toad</code>. Step 1, 2 and 3 generations and compare with <code>life.read()</code>. Which never change, which come back after 2?</li></ol>
+<details><summary>Answer</summary>
+Block and beehive are still lifes (period 1); blinker and toad are oscillators with period 2. The pulsar has period 3.
+</details>
+<ol><li><b>Count the clocks.</b> A generation takes 70 clocks at 100 MHz. How many generations per second? Check with <code>life.per_second()</code> after <code>life.run()</code>.</li></ol>
+<ol><li><b>The R-pentomino.</b> Place it in an empty grid and print the population every 100 generations. When does it settle? (On an infinite grid it takes 1103 generations; on this small torus the debris crashes into itself, so the answer differs.)</li></ol>
+<ol><li><b>A wider rule.</b> "HighLife" adds one birth rule: a dead cell with <b>6</b> neighbours is also born. In <code>life.v</code> change <code>(n == 4'd3)</code> to <code>(n == 4'd3) || (n == 4'd6 &amp;&amp; !here[i])</code>, build, and look for the "replicator" pattern <code>['..###', '.#..#', '#...#', '#..#.', '###..']</code>.</li></ol>
+<ol><li><b>Bigger grid.</b> What would a 128 x 128 grid cost? (Hint: 128 copies of the rule, banks of 128-bit rows.)</li></ol>
+<details><summary>Answer</summary>
+Twice the rule circuits (about 2000 LUTs instead of 1000) and four times the memory (2 x 16 384 bits); a generation would take 134 clocks. It fits the XC7Z010 easily; 512 x 512 would need block RAM instead of LUT RAM.
+</details>
+<h2>Ideas</h2>
+<ul><li>Show the grid on a VGA monitor with project 07's video block (one pixel block per cell).</li><li>Draw with an encoder knob (project 03) or from the app.</li><li>Find the longest-lived soup: run thousands of random grids flat out, keep the seed that lasts longest.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>The grid does not change</b>: was it empty, or a still life? Try <code>life.randomize()</code>.</li><li><b>Rows read as 0</b>: rows can only be read while no generation is running; <code>life.stop()</code> first.</li></ul></main></body></html>

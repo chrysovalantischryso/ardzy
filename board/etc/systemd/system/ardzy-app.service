@@ -1,0 +1,8 @@
+[Unit]
+Description=Ardzy project program (started by: ardzy load)
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ardzy run-app
+Restart=no
+KillMode=control-group

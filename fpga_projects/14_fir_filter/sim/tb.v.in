@@ -1,0 +1,23 @@
+`timescale 1ns / 1ps
+module tb;
+    reg clk = 0;
+    always #5 clk = ~clk;
+    reg [15:0] addr = 0;
+    reg [31:0] wdata = 0;
+    reg we = 0, re = 0;
+    wire [31:0] bus_rdata;
+    reg [31:0] rdata;
+    fir_lab #(.SLOT(4'd1)) dut (.clk(clk), .rstn(1'b1), .bus_addr(addr), .bus_wdata(wdata), .bus_we(we), .bus_re(re),
+        .bus_rdata(bus_rdata), .busy_led());
+    task wr(input [9:0] i, input [31:0] v);
+        begin @(posedge clk); addr <= 16'h1000 | (i << 2); wdata <= v; we <= 1; @(posedge clk); we <= 0; end
+    endtask
+    task rd(input [9:0] i);
+        begin @(posedge clk); addr <= 16'h1000 | (i << 2); re <= 1; @(posedge clk); re <= 0; @(posedge clk); rdata = bus_rdata; end
+    endtask
+    initial begin
+        repeat (3) @(posedge clk);
+__STEPS__
+        $finish;
+    end
+endmodule

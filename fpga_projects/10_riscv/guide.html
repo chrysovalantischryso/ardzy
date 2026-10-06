@@ -1,0 +1,103 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RISC-V processor in the FPGA</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Computing &middot; advanced</div><h1>RISC-V processor in the FPGA</h1><p class="lead">A third processor next to the two ARM cores: Ardzy&#x27;s own RV32I RISC-V core with 16 KB RAM, LEDs, GPIO, timers, a console and mailboxes. Write assembly in the app, the ARM assembles and loads it.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 6 of 6 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>RISC-V control (run, status, console, mailboxes)</td></tr><tr><td>2-5</td><td><code>0x43C02000 .. 0x43C05FFF</code></td><td>RISC-V RAM (16 KB)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>gpio_out[0]</code></td><td>J8 pin 5</td><td>Y18</td></tr><tr><td><code>gpio_out[1]</code></td><td>J8 pin 11</td><td>V16</td></tr><tr><td><code>gpio_out[2]</code></td><td>J8 pin 12</td><td>W16</td></tr><tr><td><code>gpio_out[3]</code></td><td>J8 pin 15</td><td>Y19</td></tr><tr><td><code>gpio_in[0]</code></td><td>J5 pin 5</td><td>T16</td></tr><tr><td><code>gpio_in[1]</code></td><td>J5 pin 11</td><td>V15</td></tr><tr><td><code>gpio_in[2]</code></td><td>J5 pin 12</td><td>W15</td></tr><tr><td><code>gpio_in[3]</code></td><td>J5 pin 15</td><td>U17</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J8 pins 5, 11, 12, 15</td><td>RISC-V GPIO outputs 0..3 (address 0x8000_0004)</td><td>LEDs with 330 ohm, buzzers through a transistor</td></tr><tr><td>J5 pins 5, 11, 12, 15</td><td>RISC-V GPIO inputs 0..3 (address 0x8000_0008)</td><td>buttons to GND (the pull-ups are on)</td></tr></table><h3>Parts</h3><ul><li>nothing needed: the 4 board LEDs show the programs</li><li>optional: LEDs and buttons on J8 / J5</li></ul><h2>What it does</h2>
+<p>A third processor on the board: a small <b>RISC-V</b> (RV32I, the base instruction set) built from FPGA logic, with 16 KB of RAM, a console, the LEDs, 4 output and 4 input pins, a microsecond timer and mailboxes to talk to the ARM. Python on the ARM assembles your program, loads it, starts it and shows what it prints. The demo runs a running light with a greeting, then counts the prime numbers below 12000 with a sieve and compares the time with the same sieve in Python on the ARM.</p>
+<h2>How it works</h2>
+<p>RISC-V is an open instruction set: anyone may build a processor for it. This one is <b>multi-cycle</b>: each instruction goes through fetch, decode, execute and memory steps, about 5 clocks, so about 20 million instructions per second at 100 MHz. That is slow next to the ARM (667 MHz, two cores) but it is <i>exactly</i> predictable: no caches, no operating system, every instruction always takes the same time. That is what you want for precise timing jobs.</p>
+<pre><code>ARM (Python)  --writes program--&gt;  16 KB RAM (block RAM, two ports)  &lt;--fetch / load / store--  RISC-V core
+              &lt;--console, mail--  peripherals at 0x8000_0000  &lt;--------------------------------</code></pre>
+<ul><li>32 registers x0..x31, all RV32I instructions (add, sub, logic, shifts, compares, branches, jumps, loads and stores of bytes, halves and words).</li><li>ECALL or EBREAK stop the program (the normal way to end); anything unknown stops it with "illegal".</li><li>The ARM can read and write the RAM while the program runs: shared memory.</li></ul>
+<h3>The program's addresses</h3>
+<table>
+<tr><th>Address</th><th>What</th></tr>
+<tr><td>0x0000_0000 .. 0x0000_3FFF</td><td>RAM: the program starts at 0, the stack at the top (0x4000)</td></tr>
+<tr><td>0x8000_0000</td><td>LEDS (write, 4 bits)</td></tr>
+<tr><td>0x8000_0004 / 0x8000_0008</td><td>GPIO out to J8 (write) / GPIO in from J5 (read)</td></tr>
+<tr><td>0x8000_000C</td><td>CYCLES: a 100 MHz counter</td></tr>
+<tr><td>0x8000_0010</td><td>CONSOLE: write a character, it appears in the Monitor</td></tr>
+<tr><td>0x8000_0014 / 0x8000_0018</td><td>MAIL_IN (from the ARM) / MAIL_OUT (to the ARM)</td></tr>
+<tr><td>0x8000_001C</td><td>MICROS: microseconds since the start</td></tr>
+</table>
+<h2>Try it</h2>
+<p><b>Upload and run</b>: the LEDs run, then the primes below 12000 are counted on the RISC-V and in Python. The Monitor shows the speed of both.</p>
+<p>Write your own: <b>Copy to my projects</b>, copy <code>blink.s</code> to <code>mine.s</code>, change it, add <code>'mine.s'</code> to <code>PROGRAMS</code> in main.py, Upload.</p>
+<pre><code>.equ LEDS, 0x80000000
+        li   t0, LEDS
+        li   t1, 0b0101
+        sw   t1, 0(t0)        # LEDs 0 and 2 on
+        ebreak                # stop</code></pre>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, RiscV
+from riscv import assemble, Sim
+rv = RiscV(Bus(), slot=1)
+words, labels = assemble(open('blink.s').read())
+rv.load(words)
+rv.start()
+print(rv.wait(timeout=10))     # what the program printed
+print(rv.status())             # running, halted, illegal, pc, retired
+
+sim = Sim(words)               # the same program in the Python simulator, for testing
+sim.run()
+print(sim.console)</code></pre>
+<p><code>riscv.py</code> is a complete assembler (labels, all RV32I instructions, li, la, call, ret, .word, .ascii, .equ ...) and an instruction-exact simulator. The self-test runs 2000 random instructions on both and compares every register and memory word.</p>
+<h3>Registers (slot 1, RAM in slots 2..5)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] run (0 holds the core in reset)</td></tr>
+<tr><td>1</td><td>STATUS</td><td>[0] running [1] halted [2] illegal</td></tr>
+<tr><td>2</td><td>PC</td><td>where the program is</td></tr>
+<tr><td>3, 4</td><td>CONSOLE, CON_LEVEL</td><td>characters printed</td></tr>
+<tr><td>5, 6</td><td>MAIL_IN, MAIL_OUT</td><td>the mailboxes</td></tr>
+<tr><td>7</td><td>RETIRED</td><td>instructions done</td></tr>
+<tr><td>8</td><td>GPIO</td><td>the program's outputs and the LEDs</td></tr>
+<tr><td>9</td><td>ID</td><td>"RV32"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>What a processor is: fetch, decode, execute</td><td>the multi-cycle core, about 5 clocks per instruction</td></tr>
+<tr><td>Memory-mapped peripherals</td><td>LEDs, GPIO, console at 0x8000_0000</td></tr>
+<tr><td>Shared memory between two processors</td><td>the ARM reads and writes the RISC-V's RAM while it runs</td></tr>
+<tr><td>Machine code</td><td><code>blink.s</code>, <code>primes.s</code> and the assembler in <code>riscv.py</code></td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>At about 5 clocks per instruction and 100 MHz, how long does a loop of 4 instructions take, 1 million times?</li></ol>
+<details><summary>Answer</summary>
+4 x 5 x 10 ns x 1 000 000 = 0.2 s.
+</details>
+<ol><li>Why is this slow core still useful next to two 667 MHz ARM cores?</li></ol>
+<details><summary>Answer</summary>
+It is exactly predictable: no caches, no operating system, no interrupts it did not ask for. A loop always takes the same time, to the nanosecond: good for precise control and for learning.
+</details>
+<ol><li>How does the ARM send a number to a running RISC-V program?</li></ol>
+<details><summary>Answer</summary>
+It writes MAIL_IN (or any shared RAM word); the program polls the address and reads it. MAIL_OUT works the other way.
+</details>
+<h2>Ideas</h2>
+<ul><li>Let the RISC-V do a precise job (a protocol, a fast loop) while Python does the rest.</li><li>Compile C for it: <code>riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -nostdlib</code>, then load the binary words.</li><li>Add the M extension (multiply / divide) to the core using the DSP blocks.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>"illegal" at once</b>: the program uses an instruction outside RV32I (mul, csr ...) or jumped into data.</li><li><b>Nothing printed</b>: CONSOLE takes one character per write; end the program with <code>ebreak</code> so the ARM stops waiting.</li></ul></main></body></html>

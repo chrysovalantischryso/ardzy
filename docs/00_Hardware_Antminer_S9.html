@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hardware Guide</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <nav class="back"><a href="index.html">&larr; All documents</a></nav>
+  <div class="kicker">Document 0 &middot; Hardware</div>
+  <h1>The Antminer S9 control board and the Zynq chip</h1>
+  <p>What is on the board, how the chip works inside, and how it starts up. Read this first: the other documents build on it. For every detail (each chip, rail, clock and pin) see the <a href="04_Board_Manual.html">Board reference manual</a>.</p>
+</div></header>
+
+<main class="wrap">
+<div class="toc"><b>Contents</b><ol>
+  <li><a href="#board">The board</a></li>
+  <li><a href="#zynq">The Zynq chip: two worlds in one</a></li>
+  <li><a href="#bridge">How the two worlds talk</a></li>
+  <li><a href="#memmap">The memory map</a></li>
+  <li><a href="#connectors">Connectors and pins</a></li>
+  <li><a href="#boot">How the board starts (boot)</a></li>
+  <li><a href="#ddr">The memory chips (DDR3)</a></li>
+  <li><a href="#facts">Quick facts</a></li>
+</ol></div>
+
+<h2 id="board">1. The board</h2>
+<p>The <b>Antminer S9</b> was a Bitcoin mining machine. Its <b>control board</b> (marked <i>AntMiner ControlBoard XC7010 V1.01</i>)
+was the "brain" that talked to the hash boards. Without the hash boards it is a very capable small computer with an
+<b>FPGA</b> inside: a cheap development board.</p>
+<figure><img src="img/board_photo.jpg" alt="Photo of the control board" loading="lazy">
+<figcaption>Your board. The square chip in the middle is the Xilinx <b>Zynq XC7Z010</b>. The two chips to its right are the DDR3 memory. The big chip lower left is the NAND flash (holds the original Bitmain firmware).</figcaption></figure>
+
+<table>
+<tr><th>Part</th><th>What it is</th></tr>
+<tr><td>Zynq XC7Z010-1 CLG400</td><td>The main chip: 2 ARM processors + an FPGA, in one package (400 balls)</td></tr>
+<tr><td>2 &times; DDR3 chips</td><td>512 MB working memory (RAM) in total</td></tr>
+<tr><td>microSD slot</td><td>Where our Linux lives. The board starts from it (boot jumpers on "TF card")</td></tr>
+<tr><td>NAND flash</td><td>Original Bitmain firmware. We do not touch it (it stays as a backup)</td></tr>
+<tr><td>Ethernet (RJ45)</td><td>Network, 100 Mbit/s. A PHY chip at MDIO address 1 connects the Zynq to the cable</td></tr>
+<tr><td>UART header J12</td><td>Serial console (TX, GND, RX), 3.3 V, 115200 baud</td></tr>
+<tr><td>JTAG header J10</td><td>For Vivado's hardware debugger (optional)</td></tr>
+<tr><td>4 LEDs</td><td>Wired to the FPGA part (pins F16, L19, M19, M17), <b>active low</b> (0 = on)</td></tr>
+<tr><td>Status LED (red/green), small LED, buzzer, 2 buttons</td><td>On the ARM side (MIO37/38, MIO15, MIO39, MIO47/51). Green = Ardzy ready, red = safe mode</td></tr>
+<tr><td>9 hash-board connectors</td><td>Now free input/output pins for your own circuits (plMiner0 to plMiner8)</td></tr>
+<tr><td>6 fan connectors, I2C</td><td>One shared fan PWM pin, 6 speed (tach) inputs; two I2C buses on pins 3/4 of the hash-board connectors</td></tr>
+<tr><td>12 V input (6-pin PCIe)</td><td>Power. The board makes all its lower voltages itself</td></tr>
+</table>
+
+<h2 id="zynq">2. The Zynq chip: two worlds in one</h2>
+<p>A Zynq is <b>two different things glued together on one piece of silicon</b>:</p>
+<div class="grid2">
+  <div class="box info"><b>PS = Processing System (the ARM side)</b>
+    Two ARM Cortex-A9 processors (like an old smartphone), plus a fixed set of peripherals: memory controller, Ethernet, SD card, UART, I2C, USB, timers.
+    This is where <b>Linux and your programs</b> (Python, C) run. Its wiring is fixed: you configure it, you cannot change it.</div>
+  <div class="box ok"><b>PL = Programmable Logic (the FPGA side)</b>
+    About 17,600 logic cells (LUTs), 80 multipliers (DSP), 2.1 Mbit of block memory. Empty at power-on.
+    You <b>describe hardware</b> (Verilog / VHDL / Vivado blocks), and a <b>bitstream</b> (.bit file) wires it up. Everything runs truly in parallel, at the speed of real circuits.</div>
+</div>
+
+<figure>
+<svg viewBox="0 0 900 430" role="img" aria-label="Zynq block diagram">
+  <rect x="10" y="10" width="880" height="410" rx="14" class="d-box"/>
+  <text x="30" y="38" class="d-title">Zynq XC7Z010 (one chip)</text>
+  <!-- PS -->
+  <rect x="30" y="55" width="400" height="345" rx="10" class="d-ps"/>
+  <text x="48" y="82" class="d-title">PS  &middot;  Processing System (ARM)</text>
+  <rect x="50" y="98" width="170" height="62" rx="6" class="d-box"/><text x="62" y="124" class="d-text">ARM Cortex-A9</text><text x="62" y="145" class="d-small">core 0  (Linux)</text>
+  <rect x="240" y="98" width="170" height="62" rx="6" class="d-box"/><text x="252" y="124" class="d-text">ARM Cortex-A9</text><text x="252" y="145" class="d-small">core 1  (Linux)</text>
+  <rect x="50" y="175" width="360" height="40" rx="6" class="d-box"/><text x="62" y="200" class="d-text">Memory controller  &rarr;  512 MB DDR3 (outside the chip)</text>
+  <rect x="50" y="228" width="110" height="40" rx="6" class="d-box"/><text x="62" y="253" class="d-text">Ethernet</text>
+  <rect x="170" y="228" width="110" height="40" rx="6" class="d-box"/><text x="182" y="253" class="d-text">SD card</text>
+  <rect x="290" y="228" width="120" height="40" rx="6" class="d-box"/><text x="302" y="253" class="d-text">UART1</text>
+  <rect x="50" y="280" width="110" height="40" rx="6" class="d-box"/><text x="62" y="305" class="d-text">I2C, GPIO</text>
+  <rect x="170" y="280" width="110" height="40" rx="6" class="d-box"/><text x="182" y="305" class="d-text">Watchdog</text>
+  <rect x="290" y="280" width="120" height="40" rx="6" class="d-box"/><text x="302" y="305" class="d-text">FPGA loader</text>
+  <text x="50" y="350" class="d-small">These pins are fixed ("MIO"): set once by the boot loader.</text>
+  <text x="50" y="370" class="d-small">Configured by ps7_init: clocks, DDR timing, which pin is what.</text>
+  <!-- PL -->
+  <rect x="520" y="55" width="350" height="345" rx="10" class="d-pl"/>
+  <text x="538" y="82" class="d-title">PL  &middot;  Programmable Logic (FPGA)</text>
+  <g class="d-small">
+    <text x="540" y="110">17,600 LUTs  &middot;  35,200 flip-flops</text>
+    <text x="540" y="130">60 block RAMs (2.1 Mbit)  &middot;  80 DSP</text>
+  </g>
+  <rect x="545" y="150" width="140" height="70" rx="6" class="d-box"/><text x="557" y="180" class="d-text">your logic</text><text x="557" y="200" class="d-small">counter, PWM, SDR</text>
+  <rect x="705" y="150" width="145" height="70" rx="6" class="d-box"/><text x="717" y="180" class="d-text">AXI GPIO /</text><text x="717" y="200" class="d-small">your registers</text>
+  <rect x="545" y="240" width="305" height="44" rx="6" class="d-box"/><text x="557" y="267" class="d-text">I/O pins: LEDs, plMiner connectors, fans</text>
+  <text x="540" y="320" class="d-small">Empty at power-on (Ardzy). Filled by a bitstream (.bit)</text>
+  <text x="540" y="340" class="d-small">loaded by Linux whenever you press Upload.</text>
+  <!-- bridges -->
+  <path d="M430 150 H520" class="d-arrow"/><path d="M510 144 l10 6 -10 6" class="d-arrow"/>
+  <text x="440" y="140" class="d-small">AXI GP0</text><text x="440" y="170" class="d-small">registers</text>
+  <path d="M430 215 H520" class="d-blue"/><path d="M510 209 l10 6 -10 6" class="d-blue"/>
+  <text x="440" y="207" class="d-small">FCLK0</text><text x="440" y="235" class="d-small">100 MHz</text>
+  <path d="M520 275 H430" class="d-dash"/><path d="M440 269 l-10 6 10 6" class="d-dash"/>
+  <text x="440" y="296" class="d-small">interrupts</text>
+</svg>
+<figcaption>Inside the Zynq. The ARM side runs Linux; the FPGA side is your own hardware. They are joined by AXI buses, clocks and interrupts.</figcaption>
+</figure>
+
+<div class="box info"><b>Arduino comparison</b>
+An Arduino has one small processor. The Zynq has two big processors (the PS) <i>and</i> a whole field of logic you can wire yourself (the PL).
+A program on the PS is like an Arduino sketch. A design in the PL is like building your own chip.</div>
+
+<h2 id="bridge">3. How the two worlds talk</h2>
+<table>
+<tr><th>Link</th><th>Direction</th><th>What it is used for</th></tr>
+<tr><td><b>M_AXI_GP0</b> (AXI bus)</td><td>ARM &rarr; FPGA</td><td>The ARM reads and writes <b>registers</b> inside your FPGA design. Addresses start at <code>0x4000_0000</code>. Example: an AXI GPIO at <code>0x4120_0000</code>; writing 5 there turns LEDs 0 and 2 on.</td></tr>
+<tr><td><b>FCLK0..3</b> (clocks)</td><td>ARM &rarr; FPGA</td><td>Clock signals made by the ARM side. Ardzy uses <b>FCLK0 = 100 MHz</b>. The board has no separate FPGA crystal, so your design takes its clock from here.</td></tr>
+<tr><td><b>IRQ_F2P</b> (interrupts)</td><td>FPGA &rarr; ARM</td><td>Your logic can "ring a bell" for the program (Ardzy: the UIO driver + <code>UIO.wait()</code> in Python).</td></tr>
+<tr><td><b>HP / ACP ports</b></td><td>FPGA &rarr; memory</td><td>Fast direct memory access (DMA) for big data like samples or video. Advanced.</td></tr>
+<tr><td><b>EMIO</b></td><td>both</td><td>Route PS peripherals (extra UART, SPI, I2C) through FPGA pins.</td></tr>
+</table>
+<p>From Python on the board, a register is just a memory address:</p>
+<pre><code>from ardzy import MMIO
+gpio = MMIO(0x41200000)      # the base address shown in Vivado's Address Editor
+gpio.write(0, 0b0101)        # LEDs 0 and 2 on
+print(gpio.read(0))</code></pre>
+
+<h2 id="memmap">4. The memory map</h2>
+<p>The ARM sees everything (RAM, peripherals, your FPGA registers) as addresses in one big 4 GB space:</p>
+<figure>
+<svg viewBox="0 0 900 300" role="img" aria-label="Memory map">
+  <g>
+    <rect x="20" y="30" width="250" height="52" class="d-acc"/><text x="34" y="60" class="d-text">DDR3 RAM, 512 MB</text>
+    <text x="290" y="52" class="d-small">0x0000_0000 to 0x1FFF_FFFF</text><text x="290" y="72" class="d-small">Linux, programs, data</text>
+    <rect x="20" y="82" width="250" height="34" class="d-box"/><text x="34" y="104" class="d-small">(unused)</text>
+    <rect x="20" y="116" width="250" height="44" class="d-pl"/><text x="34" y="143" class="d-text">FPGA via M_AXI_GP0</text>
+    <text x="290" y="135" class="d-small">0x4000_0000 to 0x7FFF_FFFF</text><text x="290" y="154" class="d-small">your registers (AXI GPIO 0x4120_0000 ...)</text>
+    <rect x="20" y="160" width="250" height="34" class="d-pl"/><text x="34" y="182" class="d-small">FPGA via M_AXI_GP1</text>
+    <text x="290" y="182" class="d-small">0x8000_0000 to 0xBFFF_FFFF</text>
+    <rect x="20" y="194" width="250" height="40" class="d-ps"/><text x="34" y="219" class="d-text">PS peripherals</text>
+    <text x="290" y="212" class="d-small">0xE000_0000 ...  UART1 0xE000_1000, Ethernet 0xE000_B000, SD 0xE010_0000</text>
+    <rect x="20" y="234" width="250" height="34" class="d-ps"/><text x="34" y="256" class="d-small">System control (SLCR) 0xF800_0000</text>
+    <rect x="20" y="268" width="250" height="24" class="d-ps"/><text x="34" y="285" class="d-small">On-chip RAM 256 KB (top)</text>
+  </g>
+  <text x="620" y="252" class="d-small">The first boot stage runs in this on-chip RAM,</text>
+  <text x="620" y="270" class="d-small">before the DDR3 is set up.</text>
+</svg>
+<figcaption>Address map of the XC7Z010 on this board. Reading an FPGA address where your design has nothing freezes the bus, so use only addresses from Vivado's Address Editor.</figcaption>
+</figure>
+
+<h2 id="connectors">5. Connectors and pins</h2>
+<div class="box ok"><b>Full details</b> The complete pin list (all 56 FPGA pins, every connector pin by pin, a suggested wiring plan, buttons, buzzer and status LED) is in the <a href="03_Pins_Plan.html">Pins plan</a>.</div>
+
+<table>
+<tr><th>Signal</th><th>FPGA pin(s)</th><th>Notes</th></tr>
+<tr><td>LED 0..3</td><td>F16, L19, M19, M17</td><td>LVCMOS33. In Ardzy examples: <code>leds[3:0]</code> (file <code>leds.xdc</code>)</td></tr>
+<tr><td>plMiner0</td><td>T11, T12, U12, T10</td><td>4 free I/O pins per connector, 3.3 V</td></tr>
+<tr><td>plMiner1</td><td>R19, V12, W13, V13</td><td></td></tr>
+<tr><td>plMiner2</td><td>T14, P14, R14, T15</td><td></td></tr>
+<tr><td>plMiner3</td><td>Y16, W14, Y14, Y17</td><td></td></tr>
+<tr><td>plMiner4</td><td>T16, V15, W15, U17</td><td>(plMiner5..8: see <code>antminer_s9.xdc</code> in ZynqProjects)</td></tr>
+<tr><td>UART console</td><td>J12: TX, GND, RX</td><td>PS UART1 = Linux <code>ttyPS0</code>. Use a <b>3.3 V</b> USB-UART adapter (never 5 V). Cross TX/RX.</td></tr>
+<tr><td>JTAG J10</td><td>2=VREF 3.3V, 4=TMS, 6=TCK, 8=TDO, 10=TDI, 14=SRST, odd pins GND</td><td>For a Xilinx/Digilent cable</td></tr>
+</table>
+<div class="grid2">
+</div>
+<div class="box warn"><b>Electrical care</b>
+FPGA pins are 3.3 V and fragile. Never connect 5 V signals directly. Add a series resistor (about 330 &Omega;) when you experiment. Power the board off before you change wires.</div>
+
+<h2 id="boot">6. How the board starts (boot)</h2>
+<p>When you switch on, the chip goes through a chain of small programs. Each one prepares the next:</p>
+<figure>
+<svg viewBox="0 0 900 290" role="img" aria-label="Boot chain">
+  <g>
+    <rect x="10" y="30" width="150" height="88" rx="8" class="d-ps"/><text x="22" y="56" class="d-title">1. BootROM</text><text x="22" y="78" class="d-small">inside the chip,</text><text x="22" y="96" class="d-small">reads boot jumpers</text>
+    <rect x="190" y="30" width="160" height="88" rx="8" class="d-warn"/><text x="202" y="56" class="d-title">2. SPL / FSBL</text><text x="202" y="78" class="d-small">BOOT.bin, sets clocks,</text><text x="202" y="96" class="d-small">pins and DDR3 memory</text>
+    <rect x="380" y="30" width="150" height="88" rx="8" class="d-acc"/><text x="392" y="56" class="d-title">3. U-Boot</text><text x="392" y="78" class="d-small">u-boot.img, reads</text><text x="392" y="96" class="d-small">uboot.env + boot.scr</text>
+    <rect x="560" y="30" width="150" height="88" rx="8" class="d-acc"/><text x="572" y="56" class="d-title">4. Linux kernel</text><text x="572" y="78" class="d-small">zImage + system.dtb</text><text x="572" y="96" class="d-small">(hardware description)</text>
+    <rect x="740" y="30" width="150" height="88" rx="8" class="d-pl"/><text x="752" y="56" class="d-title">5. Debian</text><text x="752" y="78" class="d-small">systemd starts SSH,</text><text x="752" y="96" class="d-small">network, Ardzy</text>
+  </g>
+  <g class="d-arrow"><path d="M160 74 H190"/><path d="M350 74 H380"/><path d="M530 74 H560"/><path d="M710 74 H740"/></g>
+  <text x="10" y="150" class="d-small">runs from: chip ROM</text><text x="190" y="150" class="d-small">on-chip RAM (256 KB)</text>
+  <text x="380" y="150" class="d-small">DDR3</text><text x="560" y="150" class="d-small">DDR3</text><text x="740" y="150" class="d-small">SD card partition 2</text>
+  <rect x="10" y="175" width="880" height="100" rx="8" class="d-box"/>
+  <text x="26" y="200" class="d-title">The SD card</text>
+  <rect x="26" y="212" width="330" height="48" rx="5" class="d-ps"/><text x="38" y="232" class="d-text">Partition 1: FAT (Windows can open it)</text><text x="38" y="251" class="d-small">BOOT.bin, u-boot.img, zImage, system.dtb, boot.scr, uboot.env</text>
+  <rect x="370" y="212" width="505" height="48" rx="5" class="d-pl"/><text x="382" y="232" class="d-text">Partition 2: ext4 (Linux root file system)</text><text x="382" y="251" class="d-small">Debian 13, your projects in /opt/ardzy/projects, settings, programs</text>
+</svg>
+<figcaption>The boot chain. Stage 2 is the most hardware-specific: it must set up the DDR3 memory exactly right, or nothing after it can run.</figcaption>
+</figure>
+<p>Typical time from power-on to the login/web page: about 15 to 25 seconds (the first boot after flashing takes longer).</p>
+
+<h2 id="ddr">7. The memory chips (DDR3)</h2>
+<p>DDR3 memory needs exact settings: how many address lines it has, and timing values in nanoseconds.
+The first boot stage writes these into the memory controller (registers at <code>0xF800_6000</code>).
+We found that the Vivado hardware file used before (<code>the old .xsa</code>) differs from the proven boot loader in exactly 2 values:</p>
+<table>
+<tr><th>Register</th><th>Proven boot loader</th><th>Old Vivado file</th><th>Meaning</th></tr>
+<tr><td><code>0xF800_6044</code></td><td><code>0x0F666666</code></td><td><code>0x0FF66666</code></td><td>Row address bit 14 used or not: 15 row bits = a 1 GB map (4 Gbit chips), 14 row bits = a 512 MB map (2 Gbit chips)</td></tr>
+<tr><td><code>0xF800_6014</code></td><td><code>0x0004285B</code></td><td><code>0x0004159B</code></td><td>tRFC refresh time: 161 clocks = 302 ns (4 Gbit chips need 260 ns) or 86 clocks = 161 ns (2 Gbit chips need 160 ns)</td></tr>
+</table>
+<div class="box info"><b>What this means for your board</b> The proven boot loader is set up for the bigger 4 Gbit chips that the schematic lists (MT41K256M16, 1 GB in total).
+Your board actually has <b>512 MB</b> of real memory (2 Gbit chips): a read-only test on the running board showed that every address above 512 MB <b>mirrors</b> the one 512 MB lower, and U-Boot's own memory test also finds 512 MB.
+The 1 GB setup still works on 2 Gbit chips (the extra address line is simply not connected, and a longer refresh time is always safe), so the same boot loader runs on both board versions.
+The old Vivado file was set up exactly for 512 MB, which is also correct for your board. (An earlier version of this guide said the Vivado file reached only 256 MB and caused the PetaLinux problem; that was wrong. Why that old PetaLinux card did not start is not known.)</div>
+
+<h2 id="facts">8. Quick facts</h2>
+<table>
+<tr><td>Chip</td><td>Xilinx Zynq-7000 <b>XC7Z010-1CLG400</b> (Vivado part <code>xc7z010clg400-1</code>)</td></tr>
+<tr><td>Chip ID (IDCODE)</td><td><code>0x03722093</code> (read from the running chip). A 7Z020 would be <code>0x03727093</code></td></tr>
+<tr><td>Processors</td><td>2 &times; ARM Cortex-A9, up to 667 MHz, with NEON and FPU</td></tr>
+<tr><td>RAM</td><td>512 MB DDR3 (2 chips)</td></tr>
+<tr><td>FPGA</td><td>17,600 LUTs, 35,200 flip-flops, 60 &times; 36 Kb block RAM, 80 DSP slices, XADC (temperature/voltage)</td></tr>
+<tr><td>Reference clock</td><td>33.333 MHz crystal (PS_CLK)</td></tr>
+<tr><td>Console</td><td>UART1, 115200 8N1, Linux device <code>ttyPS0</code></td></tr>
+<tr><td>Network</td><td>Gigabit-capable MAC (GEM0) + PHY at MDIO address 1, linked at 100 Mbit/s. Each board has its own MAC address.</td></tr>
+<tr><td>Xilinx documents</td><td>DS187 (datasheet), DS190 (overview), UG585 (Technical Reference Manual: everything about the PS)</td></tr>
+</table>
+</main>
+</body>
+</html>

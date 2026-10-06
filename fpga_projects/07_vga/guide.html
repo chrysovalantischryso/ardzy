@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>VGA picture (640 x 480)</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Lights and display &middot; medium</div><h1>VGA picture (640 x 480)</h1><p class="lead">Connect any VGA monitor with 8 resistors: a 320 x 240 picture with 16 colours (out of 64), text, lines, graphs, all drawn from Python.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 7 of 7 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>VGA registers (palette at 16..31)</td></tr><tr><td>2-11</td><td><code>0x43C02000 .. 0x43C0BFFF</code></td><td>Frame buffer (9600 words, 8 pixels each)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>red[1]</code></td><td>J6 pin 5</td><td>U14</td></tr><tr><td><code>red[0]</code></td><td>J6 pin 11</td><td>U18</td></tr><tr><td><code>green[1]</code></td><td>J6 pin 12</td><td>U19</td></tr><tr><td><code>green[0]</code></td><td>J6 pin 15</td><td>U15</td></tr><tr><td><code>blue[1]</code></td><td>J8 pin 5</td><td>Y18</td></tr><tr><td><code>blue[0]</code></td><td>J8 pin 11</td><td>V16</td></tr><tr><td><code>hsync</code></td><td>J8 pin 12</td><td>W16</td></tr><tr><td><code>vsync</code></td><td>J8 pin 15</td><td>Y19</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J6 pin 5 (red 1) + J6 pin 11 (red 0)</td><td>VGA pin 1 (red) through 470 ohm and 1 kohm</td><td>the two resistors join at the VGA pin: a 2-bit DAC</td></tr><tr><td>J6 pin 12 (green 1) + J6 pin 15 (green 0)</td><td>VGA pin 2 (green) through 470 ohm and 1 kohm</td><td></td></tr><tr><td>J8 pin 5 (blue 1) + J8 pin 11 (blue 0)</td><td>VGA pin 3 (blue) through 470 ohm and 1 kohm</td><td></td></tr><tr><td>J8 pin 12 (HSYNC)</td><td>VGA pin 13 through 100 ohm</td><td></td></tr><tr><td>J8 pin 15 (VSYNC)</td><td>VGA pin 14 through 100 ohm</td><td></td></tr><tr><td>J6 / J8 pin 1 (GND)</td><td>VGA pins 5, 6, 7, 8, 10 (GND)</td><td></td></tr></table><h3>Parts</h3><ul><li>VGA connector (DB15 female) or a cut VGA cable</li><li>3 x 470 ohm, 3 x 1 kohm, 2 x 100 ohm resistors</li><li>a VGA monitor (or an HDMI monitor with a VGA adapter)</li></ul><h2>What it does</h2>
+<p>Shows a picture on any VGA monitor or TV: 640 x 480 at 60 Hz, made from a 320 x 240 frame buffer with 16 colours (chosen from 64). Python draws pixels, lines, rectangles and text into it. The demo is a status screen: the board's temperature as a graph, a clock and colour bars.</p>
+<h2>How it works</h2>
+<p>A VGA monitor draws the picture line by line, like an old TV. The board sends three analog colour signals (red, green, blue) and two sync pulses: <b>HSYNC</b> starts a new line (31.25 kHz), <b>VSYNC</b> a new frame (59.5 Hz). The timing is fixed: 800 pixel clocks per line (640 visible), 525 lines per frame (480 visible), a pixel clock of 25 MHz.</p>
+<pre><code>MMCM: 100 MHz x 10 / 40 = 25 MHz pixel clock
+  -&gt; pixel and line counters -&gt; HSYNC, VSYNC
+  -&gt; frame buffer (block RAM, 320 x 240 x 4 bits) -&gt; palette (16 x 6 bits) -&gt; 2 bits per colour -&gt; resistors -&gt; monitor</code></pre>
+<p>Each frame-buffer pixel is shown as 2 x 2 screen pixels. The palette turns a 4-bit value into a colour with 2 bits of red, green and blue. Two resistors per colour make the voltage: a 2-bit DAC (470 ohm for the high bit, 1 kohm for the low bit, into the monitor's 75 ohm input).</p>
+<p>The frame buffer is a dual-port block RAM: the ARM writes, the picture side reads at the same time. The sync pins are read back at their pads and their periods are measured (HS_PERIOD, VS_PERIOD). PROBE tells which colour the picture shows at any screen point: that is how the self-test checks the picture without a camera.</p>
+<h2>Try it</h2>
+<table>
+<tr><th>VGA connector (DE-15)</th><th>Board</th></tr>
+<tr><td>1 red</td><td>J6 pin 5 through 470 ohm, J6 pin 11 through 1 kohm</td></tr>
+<tr><td>2 green</td><td>J6 pin 12 through 470 ohm, J6 pin 15 through 1 kohm</td></tr>
+<tr><td>3 blue</td><td>J8 pin 5 through 470 ohm, J8 pin 11 through 1 kohm</td></tr>
+<tr><td>13 HSYNC</td><td>J8 pin 12 (through 100 ohm)</td></tr>
+<tr><td>14 VSYNC</td><td>J8 pin 15 (through 100 ohm)</td></tr>
+<tr><td>5, 6, 7, 8, 10 ground</td><td>GND</td></tr>
+</table>
+<p><b>Upload and run</b>. A breakout board for the VGA connector makes the wiring easy.</p>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, VGA
+v = VGA(Bus(), slot=1)
+v.on()
+v.clear(0)
+v.palette(1, 3, 3, 3)                 # colour 1 = white (r, g, b each 0..3)
+v.rect(10, 10, 100, 40, 2)
+v.line(0, 239, 319, 0, 3)
+v.text(20, 60, 'Hello Ardzy', 1, scale=2)
+v.show()                              # send the picture to the frame buffer
+print(v.sync_check())</code></pre>
+<p>Drawing happens in a copy in Python; <code>show()</code> sends it (or <code>show((y0, y1))</code> only some rows).</p>
+<h3>Registers (slot 1, frame buffer in slots 2..11)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] picture on [1] test pattern</td></tr>
+<tr><td>1..3</td><td>FRAMES, HS_PERIOD, VS_PERIOD</td><td>(read) measured at the pins</td></tr>
+<tr><td>4</td><td>ID</td><td>"VGA6"</td></tr>
+<tr><td>5, 6</td><td>PROBE_XY, PROBE</td><td>what the screen shows at (x, y)</td></tr>
+<tr><td>16..31</td><td>palette</td><td>[5:4] red [3:2] green [1:0] blue</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>A clock made inside the FPGA (MMCM)</td><td>100 MHz x 10 / 40 = 25 MHz pixel clock</td></tr>
+<tr><td>Video timing from two counters</td><td>800 clocks per line, 525 lines per frame, sync pulses at fixed counts</td></tr>
+<tr><td>A dual-port frame buffer</td><td>the ARM writes, the screen side reads, at the same time</td></tr>
+<tr><td>A resistor DAC</td><td>470 ohm + 1 kohm make 4 levels per colour</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>How many bytes does the frame buffer need (320 x 240 pixels, 4 bits each)?</li></ol>
+<details><summary>Answer</summary>
+320 x 240 x 4 / 8 = 38 400 bytes: about 10 block RAMs of the 60.
+</details>
+<ol><li>Why 25 MHz? (800 x 525 clocks per frame at about 60 frames per second)</li></ol>
+<details><summary>Answer</summary>
+800 x 525 x 60 = 25.2 million pixel clocks per second: the VGA standard's 25.175 MHz; 25.0 MHz gives 59.5 Hz, which monitors accept.
+</details>
+<ol><li>How would you draw a moving ball without the ARM?</li></ol>
+<details><summary>Answer</summary>
+Compare the pixel counters with the ball's position registers: inside the square -> white. Update the position once per frame (at VSYNC). No frame buffer needed: that is how Pong was built.
+</details>
+<h2>Ideas</h2>
+<ul><li>A dashboard for the radio (frequency, RDS, meters) or the sensors.</li><li>Pong with two encoders (project 03).</li><li>More colours: 3 or 4 resistors per colour.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>"Out of range" or no picture</b>: check HSYNC and VSYNC; the self-test measures them. Some monitors want 25.175 MHz exactly; most take 25.0.</li><li><b>Wrong colours</b>: a resistor on the wrong pin, or palette entries changed.</li></ul></main></body></html>

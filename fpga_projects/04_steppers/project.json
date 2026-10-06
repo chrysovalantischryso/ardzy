@@ -1,0 +1,50 @@
+{
+  "id": "STEP",
+  "title": "Stepper motors (step / dir with acceleration)",
+  "category": "Motors and motion",
+  "level": "medium",
+  "summary": "Two stepper axes for driver boards like A4988, DRV8825 or TMC2208: smooth speed-up and slow-down computed in hardware every microsecond, exact stop at the target.",
+  "slots": {
+    "0": "Info",
+    "1": "Stepper axes (16 registers per axis)"
+  },
+  "pins": {
+    "step[0]": "j8[0]",
+    "dir[0]": "j8[1]",
+    "step[1]": "j8[2]",
+    "dir[1]": "j8[3]",
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [
+    [
+      "J8 pin 5 / pin 11",
+      "axis 0 driver STEP / DIR",
+      "the driver's logic supply at 3.3 V (VDD of the A4988 / DRV8825 board)"
+    ],
+    [
+      "J8 pin 12 / pin 15",
+      "axis 1 driver STEP / DIR",
+      ""
+    ],
+    [
+      "J8 pin 1 (GND)",
+      "driver GND",
+      "and the motor supply's GND"
+    ],
+    [
+      "driver EN",
+      "GND",
+      "enabled all the time (or a spare pin)"
+    ]
+  ],
+  "parts": [
+    "stepper driver board (A4988, DRV8825, TMC2208)",
+    "stepper motor (NEMA 17)",
+    "motor power supply (12 to 24 V)",
+    "100 uF capacitor at the driver's motor supply"
+  ],
+  "tested": "the self-test passed 8 of 8 checks on the real board (October 2026), with nothing connected."
+}

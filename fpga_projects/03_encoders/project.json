@@ -1,0 +1,43 @@
+{
+  "id": "QUAD",
+  "title": "Rotary encoders (quadrature counters)",
+  "category": "Motors and motion",
+  "level": "easy",
+  "summary": "Count two quadrature encoders (knobs, motor encoders, linear scales) in hardware: never a missed step, position, speed and error counts, with a glitch filter.",
+  "slots": {
+    "0": "Info",
+    "1": "Encoder counters"
+  },
+  "pins": {
+    "enc[0]": "j5[0]",
+    "enc[1]": "j5[1]",
+    "enc[2]": "j5[2]",
+    "enc[3]": "j5[3]",
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [
+    [
+      "J5 pin 5 / pin 11",
+      "encoder 0 A / B",
+      "3.3 V signals; a 5 V encoder needs a divider or a level shifter"
+    ],
+    [
+      "J5 pin 12 / pin 15",
+      "encoder 1 A / B",
+      ""
+    ],
+    [
+      "J5 pin 16 (3.3 V) and pin 1 (GND)",
+      "encoder + and GND",
+      "a plain knob encoder: common pin to GND, A and B to the pins (the pull-ups are on)"
+    ]
+  ],
+  "parts": [
+    "rotary encoder knob (for example KY-040) or a motor with encoder",
+    "nothing for the self-test"
+  ],
+  "tested": "the self-test passed 8 of 8 checks on the real board (October 2026), with nothing connected."
+}

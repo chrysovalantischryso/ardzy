@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ardzy 0.2 BETA</title>
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="vendor/codemirror.min.css">
+<link rel="stylesheet" href="vendor/addon_dialog_dialog.min.css">
+<link rel="stylesheet" href="vendor/addon_fold_foldgutter.min.css">
+<link rel="stylesheet" href="vendor/addon_hint_show-hint.min.css">
+<link rel="stylesheet" href="app.css">
+<script>window.ARDZY_TOKEN = "__ARDZY_TOKEN__";
+try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) { }</script>
+</head>
+<body>
+<header class="toolbar">
+  <div class="brand"><img src="icon.svg" alt=""><span>Ardzy</span><span class="beta-tag" title="Ardzy 0.2 BETA: a test version, some parts may still change">BETA</span></div>
+  <div class="views" role="tablist">
+    <button data-view="code" class="active" title="Projects and code editor">Code</button>
+    <button data-view="board" title="Everything about the board: chip, clocks, memory, storage, NAND, network, pins, system">Board</button>
+    <button data-view="io" title="Control every FPGA pin, the LEDs and the fans">I/O</button>
+    <button data-view="tools" title="Instruments: logic analyzer, PWM / signal generator, frequency meter, UART terminal, I2C">Tools</button>
+    <button data-view="gallery" title="Ready FPGA projects: upload, self-test, read the guide, copy and change">Ready projects</button>
+    <button data-view="blocks" title="Make a program by snapping blocks together, like Scratch. The blocks become an Arduino sketch you can upload.">Blocks</button>
+    <button data-view="learn" title="Learn FPGA step by step: lessons with interactive drawings, a working project each, quizzes and challenges; ideas for your own projects">Learn</button>
+    <button data-view="map" title="The board drawn: where everything is, how to connect things, how it all works together">Map</button>
+    <button data-view="system" title="Linux on the board: processes, services, logs, registers, network, speed tests">System</button>
+  </div>
+  <div class="tools">
+    <span class="proj-name" id="tbProject" title="The project these buttons work on"></span>
+    <button id="btnCheck" title="Check the project (Ctrl+R)"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Check</span></button>
+    <button id="btnUpload" class="primary" title="Upload to the board and run (Ctrl+U)"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg><span>Upload</span></button>
+    <button id="btnSd" class="ghost" title="Write the Ardzy system to a microSD card (with your board settings)"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7zM10 7v3M13 7v3"/></svg><span>SD card</span></button>
+    <button id="btnExamples" class="ghost" title="Example sketches (Arduino style) to start from"><svg viewBox="0 0 24 24"><path d="M4 5h6v14H4zM14 5h6v14h-6z"/></svg><span>Examples</span></button>
+    <button id="btnLibs" class="ghost" title="Library Manager: Arduino libraries for your sketches"><svg viewBox="0 0 24 24"><path d="M5 4v16M10 4v16M15 5l4 15"/></svg><span>Libraries</span></button>
+    <span class="sep"></span>
+    <button id="btnBuild" title="Build the FPGA design (built-in toolchain, no Vivado needed)"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></svg><span>Build FPGA</span></button>
+    <button id="btnSim" title="Simulate the Verilog on the PC with the project's testbench and show the waves (F6)"><svg viewBox="0 0 24 24"><path d="M3 12h3l2-6 4 12 3-9 2 3h4"/></svg><span>Simulate</span></button>
+    <span class="sep"></span>
+    <button id="btnStop" title="Stop the program on the board"><svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1"/></svg><span>Stop</span></button>
+    <button id="btnRestart" title="Restart the program on the board"><svg viewBox="0 0 24 24"><path d="M19 12a7 7 0 1 1-2.05-4.95M19 4v4h-4"/></svg><span>Restart</span></button>
+    <label class="check" title="Load this project automatically every time the board powers on"><input type="checkbox" id="chkBoot"> at boot</label>
+  </div>
+  <div class="board-pill" id="boardPill" title="Board connection: click to choose">
+    <span class="dot" id="boardDot"></span><span id="boardName">No board</span>
+  </div>
+  <button id="btnScan" class="ghost" title="Search the network for Ardzy boards"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Scan</span></button>
+  <button id="btnSettings" class="ghost settings-btn" title="App settings: language, colours, text, behaviour"><svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Settings</span></button>
+</header>
+
+<div class="body">
+  <aside class="side">
+    <div class="side-head"><h2>Projects</h2><button id="btnNewProject" class="ghost small" title="New project">+ New</button></div>
+    <div id="projectList" class="list"></div>
+    <div id="projectFiles" class="files"></div>
+  </aside>
+
+  <main class="center">
+    <div id="viewBoard" class="view-pane" hidden>
+      <div class="view-head">
+        <h2>Board</h2><span class="hint" id="hwStamp"></span><span class="grow"></span>
+        <button class="ghost small" id="btnHwReport" title="Save everything about the board as a text file (for notes or for asking for help)">Save report</button>
+        <button class="ghost small" id="btnHwCustom" title="Choose the cards, their order, columns, update speed, chart length and the temperature alarm">Customize</button>
+        <button class="ghost small" id="btnHwRefresh">Refresh</button>
+      </div>
+      <div class="health" id="health"></div>
+      <div class="dash" id="dash"><div class="empty">Connect a board to see everything about it.</div></div>
+    </div>
+    <div id="viewIO" class="view-pane" hidden>
+      <div class="view-head">
+        <h2>I/O</h2><span class="hint" id="ioState"></span><span class="grow"></span>
+        <button class="primary small" id="btnIoLoad">Load pin-control design</button>
+      </div>
+      <div id="ioBody" class="io-body"></div>
+    </div>
+    <div id="viewTools" class="view-pane" hidden>
+      <div class="view-head">
+        <h2>Tools</h2><span class="hint" id="toolsState"></span><span class="grow"></span>
+        <button class="primary small" id="btnToolsLoad">Load pin-control design</button>
+      </div>
+      <div id="toolsBody" class="tools-body"></div>
+    </div>
+    <div id="viewGallery" class="view-pane" hidden>
+      <div class="view-head">
+        <h2>Ready projects</h2><span class="seg" id="galCat"></span><span class="hint" id="galState"></span><span class="grow"></span>
+        <input id="galFind" placeholder="find a project" spellcheck="false" style="width:200px">
+      </div>
+      <div id="galBody" class="dash gal"></div>
+    </div>
+    <div id="viewLearn" class="view-pane" hidden>
+      <div class="view-head">
+        <h2>Learn</h2><span class="hint" id="learnState"></span><span class="grow"></span>
+        <span class="seg" id="learnTabs"><button data-t="course" class="on">Course</button><button data-t="ideas">Ideas</button></span>
+      </div>
+      <div id="learnBody" class="learn"></div>
+    </div>
+    <div id="viewRadio" class="view-pane studio" hidden>
+      <div class="view-head">
+        <button class="ghost small" id="radBack" title="Back to the ready projects">&larr; Ready projects</button>
+        <h2>12 &middot; FM radio transmitter</h2><span class="hint" id="radState"></span><span class="grow"></span>
+        <label class="check" title="Start the radio every time the board powers on, with the last settings (it then runs without the PC)"><input type="checkbox" id="radBoot"> start at power-on</label>
+        <button class="ghost small" id="radGuide" title="How the radio works, the rules, how to listen">Guide</button>
+        <button class="ghost small" id="radTest" title="Upload and run the self-test (26 measurements on your board)">Self-test</button>
+        <button class="small" id="radUpload" title="Upload the project again and restart it (settings and songs stay)">Upload and run</button>
+      </div>
+      <div id="radBody" class="dash radio"></div>
+    </div>
+    <div id="viewBlocks" class="view-pane" hidden>
+      <div class="view-head">
+        <h2>Blocks</h2>
+        <select id="bkProj" title="Blocks project"></select>
+        <span class="bk-kind ino" id="bkKind">Arduino program</span>
+        <button class="ghost small" id="bkNew" title="A new program made of blocks (runs on the ARM, like an Arduino sketch)">+ Program</button>
+        <button class="ghost small" id="bkNewF" title="A new FPGA design made of blocks (hardware: the blocks become Verilog)">+ FPGA design</button>
+        <select id="bkEx" title="Load a ready example"></select>
+        <span class="hint" id="bkSaved"></span><span class="grow"></span>
+        <button class="ghost small" id="bkCodeBtn" title="Show or hide the C++ code made from the blocks">C++ code</button>
+        <button class="ghost small" id="bkSim" hidden title="Simulate the design on the PC and show the waves (the timers run 10 000 times faster)">Simulate</button>
+        <button class="ghost small" id="bkStop" title="Stop the program on the board">Stop</button>
+        <button class="primary small" id="bkUpload" title="Save, build and run the blocks on the board">Upload and run</button>
+      </div>
+      <div class="bk-note hint" id="bkNote"></div>
+      <div class="bk-split" id="bkSplit"><div class="bk-ws" id="bkWs"></div><div class="bk-code" id="bkCode"></div></div>
+    </div>
+    <div id="viewMap" class="view-pane" hidden>
+      <div class="view-head">
+        <h2>Map</h2><span class="seg" id="mapSeg"><button data-v="board" class="on">Board</button><button data-v="pins">Pin table</button><button data-v="wiring">Wiring</button><button data-v="inside">How it works</button></span>
+        <span class="hint" id="mapState"></span><span class="grow"></span>
+      </div>
+      <div id="mapBody" class="map-body"></div>
+    </div>
+    <div id="viewSystem" class="view-pane" hidden>
+      <div class="view-head">
+        <h2>System</h2><span class="seg" id="sysSeg"><button data-v="procs" class="on">Processes</button><button data-v="services">Services</button><button data-v="logs">Logs</button><button data-v="regs">Registers</button><button data-v="info">Linux and network</button><button data-v="bench">Speed tests</button><button data-v="settings">Settings and update</button></span>
+        <span class="grow"></span><button class="ghost small" id="btnSysRefresh">Refresh</button>
+      </div>
+      <div id="sysBody" class="sys-body"></div>
+    </div>
+    <div class="edbar">
+      <div class="tabs" id="editorTabs"></div>
+      <div class="edtools" id="edTools">
+        <button class="ghost small" data-side="outline" title="The parts of this file: functions, modules, signals (Ctrl+Shift+O)">Outline</button>
+        <button class="ghost small" data-side="snippets" title="Ready pieces of code to insert">Snippets</button>
+        <button class="ghost small" data-side="ref" title="Every Ardzy function and pin name, with examples (F2 on a word)">Reference</button>
+        <button class="ghost small" data-side="search" title="Find text in every file of the project (Ctrl+Shift+F)">Search</button>
+        <span class="edsep"></span>
+        <button class="ghost small" id="edSmaller" title="Smaller text (Ctrl -)">A-</button>
+        <button class="ghost small" id="edBigger" title="Bigger text (Ctrl +)">A+</button>
+        <button class="ghost small" id="edSet" title="Editor settings: font, colours, indent, ruler, auto-save ...">Editor settings</button>
+      </div>
+    </div>
+    <div class="code-main">
+    <div class="editor-wrap">
+      <div id="editor"></div>
+      <div id="welcome" class="welcome">
+        <h1>Ardzy</h1>
+        <p>Your Zynq board, used like an Arduino.</p>
+        <ol>
+          <li>Pick or create a <b>project</b> on the left.</li>
+          <li>Write <code>main.py</code> (ARM side) and/or build an FPGA design (<b>Build FPGA</b> or Vivado).</li>
+          <li>Press <b>Upload</b>. Watch the program in the <b>Monitor</b>.</li>
+        </ol>
+        <div class="welcome-grid">
+          <div><h3>Write code</h3><p><b>Snippets</b> and <b>Reference</b> (top right) insert ready code; <kbd>Ctrl</kbd> <kbd>Space</kbd> suggests names; <b>Outline</b> jumps to any function.</p></div>
+          <div><h3>Find mistakes</h3><p><b>Check</b> (<kbd>Ctrl</kbd> <kbd>R</kbd>) compiles; errors appear in <b>Problems</b> and as red marks in the editor. Click one to jump there.</p></div>
+          <div><h3>Make it yours</h3><p><b>Editor settings</b>: font, size, colours, indent, ruler, auto-save, visible spaces, folding.</p></div>
+          <div><h3>No typing?</h3><p>The <b>Blocks</b> view makes programs from blocks, like Scratch. <b>Learn</b> teaches the FPGA step by step.</p></div>
+        </div>
+      </div>
+    </div>
+    <aside class="codeside" id="codeSide" hidden>
+      <div class="cs-head"><b id="csHead"></b><span class="grow"></span><button class="ghost small" id="csClose" title="Close the side panel">&times;</button></div>
+      <div class="cs-body" id="csBody"></div>
+    </aside>
+    </div>
+    <section class="bottom" id="bottom">
+      <div class="bottom-resize" id="bottomResize" title="Drag to make the panel taller or shorter; double-click to hide or show it"></div>
+      <div class="bottom-tabs">
+        <button data-tab="output" class="active">Output</button>
+        <button data-tab="problems">Problems</button>
+        <button data-tab="monitor">Monitor</button>
+        <button data-tab="plotter">Plotter</button>
+        <button data-tab="simulation" title="Verilog simulation: the waves of your design (F6 runs it)">Simulation</button>
+        <button data-tab="watch" title="Values of your program, live: Ardzy.watch(), watch(), or any name:value line">Watch</button>
+        <button data-tab="board">Board</button>
+        <button data-tab="regs">Registers</button>
+        <button data-tab="serial">USB serial</button>
+        <button data-tab="pins">Pins</button>
+        <span class="grow"></span>
+        <span class="bt-end">
+          <button class="ghost small" id="btnClear" title="Clear this panel">Clear</button>
+          <button class="ghost small" id="btnPanel" title="Hide or show this panel (Ctrl+J)">Hide</button>
+        </span>
+      </div>
+      <div class="panel active" data-panel="output"><pre id="out"></pre></div>
+      <div class="panel" data-panel="problems"><div id="probList" class="problist"></div></div>
+      <div class="panel" data-panel="monitor">
+        <div class="montools"><input type="search" id="monFind" placeholder="show only lines with ..." spellcheck="false">
+          <label class="check"><input type="checkbox" id="monTime"> times</label>
+          <button class="ghost small" id="monPause" title="Stop scrolling: new lines wait until you press Resume">Pause</button>
+          <button class="ghost small" id="monCopy" title="Copy the shown lines">Copy</button>
+          <button class="ghost small" id="monSave" title="Save the whole monitor to a text file (in the projects folder, _logs)">Save</button>
+          <span class="hint" id="monInfo"></span></div>
+        <pre id="mon" class="hide-t"></pre>
+        <div class="row pad monin"><input id="monIn" class="grow" placeholder="send text to the program (Serial.read / input), Enter to send" spellcheck="false">
+          <label class="check"><input type="checkbox" id="monNl" checked> newline</label></div>
+      </div>
+      <div class="panel" data-panel="plotter">
+        <div class="row pad"><span class="hint" id="plotInfo">Prints like  temperature:42.5 speed:120  or  1.5, 2.7  appear here as graphs.</span>
+          <span class="grow"></span><button class="ghost small" id="plotPause">Pause</button><button class="ghost small" id="plotClear">Clear</button></div>
+        <div class="plotwrap"><canvas id="plot"></canvas><div id="plotLegend" class="legend"></div></div>
+      </div>
+      <div class="panel" data-panel="simulation">
+        <div class="montools">
+          <label class="inl">Testbench <select id="simTb"></select></label><button class="ghost tiny" id="simTbOpen" title="Open the testbench in the editor">open</button>
+          <label class="inl">Time <select id="simTime"><option value="1000">1 us</option><option value="10000">10 us</option><option value="100000" selected>100 us</option>
+            <option value="1000000">1 ms</option><option value="10000000">10 ms</option><option value="100000000">100 ms</option></select></label>
+          <button class="primary small" id="simRun" title="Compile and run the simulation (F6)">Simulate</button>
+          <button class="ghost small" id="simNew" title="Make a testbench for the design's top module">New testbench</button>
+          <span class="hint" id="simState"></span><span class="grow"></span>
+          <select id="simRadix" title="How buses are shown"><option value="hex">hex</option><option value="dec">decimal</option><option value="signed">signed</option><option value="bin">binary</option></select>
+          <span class="seg"><button id="simZin" title="Zoom in (or the mouse wheel)">+</button><button id="simZout" title="Zoom out">-</button><button id="simFit" title="The whole time">fit</button></span>
+        </div>
+        <div class="sim-body">
+          <div class="sim-side">
+            <input type="search" id="simFind" placeholder="find a signal" spellcheck="false">
+            <label class="check"><input type="checkbox" id="simMinor"> parameters, task variables</label>
+            <div class="row"><button class="ghost tiny" id="simAll">all</button><button class="ghost tiny" id="simNone">none</button></div>
+            <div id="simList" class="sim-list"></div>
+          </div>
+          <div class="sim-main">
+            <div class="hint sim-top"><span id="simInfo"></span><span class="grow"></span><span id="simCur"></span></div>
+            <div id="simEmpty" class="wempty"><b>Simulate your Verilog before you build it.</b> A testbench (a file named <code>something_tb.v</code>) makes the
+              inputs of your design and shows what comes out, here as waves, in seconds and without the board.<br>
+              1. <b>New testbench</b> writes one for the project's top module (with the ARM side ready: <code>dut.u_soc.write_ctrl(0, 5)</code>).<br>
+              2. Set the inputs in it, then <b>Simulate</b> (F6). <code>$display</code> lines go to Output, mistakes to Problems.<br>
+              3. Here: tick signals on the left, mouse wheel = zoom, drag = move, click = cursor A, Shift+click = cursor B, click a bus name = draw it as a curve.</div>
+            <div id="simWaves" class="sim-waves" hidden><canvas id="simCanvas"></canvas></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel" data-panel="watch">
+        <div class="montools"><input type="search" id="watchFind" placeholder="show only names with ..." spellcheck="false">
+          <select id="watchSort" title="Order"><option value="first">in order of appearance</option><option value="name">by name</option><option value="recent">newest first</option></select>
+          <span class="hint" id="watchInfo"></span><span class="grow"></span>
+          <button class="ghost small" id="watchShow" title="Show the hidden values again">Show all</button>
+          <button class="ghost small" id="watchRec" title="Keep every value with its time, to save as a CSV file">Record</button>
+          <button class="ghost small" id="watchSave" disabled>Save CSV</button>
+          <button class="ghost small" id="watchClear">Clear</button></div>
+        <div id="watchBody" class="watchbody"></div>
+      </div>
+      <div class="panel" data-panel="board"><div id="boardInfo" class="cards"></div>
+        <div class="row pad">
+          <button id="btnWeb" class="ghost small">Open board web page</button>
+          <button id="btnUnload" class="ghost small">Unload project</button>
+          <button id="btnDisconnect" class="ghost small">Disconnect</button>
+        </div>
+      </div>
+      <div class="panel" data-panel="regs">
+        <div class="row pad">
+          <input id="regAddr" placeholder="address, e.g. 0x41200000" spellcheck="false">
+          <input id="regVal" placeholder="value (to write)" spellcheck="false">
+          <button id="btnPeek" class="ghost small">Read</button>
+          <button id="btnPoke" class="ghost small">Write</button>
+        </div>
+        <pre id="regOut"></pre>
+        <p class="hint pad">Use only addresses that exist in the loaded design (Vivado Address Editor). An empty address freezes the board; the watchdog reboots it after about 30 s.</p>
+      </div>
+      <div class="panel" data-panel="serial">
+        <div class="row pad">
+          <select id="serPort"></select>
+          <select id="serBaud"><option>115200</option><option>57600</option><option>9600</option></select>
+          <button id="btnSerOpen" class="ghost small">Open</button>
+          <button id="btnSerRefresh" class="ghost small">Refresh ports</button>
+          <span class="hint">USB-UART adapter on the board's console header (3.3 V, 115200 8N1)</span>
+        </div>
+        <pre id="ser"></pre>
+        <div class="row pad"><input id="serIn" placeholder="type a command and press Enter" spellcheck="false" class="grow"></div>
+      </div>
+      <div class="panel" data-panel="pins">
+        <div class="row pad">
+          <input id="pinFind" placeholder="find: J3, fan, T17, led, button ..." spellcheck="false" class="grow">
+          <span class="hint">Click an FPGA row to copy its Vivado line. All FPGA pins: 3.3 V, LVCMOS33. LEDs: 0 = on.</span>
+        </div>
+        <div id="pinTables" class="pins"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="status">
+  <span id="stConn">offline</span>
+  <span id="stJob"></span>
+  <span class="grow"></span>
+  <span id="stSaved"></span>
+  <span id="stCursor"></span>
+  <span id="stLang"></span>
+  <span id="stInfo" class="link" title="Editor settings"></span>
+  <span id="stProject"></span>
+  <span id="stVer"></span>
+</footer>
+
+<dialog id="dlgEditor" class="wide">
+  <form method="dialog">
+    <h2>Editor settings</h2>
+    <div id="edForm"></div>
+    <div class="row" style="justify-content:flex-end"><button class="primary" value="ok">Done</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgBoardCfg" class="wide">
+  <form method="dialog">
+    <h2>Customize the Board view</h2>
+    <div id="bcForm"></div>
+    <div class="row" style="justify-content:flex-end"><button class="primary" value="ok">Done</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgLog" class="wide">
+  <form method="dialog">
+    <h2 id="lgDlgTitle">Log</h2>
+    <div class="live-series" id="lgCols"></div>
+    <div class="live-chart"><canvas id="lgCanvas" class="lgcanvas"></canvas><div class="live-tip" id="lgTip" hidden></div></div>
+    <p class="hint">Tick the values to draw (each line has its own scale). Mouse wheel = zoom in time, point = values at that moment.</p>
+    <div class="row" style="justify-content:flex-end"><button class="ghost" id="lgReset">Whole log</button><button class="primary" value="ok">Close</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgApp" class="wide app-dlg">
+  <form method="dialog">
+    <h2>App settings</h2>
+    <div class="app-split"><nav class="app-nav" id="appNav"></nav><div class="app-body" id="appBody"></div></div>
+    <div class="row" style="justify-content:flex-end"><button class="primary" value="ok">Done</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgNew">
+  <form method="dialog">
+    <h2>New project</h2>
+    <label>Name <input id="newName" placeholder="my_project" required pattern="[A-Za-z0-9_.\-]+"></label>
+    <div class="templates" id="newTemplates"></div>
+    <div class="row end"><button value="cancel" class="ghost">Cancel</button><button id="btnNewOk" value="ok" class="primary">Create</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgSd" class="wide">
+  <form method="dialog">
+    <h2>Write an SD card</h2>
+    <p class="hint">Puts the Ardzy system on a microSD card for the board, with your settings. Windows asks for administrator permission.</p>
+    <div class="sdstep"><b>1. System image</b>
+      <div class="row"><select id="sdImg" class="grow"></select><button class="ghost small" id="sdImgPick">Choose file</button></div></div>
+    <div class="sdstep"><b>2. microSD card</b> <button class="ghost small" id="sdDiskRefresh">Refresh</button>
+      <div id="sdDisks" class="sddisks"></div></div>
+    <div class="sdstep"><b>3. Board settings</b> (written to ardzy.txt on the card)
+      <div class="setgrid">
+      <label>Board name <input data-sd="hostname" placeholder="ardzy" pattern="[a-z0-9-]+" spellcheck="false"><small>the board is found as name.local</small></label>
+      <label>New root password <input data-sd="password" type="password" placeholder="(keep the current one)" autocomplete="new-password"><small>for SSH / console login (default root)</small></label>
+      <label>Network <select data-sd="network"><option value="auto">automatic (router, or direct cable)</option><option value="static">fixed address</option><option value="linklocal">direct cable only</option></select></label>
+      <label>Fixed address <input data-sd="address" placeholder="192.168.1.50/24" spellcheck="false"></label>
+      <label>Gateway <input data-sd="gateway" placeholder="192.168.1.1" spellcheck="false"></label>
+      <label>DNS <input data-sd="dns" placeholder="1.1.1.1" spellcheck="false"></label>
+      <label>Time zone <select data-sd="timezone"><option>UTC</option><option>Europe/Athens</option><option>Europe/London</option><option>Europe/Berlin</option><option>Europe/Paris</option><option>Europe/Rome</option><option>Europe/Madrid</option><option>Europe/Moscow</option><option>Europe/Istanbul</option><option>Asia/Dubai</option><option>Asia/Kolkata</option><option>Asia/Shanghai</option><option>Asia/Tokyo</option><option>Australia/Sydney</option><option>America/New_York</option><option>America/Chicago</option><option>America/Denver</option><option>America/Los_Angeles</option><option>America/Sao_Paulo</option><option>Africa/Johannesburg</option></select></label>
+      <label>SSH (PuTTY) <select data-sd="ssh"><option value="on">on</option><option value="off">off</option></select></label>
+      <label>At power-on <input data-sd="at_boot" list="atBootList" placeholder="pin-control" spellcheck="false"><small>pin-control, none, or a project name</small></label>
+    </div>
+      <label class="check"><input type="checkbox" id="sdVerify" checked> check the card after writing (recommended)</label></div>
+    <div id="sdProg" class="sdprog" hidden><div class="bar"><i id="sdBar" style="width:0%"></i></div><div id="sdText" class="hint"></div></div>
+    <div class="row end"><button value="cancel" class="ghost" id="sdClose">Close</button><button id="sdGo" class="primary" value="go">Write card</button></div>
+  </form>
+</dialog>
+<datalist id="atBootList"><option>pin-control</option><option>none</option></datalist>
+
+<dialog id="dlgExamples" class="wide">
+  <form method="dialog">
+    <h2>Examples</h2>
+    <div class="row"><input id="exFind" class="grow" placeholder="find an example" spellcheck="false"></div>
+    <div id="exList" class="exlist"></div>
+    <label>New project name <input id="exName" placeholder="my_blink" pattern="[A-Za-z0-9_.\-]+"></label>
+    <div class="row end"><button value="cancel" class="ghost">Close</button><button id="btnExOk" class="primary" value="ok">Create project</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgLibs" class="wide">
+  <form method="dialog">
+    <h2>Library Manager</h2>
+    <div class="row">
+      <span class="seg" id="libSeg"><button data-v="find" class="on">Find</button><button data-v="installed">Installed</button></span>
+      <input id="libFind" class="grow" placeholder="search the Arduino libraries (for example: ssd1306, bme280, gps, servo)" spellcheck="false">
+      <button class="ghost small" id="btnLibZip">Add .ZIP</button>
+    </div>
+    <p class="hint" id="libInfo"></p>
+    <div id="libList" class="liblist"></div>
+    <div class="row end"><button value="cancel" class="ghost">Close</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgGuide" class="guide">
+  <div class="ghead"><b id="guideTitle" class="grow"></b><button class="ghost small" id="guideClose">Close</button></div>
+  <iframe id="guideFrame" title="Guide"></iframe>
+</dialog>
+
+<dialog id="dlgBoards">
+  <form method="dialog">
+    <h2>Boards</h2>
+    <div id="boardList" class="list"></div>
+    <label>Or connect by name / IP <input id="manualHost" placeholder="ardzy.local or 192.168.1.68" spellcheck="false"></label>
+    <div class="row end"><button value="cancel" class="ghost">Close</button><button id="btnRescan" class="ghost" value="scan">Scan again</button><button id="btnManual" class="primary" value="manual">Connect</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgKeys">
+  <form method="dialog">
+    <h2>Keyboard shortcuts</h2>
+    <table class="keys">
+      <tr><td><kbd>Ctrl</kbd> <kbd>U</kbd></td><td>Upload the project to the board and run it</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>R</kbd></td><td>Check the project (compile / test without uploading)</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>S</kbd></td><td>Save the file</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>F</kbd> / <kbd>F3</kbd></td><td>Find in the file / find the next one (<kbd>Shift</kbd> <kbd>F3</kbd> the one before)</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>H</kbd></td><td>Find and replace</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>G</kbd></td><td>Go to a line</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>/</kbd></td><td>Comment or uncomment the line</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>+</kbd> / <kbd>-</kbd> / <kbd>0</kbd></td><td>Editor text bigger / smaller / normal</td></tr>
+      <tr><td><kbd>Alt</kbd> <kbd>Z</kbd></td><td>Wrap long lines on or off</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>J</kbd></td><td>Hide or show the bottom panel</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>,</kbd></td><td>App settings (language, colours, text, behaviour)</td></tr>
+      <tr><td><kbd>F6</kbd></td><td>Simulate the Verilog (Simulation tab)</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>Space</kbd></td><td>Suggest names (Ardzy functions, pins, words of the file)</td></tr>
+      <tr><td><kbd>F2</kbd></td><td>Reference of the word under the cursor</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>O</kbd></td><td>Outline: jump to a function, module or signal</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>F</kbd></td><td>Search in every file of the project</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>Q</kbd></td><td>Fold or unfold the block at the cursor</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>D</kbd> / <kbd>Alt</kbd> <kbd>Up</kbd> <kbd>Down</kbd></td><td>Copy the line / move the line up or down</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>1</kbd> ... <kbd>9</kbd></td><td>Code, Board, I/O, Tools, Ready projects, Learn, Map, System, Blocks</td></tr>
+      <tr><td><kbd>F1</kbd></td><td>This list</td></tr>
+    </table>
+    <div class="row end"><button value="close" class="primary">Close</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlgSettings">
+  <form method="dialog">
+    <h2>Settings</h2>
+    <label>Projects folder (workspace) <input id="setWs" spellcheck="false"></label>
+    <label>Vivado (vivado.bat) <input id="setViv" spellcheck="false"></label>
+    <label>Board names to try (comma separated) <input id="setHosts" spellcheck="false"></label>
+    <label>FPGA build tool <select id="setTool"><option value="builtin">Built-in (Yosys + nextpnr, no Vivado needed)</option><option value="vivado">Vivado (build.tcl)</option></select></label>
+    <p class="hint" id="setToolInfo"></p>
+    <label>Look <select id="setTheme"><option value="">same as Windows</option><option value="light">light</option><option value="dark">dark</option></select></label>
+    <label>Editor text size <select id="setFont"><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option><option>18</option><option>20</option></select></label>
+    <label class="check" style="margin:6px 0 0"><input type="checkbox" id="setWrap"> wrap long lines in the editor</label>
+    <p class="hint"><a href="#" id="setKeys">Keyboard shortcuts</a> (F1)</p>
+    <div class="row end"><button value="cancel" class="ghost">Cancel</button><button id="btnSetOk" value="ok" class="primary">Save</button></div>
+  </form>
+</dialog>
+
+<script src="vendor/codemirror.min.js"></script>
+<script src="vendor/mode_python_python.min.js"></script>
+<script src="vendor/mode_verilog_verilog.min.js"></script>
+<script src="vendor/mode_clike_clike.min.js"></script>
+<script src="vendor/mode_tcl_tcl.min.js"></script>
+<script src="vendor/mode_shell_shell.min.js"></script>
+<script src="vendor/addon_edit_matchbrackets.min.js"></script>
+<script src="vendor/addon_edit_closebrackets.min.js"></script>
+<script src="vendor/addon_selection_active-line.min.js"></script>
+<script src="vendor/addon_dialog_dialog.min.js"></script>
+<script src="vendor/addon_search_searchcursor.min.js"></script>
+<script src="vendor/addon_search_search.min.js"></script>
+<script src="vendor/addon_search_jump-to-line.min.js"></script>
+<script src="vendor/addon_search_match-highlighter.min.js"></script>
+<script src="vendor/addon_comment_comment.min.js"></script>
+<script src="vendor/addon_display_rulers.min.js"></script>
+<script src="vendor/addon_fold_foldcode.min.js"></script>
+<script src="vendor/addon_fold_foldgutter.min.js"></script>
+<script src="vendor/addon_fold_brace-fold.min.js"></script>
+<script src="vendor/addon_fold_indent-fold.min.js"></script>
+<script src="vendor/addon_fold_comment-fold.min.js"></script>
+<script src="vendor/addon_hint_show-hint.min.js"></script>
+<script src="i18n.js"></script>
+<script src="app.js"></script>
+<script src="board.js"></script>
+<script src="code_ref.js"></script>
+<script src="codeplus.js"></script>
+<script src="watch.js"></script>
+<script src="simview.js"></script>
+<script src="arduino.js"></script>
+<script src="tools.js"></script>
+<script src="system.js"></script>
+<script src="map.js"></script>
+<script src="sd.js"></script>
+<script src="gallery.js"></script>
+<script src="learn_data.js"></script>
+<script>/* the lessons in the chosen language */
+  try { const l = (location.hash.match(/lang=(el|ru)/) || [])[1] || localStorage.getItem('ardzy.lang'); if (l === 'el' || l === 'ru') document.write('<script src="learn_' + l + '.js"><\/script>'); } catch (e) { }</script>
+<script src="learn.js"></script>
+<script src="studio.js"></script>
+<script src="radio.js"></script>
+<script src="vendor/blockly/blockly_compressed.js"></script>
+<script src="vendor/blockly/blocks_compressed.js"></script>
+<script src="vendor/blockly/en.js"></script>
+<script>/* Blockly's own blocks in the chosen language */
+  try { const l = (location.hash.match(/lang=(el|ru)/) || [])[1] || localStorage.getItem('ardzy.lang'); if (l === 'el' || l === 'ru') document.write('<script src="vendor/blockly/' + l + '.js"><\/script>'); } catch (e) { }</script>
+<script src="fblocks.js"></script>
+<script src="blocks.js"></script>
+<script src="settings.js"></script>
+</body>
+</html>

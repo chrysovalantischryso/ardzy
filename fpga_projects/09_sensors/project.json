@@ -1,0 +1,55 @@
+{
+  "id": "SENS",
+  "title": "Sensors: distance, IR remote, touch",
+  "category": "Sensors",
+  "level": "easy",
+  "summary": "Three sensor helpers timed by the FPGA to the microsecond: HC-SR04 ultrasonic distance, any NEC infrared remote control, and a capacitive touch pad.",
+  "slots": {
+    "0": "Info",
+    "1": "Sensors"
+  },
+  "pins": {
+    "trig": "j8[0]",
+    "echo": "j8[1]",
+    "ir": "j8[2]",
+    "touch": "j8[3]",
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [
+    [
+      "J8 pin 5 (TRIG)",
+      "HC-SR04 TRIG",
+      "3.3 V is enough to trigger it"
+    ],
+    [
+      "J8 pin 11 (ECHO)",
+      "HC-SR04 ECHO through a divider: 1 kohm from ECHO, 2 kohm to GND",
+      "ECHO is 5 V: never connect it directly"
+    ],
+    [
+      "J8 pin 12 (IR)",
+      "IR receiver OUT (VS1838B, TSOP38238)",
+      "receiver VCC to 3.3 V (pin 16)"
+    ],
+    [
+      "J8 pin 15 (touch)",
+      "a wire or a coin as the pad, and 1 Mohm to 3.3 V",
+      "works without the resistor too (less sensitive)"
+    ],
+    [
+      "pin 16 (3.3 V) / outside 5 V",
+      "IR receiver VCC / HC-SR04 VCC (5 V)",
+      "common GND"
+    ]
+  ],
+  "parts": [
+    "HC-SR04 ultrasonic sensor + 1 k and 2 k resistors",
+    "IR receiver VS1838B and any TV / NEC remote",
+    "1 Mohm resistor and a coin or foil for the touch pad",
+    "nothing for the self-test"
+  ],
+  "tested": "the self-test passed 10 of 10 checks on the real board (October 2026), with nothing connected."
+}

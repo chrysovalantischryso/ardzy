@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ardzy 0.2 BETA</title>
+<style>
+:root {
+  --bg: #f4f6f4; --panel: #ffffff; --text: #1b2420; --muted: #5d6b64; --line: #d9e0dc;
+  --accent: #1f9d55; --accent-text: #ffffff; --warn: #b7791f; --bad: #c53030; --code: #0f1512; --code-text: #c9f7d8;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1412; --panel: #172019; --text: #e3ece6; --muted: #93a39a; --line: #2a362f;
+    --accent: #34c46e; --accent-text: #08130c; --warn: #e0a84a; --bad: #f07171; --code: #0a0e0c; --code-text: #b8f0c9;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, "Segoe UI", Roboto, sans-serif; }
+header { padding: 18px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+header h1 { margin: 0; font-size: 22px; letter-spacing: .5px; }
+header h1 b { color: var(--accent); }
+header span { color: var(--muted); font-size: 14px; }
+main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 900px) { main { grid-template-columns: 1fr 1fr; } .wide { grid-column: 1 / -1; } }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+h2 { margin: 0 0 12px; font-size: 17px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.stat { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.stat small { display: block; color: var(--muted); font-size: 13px; }
+.stat strong { font-size: 16px; word-break: break-word; }
+.ok { color: var(--accent); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+button, .btn { font: inherit; font-size: 14px; padding: 7px 12px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+button:hover { filter: brightness(1.08); }
+input[type=text] { font: inherit; font-size: 15px; padding: 7px 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--bg); color: var(--text); min-width: 0; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.proj { border-top: 1px solid var(--line); padding: 10px 0; }
+.proj:first-child { border-top: 0; }
+.proj .name { font-weight: 600; }
+.proj .files { color: var(--muted); font-size: 13px; margin: 2px 0 8px; word-break: break-word; }
+.tag { font-size: 12px; padding: 1px 7px; border-radius: 99px; border: 1px solid var(--accent); color: var(--accent); margin-left: 6px; }
+pre { background: var(--code); color: var(--code-text); border-radius: 8px; padding: 12px; margin: 0; height: 320px; overflow: auto; font: 14px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
+#drop { border: 2px dashed var(--line); border-radius: 10px; padding: 18px; text-align: center; color: var(--muted); margin: 10px 0; }
+#drop.over { border-color: var(--accent); color: var(--accent); }
+#msg { min-height: 1.5em; font-size: 14px; white-space: pre-wrap; }
+.hint { color: var(--muted); font-size: 14px; }
+code { font-family: ui-monospace, Consolas, monospace; font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1><b>Ardzy</b> <small style="font-size:.5em;opacity:.7">0.2 BETA</small></h1>
+  <span>Zynq like an Arduino &middot; Antminer S9 board &middot; XC7Z010 &middot; 512 MB</span>
+</header>
+<main>
+  <section class="wide">
+    <h2>Board</h2>
+    <div class="stats" id="stats"></div>
+    <div id="safemode" class="warn" style="margin-top:10px;display:none">
+      SAFE MODE: the last boot did not finish, so the default project was not loaded. Load a project to clear it.
+    </div>
+  </section>
+
+  <section>
+    <h2>Projects</h2>
+    <div id="projects"></div>
+  </section>
+
+  <section>
+    <h2>Upload</h2>
+    <div class="row">
+      <input type="text" id="pname" placeholder="project name, e.g. blink" style="flex:1">
+    </div>
+    <div id="drop">Drop files here (.bit, main.py, .c, run.sh, devices.dtsi, or a .zip)<br>
+      <input type="file" id="files" multiple style="margin-top:8px">
+    </div>
+    <div class="row">
+      <button class="primary" onclick="upload(true)">Upload and run</button>
+      <button onclick="upload(false)">Upload only</button>
+    </div>
+    <div id="msg"></div>
+    <p class="hint">From the PC you can also double-click <code>UPLOAD.bat</code> in a project folder.</p>
+  </section>
+
+  <section class="wide">
+    <div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <h2 style="margin:0">Program output</h2>
+      <div class="row">
+        <button onclick="act('restart')">Restart</button>
+        <button onclick="act('stop')">Stop</button>
+        <label class="hint"><input type="checkbox" id="follow" checked> follow</label>
+      </div>
+    </div>
+    <pre id="log"></pre>
+  </section>
+
+  <section class="wide">
+    <h2>Registers</h2>
+    <div class="row">
+      <input type="text" id="addr" placeholder="address, e.g. 0x41200000" style="width:200px">
+      <input type="text" id="val" placeholder="value (for write)" style="width:160px">
+      <button onclick="peek()">Read</button>
+      <button onclick="poke()">Write</button>
+    </div>
+    <pre id="regs" style="height:auto;min-height:44px;margin-top:10px"></pre>
+    <p class="hint">Only use addresses that exist in your loaded design (Vivado Address Editor).
+      An address with nothing behind it freezes the board; the watchdog then reboots it in about 30 s.</p>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function say(t, cls) { $('msg').className = cls || ''; $('msg').textContent = t; }
+
+async function api(method, url, body) {
+  const r = await fetch(url, { method, body });
+  return r.json();
+}
+
+async function refresh() {
+  let s;
+  try { s = await api('GET', '/api/status'); } catch (e) { return; }
+  const fp = s.fpga === 'operating' ? 'ok' : 'warn';
+  $('stats').innerHTML = [
+    ['Loaded project', s.current || '-', ''],
+    ['Program', s.running ? 'running' : 'stopped', s.running ? 'ok' : ''],
+    ['FPGA', s.fpga || '?', fp],
+    ['At boot', s.default || '-', ''],
+    ['Uptime', s.uptime, ''],
+    ['Memory', s.mem, ''],
+    ['CPU load', s.load, ''],
+  ].concat(s.temp ? [['Chip temp', s.temp, '']] : [])
+   .map(([k, v, c]) => `<div class="stat"><small>${k}</small><strong class="${c}">${esc(v)}</strong></div>`).join('');
+  $('safemode').style.display = s.safemode ? 'block' : 'none';
+  $('projects').innerHTML = s.projects.length ? s.projects.map(p => `
+    <div class="proj">
+      <div class="name">${esc(p.name)}${p.name === s.current ? '<span class="tag">loaded</span>' : ''}${p.name === s.default ? '<span class="tag">at boot</span>' : ''}</div>
+      <div class="files">${esc(p.files.join(', ') || 'empty')}</div>
+      <div class="row">
+        <button class="primary" onclick="load('${p.name}')">Load</button>
+        <button onclick="setDefault('${p.name === s.default ? '' : p.name}')">${p.name === s.default ? 'Not at boot' : 'At boot'}</button>
+        <button onclick="del('${p.name}')">Delete</button>
+      </div>
+    </div>`).join('') : '<p class="hint">No projects yet. Upload one.</p>';
+}
+
+async function refreshLog() {
+  if (!$('follow').checked) return;
+  try {
+    const r = await api('GET', '/api/log');
+    const pre = $('log');
+    const atEnd = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 20;
+    if (pre.textContent !== r.log) { pre.textContent = r.log; if (atEnd) pre.scrollTop = pre.scrollHeight; }
+  } catch (e) {}
+}
+
+async function load(n) {
+  say('Loading ' + n + ' ...');
+  const r = await api('POST', '/api/load?p=' + encodeURIComponent(n));
+  say(r.out, r.ok ? 'ok' : 'bad'); refresh();
+}
+async function act(a) { const r = await api('POST', '/api/' + a); say(r.out, r.ok ? 'ok' : 'bad'); refresh(); }
+async function setDefault(n) { const r = await api('POST', '/api/default?p=' + encodeURIComponent(n)); say(r.out); refresh(); }
+async function del(n) {
+  if (!confirm('Delete project ' + n + ' from the board?')) return;
+  const r = await api('POST', '/api/delete?p=' + encodeURIComponent(n)); say(r.out); refresh();
+}
+
+let picked = [];
+$('files').onchange = e => { picked = [...e.target.files]; say(picked.length + ' file(s) selected'); };
+const drop = $('drop');
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); picked = [...e.dataTransfer.files]; say(picked.length + ' file(s) selected'); };
+
+async function upload(run) {
+  const n = $('pname').value.trim();
+  if (!/^[A-Za-z0-9_.-]+$/.test(n)) return say('Give the project a name (letters, digits, _ . -)', 'bad');
+  if (!picked.length) return say('Choose or drop some files first', 'bad');
+  for (const f of picked) {
+    say('Uploading ' + f.name + ' ...');
+    const r = await api('PUT', `/api/upload?p=${encodeURIComponent(n)}&f=${encodeURIComponent(f.name)}`, f);
+    if (!r.ok) return say(r.out, 'bad');
+  }
+  say('Uploaded ' + picked.length + ' file(s)', 'ok');
+  picked = []; $('files').value = '';
+  if (run) await load(n); else refresh();
+}
+
+async function peek() {
+  const r = await api('GET', '/api/peek?a=' + encodeURIComponent($('addr').value.trim()) + '&n=4');
+  $('regs').textContent = r.out;
+}
+async function poke() {
+  const r = await api('POST', '/api/poke?a=' + encodeURIComponent($('addr').value.trim()) + '&v=' + encodeURIComponent($('val').value.trim()));
+  $('regs').textContent = r.ok ? 'written' : r.out;
+  if (r.ok) peek();
+}
+
+refresh(); refreshLog();
+setInterval(refresh, 3000);
+setInterval(refreshLog, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+diff --git a/himbaechel/uarch/xilinx/fasm.cc b/himbaechel/uarch/xilinx/fasm.cc
+index 7cf5704..90c428e 100644
+--- a/himbaechel/uarch/xilinx/fasm.cc
++++ b/himbaechel/uarch/xilinx/fasm.cc
+@@ -147,6 +147,11 @@ struct FasmBackend
+                                                                             "ILOGIC_Y" + i + ".ZINV_D"};
+                     pp_config[{ctx->id(s + "IOI3" + s2), ctx->id(s + "IOI_OLOGIC" + i + "_TQ"),
+                                ctx->id("IOI_OLOGIC" + i + "_T1")}] = {"OLOGIC_Y" + i + ".ZINV_T1"};
++                    // Ardzy: router2 reaches TQ through the OLOGIC site (no TQ<-T1 tile pip, so the
++                    // rule above never fires); the tristate would then be inverted. The IOB's T input
++                    // fed from TQ always means "T1 straight through": set ZINV_T1 here too.
++                    pp_config[{ctx->id(s + "IOI3" + s2), ctx->id(s + "IOI_T" + i),
++                               ctx->id(s + "IOI_OLOGIC" + i + "_TQ")}] = {"OLOGIC_Y" + i + ".ZINV_T1"};
+                     if (i == "0") {
+                         pp_config[{ctx->id(s + "IOB33" + s2), id_IOB_O_IN1, id_IOB_O_OUT0}] = {};
+                         pp_config[{ctx->id(s + "IOB33" + s2), id_IOB_O_OUT0, id_IOB_O0}] = {};
+@@ -175,6 +180,8 @@ struct FasmBackend
+                                                                      "ILOGIC_Y" + i + ".ZINV_D"};
+                 pp_config[{ctx->id("RIOI" + s2), ctx->id("RIOI_OLOGIC" + i + "_TQ"),
+                            ctx->id("IOI_OLOGIC" + i + "_T1")}] = {"OLOGIC_Y" + i + ".ZINV_T1"};
++                pp_config[{ctx->id("RIOI" + s2), ctx->id("RIOI_T" + i),
++                           ctx->id("RIOI_OLOGIC" + i + "_TQ")}] = {"OLOGIC_Y" + i + ".ZINV_T1"};   // Ardzy, see above
+                 pp_config[{ctx->id("RIOI" + s2), ctx->id("RIOI_OLOGIC" + i + "_OFB"),
+                            ctx->id("RIOI_ODELAY" + i + "_ODATAIN")}] = {"OLOGIC_Y" + i + ".ZINV_ODATAIN"};
+                 if (i == "0") {
+@@ -1463,6 +1470,18 @@ struct FasmBackend
+                 }
+                 write_bram_half(tile, 0, l);
+                 write_bram_half(tile, 1, u);
++                // Ardzy fix: a RAMB36 at width 1 or 9 also needs its own RAMB36 width bit (Project X-Ray
++                // fuzzer 027-bram36-config); without it width 9 loses the parity bit (DIP/DOP)
++                if (l != nullptr && l == u && l->type == id_RAMB36E1_RAMB36E1) {
++                    push(uarch->tile_name(tile));
++                    push("RAMB36");
++                    for (const char *p : {"READ_WIDTH_A", "READ_WIDTH_B", "WRITE_WIDTH_A", "WRITE_WIDTH_B"}) {
++                        int w = int_or_default(l->params, ctx->id(p), 0);
++                        write_bit(std::string("BRAM36_") + p + "_1", w == 1 || w == 9);
++                    }
++                    pop();
++                    pop();
++                }
+                 blank();
+             }
+         }
+diff --git a/himbaechel/uarch/xilinx/pack.cc b/himbaechel/uarch/xilinx/pack.cc
+index f363716..e79242f 100644
+--- a/himbaechel/uarch/xilinx/pack.cc
++++ b/himbaechel/uarch/xilinx/pack.cc
+@@ -720,6 +720,33 @@ void XC7Packer::pack_bram()
+ 
+     generic_xform(bram_rules, false);
+ 
++    // Ardzy fix, measured on a real XC7Z010: at width 9 the odd byte lanes (upper half) take their 9th
++    // (parity) bit from DIP[1] and up, which Yosys leaves at 0, so odd addresses lost the bit. Copy the
++    // parity input there, as is done for DI at width 1.
++    for (auto &cell : ctx->cells) {
++        CellInfo *ci = cell.second.get();
++        if (!ci->type.in(id_RAMB18E1_RAMB18E1, id_RAMB36E1_RAMB36E1))
++            continue;
++        int npar = (ci->type == id_RAMB36E1_RAMB36E1) ? 4 : 2;
++        for (auto ab : {std::make_pair(id_WRITE_WIDTH_A, "DIPADIP"), std::make_pair(id_WRITE_WIDTH_B, "DIPBDIP")}) {
++            if (int_or_default(ci->params, ab.first, 0) != 9)
++                continue;
++            NetInfo *p0 = ci->getPort(ctx->idf("%s0", ab.second));
++            if (p0 == nullptr)
++                continue;
++            for (int k = 1; k < npar; k++) {
++                IdString pk = ctx->idf("%s%d", ab.second, k);
++                if (!ci->ports.count(pk)) {
++                    ci->ports[pk].name = pk;
++                    ci->ports[pk].type = PORT_IN;
++                } else {
++                    ci->disconnectPort(pk);
++                }
++                ci->connectPort(pk, p0);
++            }
++        }
++    }
++
+     // These pins have no logical mapping, so must be tied after transformation
+     for (auto &cell : ctx->cells) {
+         CellInfo *ci = cell.second.get();
+diff --git a/himbaechel/uarch/xilinx/pack_dram.cc b/himbaechel/uarch/xilinx/pack_dram.cc
+index 06608cd..3c4516c 100644
+--- a/himbaechel/uarch/xilinx/pack_dram.cc
++++ b/himbaechel/uarch/xilinx/pack_dram.cc
+@@ -316,8 +316,12 @@ void XilinxPacker::pack_dram()
+                 }
+ 
+                 std::vector<NetInfo *> address(cs.wa.begin(), cs.wa.begin() + std::min<size_t>(cs.wa.size(), 6));
++                // Ardzy fix: free the output net first (as the other DRAM types do), else the new LUT
++                // becomes a second driver of it ("net->driver.cell == nullptr" assertion)
++                NetInfo *o = cell->getPort(id_O);
++                cell->disconnectPort(id_O);
+                 CellInfo *ram = create_dram_lut(cell->name.str(ctx) + "/ADDR", base, cs, address, cell->getPort(id_D),
+-                                                cell->getPort(id_O), z);
++                                                o, z);
+                 if (cell->params.count(id_INIT))
+                     ram->params[id_INIT] = cell->params[id_INIT];
+                 if (base == nullptr)
+diff --git a/himbaechel/uarch/xilinx/pack_io.cc b/himbaechel/uarch/xilinx/pack_io.cc
+index 0b52d90..b7592f0 100644
+--- a/himbaechel/uarch/xilinx/pack_io.cc
++++ b/himbaechel/uarch/xilinx/pack_io.cc
+@@ -431,6 +431,8 @@ void XC7Packer::pack_io()
+     hrio_rules[id_INV].port_xform[id_O] = id_OUT;
+ 
+     hrio_rules[id_PS7].new_type = id_PS7_PS7;
++    // Ardzy: the device DNA block (one fixed site, no configuration bits)
++    hrio_rules[ctx->id("DNA_PORT")].new_type = ctx->id("DNA_PORT_DNA_PORT");
+ 
+     generic_xform(hrio_rules, true);
+ 

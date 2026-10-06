@@ -1,0 +1,648 @@
+{
+ "source": "AntMiner_ControlBoard_XC7010 V1.0 schematic + systemGPIO.xdc",
+ "connectors": [
+  {
+   "conn": "J1",
+   "cpin": 5,
+   "bitmain": "PLUG",
+   "port": "j1[0]",
+   "pin": "T11",
+   "old": "plMiner0[0]"
+  },
+  {
+   "conn": "J1",
+   "cpin": 11,
+   "bitmain": "TXD",
+   "port": "j1[1]",
+   "pin": "T12",
+   "old": "plMiner0[1]"
+  },
+  {
+   "conn": "J1",
+   "cpin": 12,
+   "bitmain": "RXD",
+   "port": "j1[2]",
+   "pin": "U12",
+   "old": "plMiner0[2]"
+  },
+  {
+   "conn": "J1",
+   "cpin": 15,
+   "bitmain": "RST",
+   "port": "j1[3]",
+   "pin": "T10",
+   "old": "plMiner0[3]"
+  },
+  {
+   "conn": "J2",
+   "cpin": 5,
+   "bitmain": "PLUG",
+   "port": "j2[0]",
+   "pin": "R19",
+   "old": "plMiner1[0]"
+  },
+  {
+   "conn": "J2",
+   "cpin": 11,
+   "bitmain": "TXD",
+   "port": "j2[1]",
+   "pin": "V12",
+   "old": "plMiner1[1]"
+  },
+  {
+   "conn": "J2",
+   "cpin": 12,
+   "bitmain": "RXD",
+   "port": "j2[2]",
+   "pin": "W13",
+   "old": "plMiner1[2]"
+  },
+  {
+   "conn": "J2",
+   "cpin": 15,
+   "bitmain": "RST",
+   "port": "j2[3]",
+   "pin": "V13",
+   "old": "plMiner1[3]"
+  },
+  {
+   "conn": "J3",
+   "cpin": 5,
+   "bitmain": "PLUG",
+   "port": "j3[0]",
+   "pin": "T14",
+   "old": "plMiner2[0]"
+  },
+  {
+   "conn": "J3",
+   "cpin": 11,
+   "bitmain": "TXD",
+   "port": "j3[1]",
+   "pin": "P14",
+   "old": "plMiner2[1]"
+  },
+  {
+   "conn": "J3",
+   "cpin": 12,
+   "bitmain": "RXD",
+   "port": "j3[2]",
+   "pin": "R14",
+   "old": "plMiner2[2]"
+  },
+  {
+   "conn": "J3",
+   "cpin": 15,
+   "bitmain": "RST",
+   "port": "j3[3]",
+   "pin": "T15",
+   "old": "plMiner2[3]"
+  },
+  {
+   "conn": "J4",
+   "cpin": 5,
+   "bitmain": "PLUG",
+   "port": "j4[0]",
+   "pin": "Y16",
+   "old": "plMiner3[0]"
+  },
+  {
+   "conn": "J4",
+   "cpin": 11,
+   "bitmain": "TXD",
+   "port": "j4[1]",
+   "pin": "W14",
+   "old": "plMiner3[1]"
+  },
+  {
+   "conn": "J4",
+   "cpin": 12,
+   "bitmain": "RXD",
+   "port": "j4[2]",
+   "pin": "Y14",
+   "old": "plMiner3[2]"
+  },
+  {
+   "conn": "J4",
+   "cpin": 15,
+   "bitmain": "RST",
+   "port": "j4[3]",
+   "pin": "Y17",
+   "old": "plMiner3[3]"
+  },
+  {
+   "conn": "J5",
+   "cpin": 5,
+   "bitmain": "PLUG",
+   "port": "j5[0]",
+   "pin": "T16",
+   "old": "plMiner4[0]"
+  },
+  {
+   "conn": "J5",
+   "cpin": 11,
+   "bitmain": "TXD",
+   "port": "j5[1]",
+   "pin": "V15",
+   "old": "plMiner4[1]"
+  },
+  {
+   "conn": "J5",
+   "cpin": 12,
+   "bitmain": "RXD",
+   "port": "j5[2]",
+   "pin": "W15",
+   "old": "plMiner4[2]"
+  },
+  {
+   "conn": "J5",
+   "cpin": 15,
+   "bitmain": "RST",
+   "port": "j5[3]",
+   "pin": "U17",
+   "old": "plMiner4[3]"
+  },
+  {
+   "conn": "J6",
+   "cpin": 5,
+   "bitmain": "PLUG",
+   "port": "j6[0]",
+   "pin": "U14",
+   "old": "plMiner5[0]"
+  },
+  {
+   "conn": "J6",
+   "cpin": 11,
+   "bitmain": "TXD",
+   "port": "j6[1]",
+   "pin": "U18",
+   "old": "plMiner5[1]"
+  },
+  {
+   "conn": "J6",
+   "cpin": 12,
+   "bitmain": "RXD",
+   "port": "j6[2]",
+   "pin": "U19",
+   "old": "plMiner5[2]"
+  },
+  {
+   "conn": "J6",
+   "cpin": 15,
+   "bitmain": "RST",
+   "port": "j6[3]",
+   "pin": "U15",
+   "old": "plMiner5[3]"
+  },
+  {
+   "conn": "J7",
+   "cpin": 5,
+   "bitmain": "PLUG",
+   "port": "j7[0]",
+   "pin": "T20",
+   "old": "plMiner6[0]"
+  },
+  {
+   "conn": "J7",
+   "cpin": 11,
+   "bitmain": "TXD",
+   "port": "j7[1]",
+   "pin": "V20",
+   "old": "plMiner6[1]"
+  },
+  {
+   "conn": "J7",
+   "cpin": 12,
+   "bitmain": "RXD",
+   "port": "j7[2]",
+   "pin": "W20",
+   "old": "plMiner6[2]"
+  },
+  {
+   "conn": "J7",
+   "cpin": 15,
+   "bitmain": "RST",
+   "port": "j7[3]",
+   "pin": "U20",
+   "old": "plMiner6[3]"
+  },
+  {
+   "conn": "J8",
+   "cpin": 5,
+   "bitmain": "PLUG",
+   "port": "j8[0]",
+   "pin": "Y18",
+   "old": "plMiner7[0]"
+  },
+  {
+   "conn": "J8",
+   "cpin": 11,
+   "bitmain": "TXD",
+   "port": "j8[1]",
+   "pin": "V16",
+   "old": "plMiner7[1]"
+  },
+  {
+   "conn": "J8",
+   "cpin": 12,
+   "bitmain": "RXD",
+   "port": "j8[2]",
+   "pin": "W16",
+   "old": "plMiner7[2]"
+  },
+  {
+   "conn": "J8",
+   "cpin": 15,
+   "bitmain": "RST",
+   "port": "j8[3]",
+   "pin": "Y19",
+   "old": "plMiner7[3]"
+  },
+  {
+   "conn": "J9",
+   "cpin": 5,
+   "bitmain": "PLUG",
+   "port": "j9[0]",
+   "pin": "R16",
+   "old": "plMiner8[0]"
+  },
+  {
+   "conn": "J9",
+   "cpin": 11,
+   "bitmain": "TXD",
+   "port": "j9[1]",
+   "pin": "T17",
+   "old": "plMiner8[1]"
+  },
+  {
+   "conn": "J9",
+   "cpin": 12,
+   "bitmain": "RXD",
+   "port": "j9[2]",
+   "pin": "R18",
+   "old": "plMiner8[2]"
+  },
+  {
+   "conn": "J9",
+   "cpin": 15,
+   "bitmain": "RST",
+   "port": "j9[3]",
+   "pin": "R17",
+   "old": "plMiner8[3]"
+  }
+ ],
+ "en_pins": {
+  "J1": "MIO28",
+  "J2": "MIO29",
+  "J3": "MIO30",
+  "J4": "MIO31",
+  "J5": "MIO32",
+  "J6": "MIO33",
+  "J7": "MIO34",
+  "J8": "MIO35",
+  "J9": "MIO36"
+ },
+ "layout": [
+  {
+   "pin": 1,
+   "func": "GND",
+   "kind": "gnd"
+  },
+  {
+   "pin": 2,
+   "func": "GND",
+   "kind": "gnd"
+  },
+  {
+   "pin": 3,
+   "func": "SDA (I2C)",
+   "kind": "i2c"
+  },
+  {
+   "pin": 4,
+   "func": "SCL (I2C)",
+   "kind": "i2c"
+  },
+  {
+   "pin": 5,
+   "func": "IO0  PLUG",
+   "kind": "io"
+  },
+  {
+   "pin": 6,
+   "func": "A2 address strap",
+   "kind": "nc"
+  },
+  {
+   "pin": 7,
+   "func": "A1 address strap",
+   "kind": "nc"
+  },
+  {
+   "pin": 8,
+   "func": "A0 address strap",
+   "kind": "nc"
+  },
+  {
+   "pin": 9,
+   "func": "GND",
+   "kind": "gnd"
+  },
+  {
+   "pin": 10,
+   "func": "GND",
+   "kind": "gnd"
+  },
+  {
+   "pin": 11,
+   "func": "IO1  TXD",
+   "kind": "io"
+  },
+  {
+   "pin": 12,
+   "func": "IO2  RXD",
+   "kind": "io"
+  },
+  {
+   "pin": 13,
+   "func": "GND",
+   "kind": "gnd"
+  },
+  {
+   "pin": 14,
+   "func": "GND",
+   "kind": "gnd"
+  },
+  {
+   "pin": 15,
+   "func": "IO3  RST",
+   "kind": "io"
+  },
+  {
+   "pin": 16,
+   "func": "3.3 V out",
+   "kind": "pwr"
+  },
+  {
+   "pin": 17,
+   "func": "not connected",
+   "kind": "nc"
+  },
+  {
+   "pin": 18,
+   "func": "EN (ARM GPIO, 2.5 V)",
+   "kind": "ps"
+  }
+ ],
+ "pl_other": [
+  {
+   "port": "leds[0]",
+   "pin": "F16",
+   "what": "LED",
+   "notes": "on-board LED, ACTIVE LOW (0 = on)"
+  },
+  {
+   "port": "leds[1]",
+   "pin": "L19",
+   "what": "LED",
+   "notes": "on-board LED, ACTIVE LOW (0 = on)"
+  },
+  {
+   "port": "leds[2]",
+   "pin": "M19",
+   "what": "LED",
+   "notes": "on-board LED, ACTIVE LOW (0 = on)"
+  },
+  {
+   "port": "leds[3]",
+   "pin": "M17",
+   "what": "LED",
+   "notes": "on-board LED, ACTIVE LOW (0 = on)"
+  },
+  {
+   "port": "fan_pwm",
+   "pin": "J18",
+   "what": "Fan",
+   "notes": "PWM to pin 4 of all 6 fan headers (shared)"
+  },
+  {
+   "port": "fan_tach[0]",
+   "pin": "F19",
+   "what": "Fan",
+   "notes": "FAN1 speed (pin 3), 10k pull-up"
+  },
+  {
+   "port": "fan_tach[1]",
+   "pin": "G18",
+   "what": "Fan",
+   "notes": "FAN2 speed (pin 3), 10k pull-up"
+  },
+  {
+   "port": "fan_tach[2]",
+   "pin": "F20",
+   "what": "Fan",
+   "notes": "FAN3 speed (pin 3), 10k pull-up"
+  },
+  {
+   "port": "fan_tach[3]",
+   "pin": "J20",
+   "what": "Fan",
+   "notes": "FAN4 speed (pin 3), 10k pull-up"
+  },
+  {
+   "port": "fan_tach[4]",
+   "pin": "G17",
+   "what": "Fan",
+   "notes": "FAN5 speed (pin 3), 10k pull-up"
+  },
+  {
+   "port": "fan_tach[5]",
+   "pin": "H20",
+   "what": "Fan",
+   "notes": "FAN6 speed (pin 3), 10k pull-up"
+  },
+  {
+   "port": "i2c1_scl",
+   "pin": "W18",
+   "what": "I2C",
+   "notes": "SCL on J1..J8 pin 4, 1k pull-up"
+  },
+  {
+   "port": "i2c1_sda",
+   "pin": "W19",
+   "what": "I2C",
+   "notes": "SDA on J1..J8 pin 3, 1k pull-up"
+  },
+  {
+   "port": "i2c2_scl",
+   "pin": "N17",
+   "what": "I2C",
+   "notes": "SCL on J9 pin 4, 1k pull-up"
+  },
+  {
+   "port": "i2c2_sda",
+   "pin": "P18",
+   "what": "I2C",
+   "notes": "SDA on J9 pin 3, 1k pull-up"
+  },
+  {
+   "port": "board_id[0]",
+   "pin": "M15",
+   "what": "ID",
+   "notes": "board version strap (input)"
+  },
+  {
+   "port": "board_id[1]",
+   "pin": "M14",
+   "what": "ID",
+   "notes": "board version strap (input)"
+  },
+  {
+   "port": "board_id[2]",
+   "pin": "L15",
+   "what": "ID",
+   "notes": "board version strap (input)"
+  },
+  {
+   "port": "board_id[3]",
+   "pin": "L14",
+   "what": "ID",
+   "notes": "board version strap (input)"
+  },
+  {
+   "port": "tp1",
+   "pin": "K18",
+   "what": "Test",
+   "notes": "test point TP1 \"CLOCK_OUT\" (handy scope probe pin)"
+  }
+ ],
+ "ps": [
+  {
+   "name": "Status LED red (D3)",
+   "mio": 37,
+   "volt": "2.5 V bank",
+   "use": "ardzy.led('red')"
+  },
+  {
+   "name": "Status LED green (D3), \"Ardzy ready\"",
+   "mio": 38,
+   "volt": "2.5 V bank",
+   "use": "ardzy.led('green')"
+  },
+  {
+   "name": "Small green LED D2",
+   "mio": 15,
+   "volt": "3.3 V bank, active low",
+   "use": "ardzy.led('ps')"
+  },
+  {
+   "name": "Buzzer BZ1",
+   "mio": 39,
+   "volt": "2.5 V bank",
+   "use": "ardzy.beep(0.2)"
+  },
+  {
+   "name": "Button S2 \"IP\"",
+   "mio": 51,
+   "volt": "4.7k pull-up, pressed = 0",
+   "use": "ardzy.button('ip')"
+  },
+  {
+   "name": "Button S1 \"Reset\"",
+   "mio": 47,
+   "volt": "4.7k pull-up, pressed = 0",
+   "use": "ardzy.button('reset')"
+  },
+  {
+   "name": "Connector J1 pin 18 (EN1)",
+   "mio": 28,
+   "volt": "2.5 V output",
+   "use": "I2C1 SCL/SDA (set by the boot loader)"
+  },
+  {
+   "name": "Connector J2 pin 18 (EN2)",
+   "mio": 29,
+   "volt": "2.5 V output",
+   "use": "I2C1 SCL/SDA (set by the boot loader)"
+  },
+  {
+   "name": "Connector J3 pin 18 (EN3)",
+   "mio": 30,
+   "volt": "2.5 V output",
+   "use": "/sys/class/gpio/gpio30"
+  },
+  {
+   "name": "Connector J4 pin 18 (EN4)",
+   "mio": 31,
+   "volt": "2.5 V output",
+   "use": "/sys/class/gpio/gpio31"
+  },
+  {
+   "name": "Connector J5 pin 18 (EN5)",
+   "mio": 32,
+   "volt": "2.5 V output",
+   "use": "/sys/class/gpio/gpio32"
+  },
+  {
+   "name": "Connector J6 pin 18 (EN6)",
+   "mio": 33,
+   "volt": "2.5 V output",
+   "use": "/sys/class/gpio/gpio33"
+  },
+  {
+   "name": "Connector J7 pin 18 (EN7)",
+   "mio": 34,
+   "volt": "2.5 V output",
+   "use": "/sys/class/gpio/gpio34"
+  },
+  {
+   "name": "Connector J8 pin 18 (EN8)",
+   "mio": 35,
+   "volt": "2.5 V output",
+   "use": "/sys/class/gpio/gpio35"
+  },
+  {
+   "name": "Connector J9 pin 18 (EN9)",
+   "mio": 36,
+   "volt": "2.5 V output",
+   "use": "/sys/class/gpio/gpio36"
+  },
+  {
+   "name": "UART console TX (J12 pin 3)",
+   "mio": 48,
+   "volt": "3.3 V via level shifter",
+   "use": "Linux ttyPS0, 115200"
+  },
+  {
+   "name": "UART console RX (J12 pin 1)",
+   "mio": 49,
+   "volt": "3.3 V via level shifter",
+   "use": "Linux ttyPS0, 115200"
+  }
+ ],
+ "banks": [
+  {
+   "bank": "34",
+   "volt": "3.3 V",
+   "side": "PL",
+   "used_for": "J1..J9 signals, I2C buses"
+  },
+  {
+   "bank": "35",
+   "volt": "3.3 V",
+   "side": "PL",
+   "used_for": "LEDs, fans, board ID, TP1"
+  },
+  {
+   "bank": "500 (MIO 0-15)",
+   "volt": "3.3 V",
+   "side": "PS",
+   "used_for": "NAND flash, LED D2, boot straps"
+  },
+  {
+   "bank": "501 (MIO 16-53)",
+   "volt": "2.5 V",
+   "side": "PS",
+   "used_for": "Ethernet, SD card, UART, buttons, buzzer, status LED, EN pins"
+  }
+ ]
+}

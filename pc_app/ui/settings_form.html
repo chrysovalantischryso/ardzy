@@ -1,0 +1,11 @@
+<div class="setgrid">
+      <label>Board name <input data-k="hostname" placeholder="ardzy" pattern="[a-z0-9-]+" spellcheck="false"><small>the board is found as name.local</small></label>
+      <label>New root password <input data-k="password" type="password" placeholder="(keep the current one)" autocomplete="new-password"><small>for SSH / console login (default root)</small></label>
+      <label>Network <select data-k="network"><option value="auto">automatic (router, or direct cable)</option><option value="static">fixed address</option><option value="linklocal">direct cable only</option></select></label>
+      <label>Fixed address <input data-k="address" placeholder="192.168.1.50/24" spellcheck="false"></label>
+      <label>Gateway <input data-k="gateway" placeholder="192.168.1.1" spellcheck="false"></label>
+      <label>DNS <input data-k="dns" placeholder="1.1.1.1" spellcheck="false"></label>
+      <label>Time zone <select data-k="timezone"><option>UTC</option><option>Europe/Athens</option><option>Europe/London</option><option>Europe/Berlin</option><option>Europe/Paris</option><option>Europe/Rome</option><option>Europe/Madrid</option><option>Europe/Moscow</option><option>Europe/Istanbul</option><option>Asia/Dubai</option><option>Asia/Kolkata</option><option>Asia/Shanghai</option><option>Asia/Tokyo</option><option>Australia/Sydney</option><option>America/New_York</option><option>America/Chicago</option><option>America/Denver</option><option>America/Los_Angeles</option><option>America/Sao_Paulo</option><option>Africa/Johannesburg</option></select></label>
+      <label>SSH (PuTTY) <select data-k="ssh"><option value="on">on</option><option value="off">off</option></select></label>
+      <label>At power-on <input data-k="at_boot" list="atBootList" placeholder="pin-control" spellcheck="false"><small>pin-control, none, or a project name</small></label>
+    </div>

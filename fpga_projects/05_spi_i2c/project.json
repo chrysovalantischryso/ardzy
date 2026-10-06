@@ -1,0 +1,47 @@
+{
+  "id": "SPIC",
+  "title": "SPI and I2C in hardware",
+  "category": "Communication",
+  "level": "medium",
+  "summary": "Fast, exact SPI (up to 50 MHz, all 4 modes, 1 to 32 bits) on J2 and an I2C controller (100 kHz to 1 MHz, clock stretching) on the board's I2C bus: displays, sensors, ADCs, memories.",
+  "slots": {
+    "0": "Info",
+    "1": "SPI controller",
+    "2": "I2C controller"
+  },
+  "pins": {
+    "spi_cs": "j2[0]",
+    "spi_mosi": "j2[1]",
+    "spi_miso": "j2[2]",
+    "spi_sclk": "j2[3]",
+    "i2c_scl": "i2c1_scl",
+    "i2c_sda": "i2c1_sda",
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [
+    [
+      "J2 pin 5 / 11 / 12 / 15",
+      "SPI device CS / MOSI (DIN) / MISO (DOUT) / SCLK",
+      "3.3 V devices"
+    ],
+    [
+      "pin 3 / pin 4 of any of J1..J8",
+      "I2C device SDA / SCL",
+      "the board has 1 kohm pull-ups to 3.3 V"
+    ],
+    [
+      "pin 16 (3.3 V), pin 1 (GND)",
+      "device VCC and GND",
+      "small modules only (under 100 mA)"
+    ]
+  ],
+  "parts": [
+    "any SPI module (MAX7219 display, MCP3008 ADC, W25Q flash...)",
+    "any I2C module (BME280, SSD1306 OLED, DS3231 clock...)",
+    "nothing for the self-test"
+  ],
+  "tested": "the self-test passed 18 of 18 checks on the real board (October 2026), with nothing connected."
+}

@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ardzy 0.2 BETA</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <nav class="back"><a href="index.html">&larr; All documents</a></nav>
+  <div class="kicker">Document 5 &middot; Project 2_Ardzy, version 0.2</div>
+  <h1>Ardzy 0.2 BETA: everything inside the app</h1>
+  <p>FPGA designs built without Vivado, Arduino C++ sketches with Arduino libraries, instruments in the FPGA,
+  a drawing of the board, and Ardzy OS 0.2 that the app writes to the SD card and updates safely.</p>
+</div></header>
+<main class="wrap">
+<div class="toc"><b>Contents</b><ol>
+  <li><a href="#new">What is new</a></li>
+  <li><a href="#fpga">FPGA without Vivado</a></li>
+  <li><a href="#lib">The Ardzy FPGA library</a></li>
+  <li><a href="#arduino">Arduino C++ sketches</a></li>
+  <li><a href="#pins">Pin names for sketches</a></li>
+  <li><a href="#api">What the Arduino API does here</a></li>
+  <li><a href="#libs">Arduino libraries</a></li>
+  <li><a href="#tools">Instruments in the FPGA</a></li>
+  <li><a href="#views">The app, view by view</a></li>
+  <li><a href="#os">Ardzy OS 0.2</a></li>
+  <li><a href="#sd">Writing an SD card</a></li>
+  <li><a href="#update">Safe system updates</a></li>
+  <li><a href="#ref">Board API reference</a></li>
+  <li><a href="#ideas">Ideas: what to build next</a></li>
+  <li><a href="#where">Where things are</a></li>
+</ol></div>
+
+<h2 id="new">1. What is new</h2>
+<table>
+<tr><th>Before (Ardzy 0.1)</th><th>Now (Ardzy 0.2)</th></tr>
+<tr><td>FPGA designs needed Vivado (about 8 minutes, several GB)</td><td>The app builds them itself: Yosys + nextpnr + Ardzy's own bitstream writer, about 1 minute, 90 MB inside the app</td></tr>
+<tr><td>Programs in Python or C</td><td>Also <b>Arduino C++ sketches</b> (<code>setup()</code> and <code>loop()</code>), with the Arduino API, Wire, SPI, Servo, EEPROM, Serial, Serial1</td></tr>
+<tr><td>No libraries</td><td><b>Library Manager</b> with the whole Arduino library list (thousands of libraries), installed with one click</td></tr>
+<tr><td>I/O view: pins and fans</td><td>Plus <b>Tools</b>: logic analyzer (56 signals, 100 MHz), 8 PWM / clock / servo outputs, 4 frequency meters, a UART on any pins, I2C scanner and register access</td></tr>
+<tr><td>Text only</td><td><b>Map</b>: the board drawn, click any part for its pins and live state, wiring diagrams, how it all works</td></tr>
+<tr><td>Board view</td><td>Plus <b>System</b>: processes, services, logs, a register explorer for the whole chip, network, speed tests, settings</td></tr>
+<tr><td>Flash with balenaEtcher, settings by hand</td><td>The app writes and checks the card and puts the board's name, password and network on it</td></tr>
+<tr><td>Kernel updates by hand</td><td><b>Safe updates</b> from the app: a new kernel is tried once, the board goes back by itself if it fails</td></tr>
+</table>
+
+<h2 id="fpga">2. FPGA without Vivado</h2>
+<p>The <b>Build FPGA</b> button now runs a toolchain that lives inside the app. Nothing else needs to be installed.</p>
+<figure><svg viewBox="0 0 900 190" role="img" aria-label="Build steps">
+  <rect x="10" y="50" width="150" height="80" rx="10" class="d-box"/><text x="85" y="85" class="d-title" text-anchor="middle">Your Verilog</text><text x="85" y="106" class="d-small" text-anchor="middle">*.v + pins.xdc</text>
+  <rect x="200" y="50" width="150" height="80" rx="10" class="d-pl"/><text x="275" y="85" class="d-title" text-anchor="middle">Yosys</text><text x="275" y="106" class="d-small" text-anchor="middle">synthesis: LUTs, FFs</text>
+  <rect x="390" y="50" width="160" height="80" rx="10" class="d-pl"/><text x="470" y="85" class="d-title" text-anchor="middle">nextpnr</text><text x="470" y="106" class="d-small" text-anchor="middle">place + route, timing</text>
+  <rect x="590" y="50" width="150" height="80" rx="10" class="d-acc"/><text x="665" y="85" class="d-title" text-anchor="middle">fasm2bit</text><text x="665" y="106" class="d-small" text-anchor="middle">Ardzy, pure Python</text>
+  <rect x="780" y="50" width="110" height="80" rx="10" class="d-box"/><text x="835" y="85" class="d-title" text-anchor="middle">.bit</text><text x="835" y="106" class="d-small" text-anchor="middle">to the board</text>
+  <path d="M160 90 H200 M350 90 H390 M550 90 H590 M740 90 H780" class="d-arrow"/>
+  <text x="275" y="160" class="d-small" text-anchor="middle">about 15 s</text><text x="470" y="160" class="d-small" text-anchor="middle">about 45 s</text><text x="665" y="160" class="d-small" text-anchor="middle">about 2 s</text>
+  <text x="450" y="30" class="d-small" text-anchor="middle">the chip database (XC7Z010) comes from Project X-Ray, the open map of the 7-series bitstream</text>
+</svg><figcaption>The whole build of the pin-control design takes about 65 s. Vivado took about 8 minutes.</figcaption></figure>
+<table>
+<tr><th>Part</th><th>What it is</th><th>License</th></tr>
+<tr><td>Yosys 0.66</td><td>turns Verilog into Xilinx cells (LUT, FF, block RAM, DSP, IOBUF, PS7)</td><td>ISC</td></tr>
+<tr><td>nextpnr-himbaechel 0.11.1 (Xilinx)</td><td>places and routes them on the XC7Z010; reports the maximum clock</td><td>ISC</td></tr>
+<tr><td>Project X-Ray database (zynq7)</td><td>which configuration bits mean what</td><td>CC0</td></tr>
+<tr><td>fasm2bit (Ardzy)</td><td>a Python port of Project X-Ray's fasm2frames + xc7frames2bit</td><td>ISC (port)</td></tr>
+</table>
+<div class="box ok"><b>How it was checked</b>
+The frames made by Ardzy's fasm2bit were compared with Project X-Ray's own tool: 2952 frames, every bit the same.
+Then every part of the chip was measured on the real board by designs that test themselves
+(<code>projects\fpga_selftest</code>: 18 of 18, <code>projects\fpga_ramtest</code>: 11 RAM shapes, 3 runs each) and the pin-control design by
+<code>pc_app\tests\pin_control_test.py</code>: 10 of 10.</div>
+<table>
+<tr><th>Part of the chip</th><th>With the built-in toolchain (measured on the board)</th></tr>
+<tr><td>Logic, carry chains, flip-flops</td><td><span class="tag ok">works</span> (every design)</td></tr>
+<tr><td>Block RAM: RAMB18 and RAMB36, widths 1, 2, 4, 9, 18, 36, 72 (simple dual port)</td><td><span class="tag ok">works</span> after the Ardzy fixes below; 11 shapes, no errors</td></tr>
+<tr><td>LUT RAM (distributed RAM), SRL shift registers</td><td><span class="tag ok">works</span> (LUT RAM after an Ardzy fix)</td></tr>
+<tr><td>DSP48E1 multiplier</td><td><span class="tag ok">works</span> 25 x 18 signed, exact</td></tr>
+<tr><td>MMCM and PLL clock makers</td><td><span class="tag ok">works</span> 25, 100, 125, 200 MHz and 50, 133.33 MHz, measured exactly</td></tr>
+<tr><td>BUFG, BUFGCTRL (glitch-free clock switch)</td><td><span class="tag ok">works</span></td></tr>
+<tr><td>ODDR (DDR output, clock forwarding), IOBUF, pull-ups</td><td><span class="tag ok">works</span> 25 MHz read back at the pin</td></tr>
+<tr><td>PS7 (ARM link, FCLK clocks, AXI GP0)</td><td><span class="tag ok">works</span></td></tr>
+<tr><td>OSERDESE2 (serializer)</td><td><span class="tag bad">not yet</span> builds, but the pin never toggles; the app warns and suggests Vivado</td></tr>
+<tr><td>ISERDESE2, IDELAYE2</td><td><span class="tag wait">not tested</span> the app warns</td></tr>
+<tr><td>XADC from the FPGA, Device DNA, RAM cascades</td><td><span class="tag bad">no</span> (the ARM reads XADC and the chip ID anyway)</td></tr>
+</table>
+<div class="box warn"><b>Five fixes inside nextpnr</b> (all in <code>pc_app\fpga\nextpnr_ardzy.patch</code>)
+<ol>
+<li>Pins: one bit per pin (<code>ZINV_T1</code>) was left out, so every output enable was upside down.</li>
+<li>Device DNA block could not be placed.</li>
+<li>LUT RAM (<code>RAM64X1S</code>): the packer crashed ("net already has a driver").</li>
+<li>Block RAM at width 1 and 9: a RAMB36-only setting (<code>BRAM36_*_WIDTH_1</code>) was never written.</li>
+<li>Block RAM at width 9: the 9th bit of odd addresses was never written (the upper half takes it from a second parity input).
+Found by reading back thousands of words on the board: it also made <b>5 logic analyzer channels</b> (j3[0], j5[1], j7[2], j9[3], board_id[3])
+always read 0 in the first Ardzy 0.2 pin-control. Fixed and installed on the board; the 0.2 image and update carry the fixed design.</li>
+</ol>
+Also: block RAM writes in the first few clock cycles after the FPGA starts can be lost (normal for the chip): start a design's work after a short wait.</div>
+<p>Rules for your own designs:</p>
+<ul>
+  <li>Name the top module <code>top</code> (or put <code>{"top": "name"}</code> in <code>fpga.json</code>).</li>
+  <li>Pins in an <code>.xdc</code> file, as in Vivado: <code>set_property PACKAGE_PIN T11 [get_ports {j1[0]}]</code> and an <code>IOSTANDARD LVCMOS33</code> line.
+      Wildcards like <code>leds[*]</code> work. Pull-ups: <code>set_property PULLTYPE PULLUP [get_ports {...}]</code>.</li>
+  <li>The clock comes from the ARM: use <code>ardzy_clock</code> or <code>ardzy_soc</code> from the library (next chapter).</li>
+  <li>Vivado still works: Settings, FPGA build tool = Vivado (projects with <code>build.tcl</code>).</li>
+</ul>
+<p>Timing is checked by nextpnr's model. Placement is random: when a try misses the clock speed or has a hold problem, the app tries up to
+5 placements and keeps the best (the pin-control design: try 1 reached 94 MHz, try 2 114 MHz, so try 2 is used).</p>
+
+<h2 id="lib">3. The Ardzy FPGA library</h2>
+<p>Vivado's IP blocks (processing system, AXI GPIO, interconnect) are not available without Vivado, so Ardzy has its own small library
+(<code>pc_app\fpga\hdl</code>). It is added to every build.</p>
+<table>
+<tr><th>Module</th><th>Use</th></tr>
+<tr><td><code>ardzy_clock</code></td><td>just the clock (FCLK0, 100 MHz) and a reset, for designs that do not talk to the ARM</td></tr>
+<tr><td><code>ardzy_soc #(N_CTRL, N_STAT)</code></td><td>clock + up to 32 registers the ARM writes (<code>0x4120_0000 + 4n</code>) and 32 values it reads (<code>0x4120_0080 + 4n</code>)</td></tr>
+<tr><td><code>ardzy_ps7</code></td><td>the Zynq PS7 block with its AXI GP0 port, for advanced designs</td></tr>
+<tr><td><code>ardzy_axi3_lite</code></td><td>AXI3 from the ARM (bursts, IDs) to simple AXI4-Lite, one word at a time</td></tr>
+<tr><td><code>ardzy_lite_mux</code></td><td>one AXI4-Lite master to 2 slaves; any other address reads 0 instead of stopping the bus</td></tr>
+<tr><td><code>ardzy_gpio</code></td><td>GPIO with the same registers as Xilinx AXI GPIO, so old Python programs keep working</td></tr>
+</table>
+<pre><code>// a whole design: 4 LEDs set by the ARM, a seconds counter read back
+module top (output wire [3:0] leds);
+    wire clk, rstn;
+    wire [63:0] ctrl;
+    reg  [31:0] seconds = 0;
+    ardzy_soc #(.N_CTRL(2), .N_STAT(1)) soc (.clk(clk), .rstn(rstn), .ctrl(ctrl), .status(seconds));
+    assign leds = ctrl[3:0];
+    // ... count seconds ...
+endmodule</code></pre>
+<div class="box info"><b>No more frozen board from a wrong address</b>
+With Vivado's interconnect, reading an address no block answers stopped the ARM until the watchdog restarted it.
+The Ardzy library answers every address (0 for unknown ones).</div>
+
+<h2 id="arduino">4. Arduino C++ sketches</h2>
+<p>New project, template <b>Arduino sketch (C++)</b>, or <b>Examples</b>. Write <code>setup()</code> and <code>loop()</code> like on an Arduino and press <b>Upload</b>.</p>
+<figure><svg viewBox="0 0 900 200" role="img" aria-label="Sketch upload">
+  <rect x="10" y="40" width="170" height="110" rx="10" class="d-box"/><text x="95" y="70" class="d-title" text-anchor="middle">PC: Ardzy app</text>
+  <text x="95" y="94" class="d-small" text-anchor="middle">sketch.ino</text><text x="95" y="112" class="d-small" text-anchor="middle">+ the libraries it uses</text><text x="95" y="130" class="d-small" text-anchor="middle">packed in one zip</text>
+  <path d="M180 95 H260" class="d-arrow"/><text x="220" y="85" class="d-small" text-anchor="middle">Ethernet</text>
+  <rect x="260" y="20" width="300" height="160" rx="10" class="d-ps"/><text x="410" y="48" class="d-title" text-anchor="middle">Board: ARM (Linux)</text>
+  <text x="410" y="74" class="d-small" text-anchor="middle">1. tabs joined, prototypes added (like the IDE)</text>
+  <text x="410" y="94" class="d-small" text-anchor="middle">2. g++ 14 compiles; core + libraries are kept</text>
+  <text x="410" y="114" class="d-small" text-anchor="middle">3. pin-control FPGA design loaded</text>
+  <text x="410" y="134" class="d-small" text-anchor="middle">4. the sketch runs; Serial goes to the Monitor</text>
+  <text x="410" y="160" class="d-small" text-anchor="middle">usually 3 to 10 s</text>
+  <path d="M560 100 H630" class="d-arrow"/><text x="595" y="90" class="d-small" text-anchor="middle">AXI</text>
+  <rect x="630" y="40" width="260" height="110" rx="10" class="d-pl"/><text x="760" y="70" class="d-title" text-anchor="middle">FPGA: pin control</text>
+  <text x="760" y="94" class="d-small" text-anchor="middle">49 pins, 8 PWM, UART, counters</text><text x="760" y="114" class="d-small" text-anchor="middle">logic analyzer, fans</text>
+</svg><figcaption>Compile errors come back to the Output panel with your file names and line numbers.</figcaption></figure>
+<p><b>Check</b> compiles on the board without running. The <b>Monitor</b> shows <code>Serial</code> output and has an input line for <code>Serial.read()</code>.
+The <b>Plotter</b> tab draws numbers printed as <code>name:value</code> pairs or plain lists.</p>
+<p>16 examples come with Ardzy (all compile, checked on the board): Blink, BlinkWithoutDelay, Button, Fade, DigitalReadSerial, AnalogReadSerial,
+SerialEcho, SerialPlotter, Serial1Bridge, I2CScanner, ServoSweep, FanControl, Melody, PulseCounter, BootCounter, BoardInfo.
+Installed libraries add their own examples.</p>
+
+<h2 id="pins">5. Pin names for sketches</h2>
+<table>
+<tr><th>Name</th><th>Number</th><th>What</th></tr>
+<tr><td><code>J1_5, J1_11, J1_12, J1_15</code> ... <code>J9_15</code></td><td>0 to 35</td><td>connector J<i>n</i>, pin 5 / 11 / 12 / 15 (3.3 V, weak pull-up)</td></tr>
+<tr><td><code>LED0..LED3</code>, <code>LED_BUILTIN</code> = LED0</td><td>36 to 39</td><td>the 4 small FPGA LEDs, HIGH = on</td></tr>
+<tr><td><code>TP1</code></td><td>40</td><td>test point</td></tr>
+<tr><td><code>BOARD_ID0..3</code></td><td>41 to 44</td><td>board version straps (read only)</td></tr>
+<tr><td><code>SCL, SDA</code> / <code>SCL1, SDA1</code></td><td>45, 46 / 47, 48</td><td>I2C bus 1 (J1..J8 pins 4/3, Wire) / bus 2 (J9, Wire1)</td></tr>
+<tr><td><code>FAN1_TACH..FAN6_TACH</code>, <code>FAN_PWM</code></td><td>49 to 54, 55</td><td>fan speed inputs, fan PWM (analogWrite works)</td></tr>
+<tr><td><code>LED_GREEN, LED_RED, LED_D2, BUZZER</code></td><td>60 to 63</td><td>ARM side status LEDs and buzzer</td></tr>
+<tr><td><code>BUTTON_IP, BUTTON_RESET</code></td><td>64, 65</td><td>buttons, read LOW while pressed</td></tr>
+<tr><td><code>A0..A6</code></td><td>100 to 106</td><td>analogRead: chip temperature and supply voltages (no analog pins on the connectors)</td></tr>
+<tr><td><code>SS, MOSI, MISO, SCK</code></td><td>J2 pins 5, 11, 12, 15</td><td>default SPI pins</td></tr>
+<tr><td><code>PIN_SERIAL1_TX, _RX</code></td><td>J1 pins 11, 12</td><td>default Serial1 pins</td></tr>
+</table>
+
+<h2 id="api">6. What the Arduino API does here</h2>
+<table>
+<tr><th>Function</th><th>On this board</th></tr>
+<tr><td>pinMode, digitalWrite, digitalRead</td><td>FPGA registers, about 1 microsecond each. INPUT and INPUT_PULLUP are the same (pins have pull-ups). OUTPUT_OPENDRAIN works.</td></tr>
+<tr><td>analogWrite</td><td>a real PWM made by the FPGA, 1 kHz by default; <code>analogWriteFrequency(pin, hz)</code>, <code>analogWriteResolution(bits)</code>; 8 at once</td></tr>
+<tr><td>analogRead</td><td>A0 = chip temperature, A1..A6 = supply voltages, 10 bits by default</td></tr>
+<tr><td>millis, micros, delay, delayMicroseconds</td><td>Linux clock; short delays are exact (busy wait), long ones let other programs run</td></tr>
+<tr><td>tone, noTone</td><td>FPGA PWM at 50 %, any frequency up to 50 MHz; on BUZZER it switches the buzzer</td></tr>
+<tr><td>pulseIn, shiftIn, shiftOut</td><td>yes (about 1 microsecond resolution)</td></tr>
+<tr><td>attachInterrupt</td><td>a watcher thread checks the pins about 10,000 to 20,000 times a second and calls your function</td></tr>
+<tr><td>Serial</td><td>the app's Monitor (output and input); the baud rate does not matter</td></tr>
+<tr><td>Serial1</td><td>a real UART in the FPGA on any two pins, up to 3 Mbaud, 1024-byte receive buffer</td></tr>
+<tr><td>Wire, Wire1</td><td>I2C controller, 10 to 400 kHz, clock stretching</td></tr>
+<tr><td>SPI</td><td>controller on any pins, modes 0..3, up to about 1 MHz</td></tr>
+<tr><td>Servo</td><td>up to 8, exact pulses from the FPGA</td></tr>
+<tr><td>EEPROM</td><td>4 KB kept on the SD card (<code>/var/lib/ardzy/eeprom.bin</code>); <code>EEPROM.commit()</code> to write at once</td></tr>
+<tr><td>String, Print, Stream, random, map, ...</td><td>the official ArduinoCore-API (LGPL 2.1)</td></tr>
+<tr><td><code>Ardzy.beep(), .temperature(), .voltage(), .fan(), .fanRpm(), .fpgaClock(), .chipId()</code></td><td>extras of this board</td></tr>
+</table>
+<p>When the program is stopped (Stop, or a new upload) every FPGA pin goes back to input.</p>
+
+<h2 id="libs">7. Arduino libraries</h2>
+<p><b>Libraries</b> opens the Library Manager: search the official Arduino library list, Install (with the libraries it needs), Remove, or Add .ZIP.
+Libraries are kept in <code>projects\libraries</code>. Upload sends only the libraries a sketch includes.
+Wire, SPI, EEPROM and Servo are always Ardzy's own versions (made for this board).</p>
+<p>Tested on the real board (installed with the Library Manager, compiled and run):</p>
+<table>
+<tr><th>Library</th><th>Result</th></tr>
+<tr><td>Adafruit SSD1306 (+ GFX, BusIO)</td><td><span class="tag ok">works</span> OLED displays over I2C</td></tr>
+<tr><td>Adafruit BME280, RTClib, LiquidCrystal I2C</td><td><span class="tag ok">works</span> I2C sensors, clocks, character LCDs</td></tr>
+<tr><td>ArduinoJson, TinyGPSPlus, PID, AccelStepper</td><td><span class="tag ok">works</span> (TinyGPSPlus decoded a real NMEA sentence)</td></tr>
+<tr><td>DHT sensor library, OneWire</td><td><span class="tag ok">compiles and runs</span> timing by software: may need retries</td></tr>
+<tr><td>Adafruit NeoPixel</td><td><span class="tag wait">compiles</span> WS2812 LEDs need sub-microsecond timing that only an FPGA block can give (planned)</td></tr>
+</table>
+<p>Libraries written for one chip only (AVR registers, ESP32 radio, USB) do not work. Most libraries that use the Arduino functions, Wire, SPI and Serial do.
+The fast pin functions of the classic cores (<code>digitalPinToPort</code>, <code>portOutputRegister</code>, ...) are there too, as many Adafruit libraries use them.</p>
+
+<h2 id="tools">8. Instruments in the FPGA</h2>
+<p>The pin-control design (loaded at power-on and for every sketch) is a small lab:</p>
+<table>
+<tr><th>Instrument</th><th>Details</th></tr>
+<tr><td>Logic analyzer</td><td>4096 samples of 56 signals (49 pins, 6 fan speed inputs, fan PWM), 1 kHz to 100 MHz, trigger on rising / falling edge or level of any signal, before-trigger 0 to 90 %, zoom, cursors, CSV export</td></tr>
+<tr><td>PWM / clock / servo generator</td><td>8 channels on any pins, 0.02 Hz to 50 MHz, duty in % or pulse in microseconds</td></tr>
+<tr><td>Frequency meter</td><td>4 channels on any signal: frequency, duty, period, gate 0.1 to 5 s</td></tr>
+<tr><td>UART terminal</td><td>any TX and RX pins, 1200 baud to 3 Mbaud, text or hex</td></tr>
+<tr><td>I2C</td><td>scan both buses (address map), read and write registers</td></tr>
+</table>
+<p>Register map: <code>projects\ardzy_io\ardzy_ctl.v</code> (top of the file). Simulation: <code>projects\ardzy_io\sim\run_sim.bat</code>, <code>run_sim_open.bat</code>.</p>
+
+<h2 id="views">9. The app, view by view</h2>
+<table>
+<tr><th>View</th><th>What it shows and does</th></tr>
+<tr><td>Code</td><td>projects, editor (C++, Python, Verilog, C), Check, Upload, Build FPGA, Examples, Libraries, SD card. Side panel: <b>Outline</b> (functions, defines, modules, ports, signals, instances: click to jump), <b>Snippets</b> (ready code for each language, inserted at the cursor), <b>Reference</b> (every Ardzy function, pin name and FPGA library block with an example; F2 on a word), <b>Search</b> in every file of the project. <b>Problems</b> tab: compiler, Verilog and Python errors as clickable lines, with marks next to the lines in the editor. Suggestions while typing (Ctrl+Space), folding (Ctrl+Q), copy / move lines (Ctrl+D, Alt+Up/Down). <b>Editor settings</b>: font, size, line height, 5 colour schemes, indent size, tabs or spaces, ruler, auto-save, visible spaces, cursor shape and more.</td></tr>
+<tr><td>Board</td><td>a health strip on top (temperature, CPU, memory, supplies, SD space, FPGA, program, link, uptime; click one to go to its card); chip, clocks (set FCLK0..3), memory, SD card, NAND (read-only backup), network speed, LEDs, buzzer, buttons, all 54 ARM pins, restart / power off; <b>Program and FPGA</b> card (what runs now, what starts at power-on, Stop / Restart); <b>Live</b> chart of temperature, CPU, memory and supplies (pick the lines, now / min / average / max, point at it for the values, Save CSV). <b>Customize</b>: show, hide and order the cards (or drag them by the title), fold cards, columns, density, update speed, chart length, temperature alarm with beep. <b>Save report</b> writes everything about the board to a text file. <b>Data logger</b> card: the board records its sensors, the pins, LEDs and fan speeds, and the values your program prints, to the SD card by itself (every 0.2 s to 5 min, for 15 min to a week or until stopped), also with the PC off; the logs are listed, drawn (pick values, zoom with the wheel) and saved as CSV.</td></tr>
+<tr><td>I/O</td><td>every FPGA pin: in / 0 / 1 and its function, the 4 LEDs, I2C lines, board ID, fans (PWM, speed)</td></tr>
+<tr><td>Tools</td><td>the instruments of chapter 8</td></tr>
+<tr><td>Blocks</td><td>make a program by snapping blocks together, like Scratch: when the board starts / forever, pins, LEDs and buttons, brightness (PWM), servo, tones and notes, the buzzer, fans and their speed, chip temperature, wait, "every ... ms" timers, print and plot, plus logic, loops, math and variables. The blocks become a real Arduino sketch (shown beside them as C++), saved as name.ino + name.blocks.json; <b>Upload and run</b> builds it on the board. 8 ready examples (blink, button, breathing LED, thermometer on the Plotter, fans that follow the temperature, melody, counter, servo). New blocks programs: <b>+ Program</b> in the Blocks view or the template "Blocks (like Scratch)".<br><b>FPGA blocks</b> (<b>+ FPGA design</b>, template "FPGA blocks"): hardware made of blocks. Start blocks: <i>every N ms / us / s</i>, <i>when a pin rises / falls / changes</i> (the pin goes through a synchronizer first), <i>on every clock tick</i>, <i>all the time</i> (wires). Registers (name, bits, start value; set, add, count up and wrap, flip), outputs (the 4 LEDs with 1 = lit, the connector pins, the fans as a 24 kHz PWM, 4 status values for the ARM), inputs (pins, 4 ctrl values from the ARM), logic, numbers and bits (single bits, bit ranges, and / or / xor, invert, shifts, PWM). The blocks become <code>top.v</code>, <code>pins.xdc</code> and a <code>main.py</code> that shows the status values in the Watch tab. <b>Simulate</b> makes a testbench (the inputs change by themselves, the timers run 10 000 times faster) and shows the waves; <b>Build and run</b> builds the design (about 25 s) and loads it on the board. 8 examples: blink, binary counter, breathing LED, button flips an LED, 1 kHz square wave, pulse counter for the ARM, fans from the ARM, Knight rider.</td></tr>
+<tr><td>Learn</td><td>a course of 10 lessons (logic gates, the clock and counters, edges and debouncing, PWM, state machines, registers on the bus, a UART, block RAM, measuring frequencies, DDS and the Plotter): each with interactive drawings, a working project created and uploaded with one click, its code, a quiz and challenges; and 24 ideas for your own projects. The same course is <a href="07_Learn_FPGA.html">document 7</a>.</td></tr>
+<tr><td>Map</td><td>Board: the control board drawn to scale from a photo (or the photo itself), click a part for its pinout and live state; layers for names, pin numbers, FPGA pins and live levels; highlight a net (GND, 3.3 V, I2C, UART ...); find any pin (T12, SDA, J3 pin 5, fan_pwm); zoom with the wheel and drag to move. Pin table: every pin with its FPGA pin, Arduino and Verilog name, filter and save as CSV. Wiring: LED, button, I2C sensor, USB-UART, servo, UART device, level shifter, fans. How it works: the ARM, FPGA, memory and pins with live values.</td></tr>
+<tr><td>System</td><td>processes, services (start / stop / restart where safe), system log and kernel messages, register explorer (12 blocks of the Zynq, decoded), Linux and network details, speed tests, board settings and system update</td></tr>
+</table>
+<p>Bottom panel: Output (app messages), Monitor (program output + input), Plotter, Board (status), Registers (peek / poke), USB serial (console cable), Pins (reference). Drag its top edge to make it taller or shorter, double-click the edge or press <b>Ctrl+J</b> to hide or show it; the app remembers both.</p>
+<p>The <b>Monitor</b> keeps up to 20000 lines: type in its filter box to show only the lines with a word, tick <b>times</b> for the time of each line, <b>Pause</b> stops the scrolling (new lines wait), <b>Copy</b> copies the shown lines, <b>Save</b> writes the whole monitor to a text file in the projects folder (<code>_logs</code>).</p>
+<p>The top bar has two rows: the views and the board on top, the project's actions below (with the project's name first). <b>Settings</b> (the gear) also chooses the look (same as Windows, light or dark), the editor text size and line wrapping.</p>
+<table>
+<tr><th>Keys</th><th>What they do</th></tr>
+<tr><td>Ctrl+U / Ctrl+R / Ctrl+S</td><td>Upload and run / Check / Save the file</td></tr>
+<tr><td>Ctrl+F, F3, Shift+F3</td><td>Find in the file, the next, the one before</td></tr>
+<tr><td>Ctrl+H / Ctrl+G</td><td>Find and replace / go to a line</td></tr>
+<tr><td>Ctrl+/</td><td>Comment or uncomment the line (or the selected lines)</td></tr>
+<tr><td>Tab / Shift+Tab</td><td>Indent / unindent the selected lines</td></tr>
+<tr><td>Ctrl++ / Ctrl+- / Ctrl+0</td><td>Editor text bigger / smaller / normal</td></tr>
+<tr><td>Alt+Z</td><td>Wrap long lines on or off</td></tr>
+<tr><td>App settings (the gear at the top right)</td><td><b>Language</b>: English, Ελληνικά (Greek), Русский (Russian): the whole interface, the Ardzy blocks and Blockly's own blocks (the lesson texts and the guides stay in English). <b>Look</b>: theme, accent colour (12 colours or your own), background (Ardzy, neutral grey, blue night, warm sand, high contrast; each in light and dark), size of the app (80 .. 150 %), font, density, corners, less motion. <b>Text</b>: size, font and line spacing of the Monitor and Output, and the code editor settings. <b>Behavior</b>: the view that opens at start (or the last one), the bottom panel at start, tooltips on or off, a sound when an upload, build or simulation ends. <b>Board and FPGA</b>: workspace, Vivado, board names, FPGA tool. <b>About</b>: export, import or reset the settings. Links can open the app in a language or a settings page: <code>#lang=el</code>, <code>#settings=look</code>.</td></tr>
+<tr><td>Simulation (bottom tab, F6)</td><td>simulates the project's Verilog on the PC (Icarus Verilog, inside the app) and draws the waves, before you build it and without the board. <b>New testbench</b> writes a testbench (<code>top_tb.v</code>) for the top module, with the ARM side ready to use: <code>dut.u_soc.write_ctrl(0, 5)</code> / <code>read_status(0, v)</code> for ardzy_soc designs, <code>dut.u_bus.write(16'h1004, 7)</code> / <code>read(...)</code> for slot-bus designs. <b>Simulate</b> runs it for up to 1 us .. 100 ms; <code>$display</code> lines go to Output, mistakes to Problems (with marks in the editor). Waves: signals by module (search, all / none, parameters hidden), mouse wheel = zoom, drag = move, click = cursor A, Shift+click = cursor B (time and frequency between them), hex / decimal / signed / binary, click a bus name to draw it as a curve. The parts of the chip outside the FPGA logic (ardzy_soc, ardzy_bus, BUFG, ODDR, IOBUF, MMCME2_BASE, PLLE2_BASE ...) are simulation models (<code>pc_app/fpga/simlib/ardzy_sim.v</code>); the rest of the Ardzy library is used as it is.</td></tr>
+<tr><td>Watch (bottom tab)</td><td>the values of the running program, live: name, value, min, max, average, updates per second, age and a small graph of the last 120 values. A program shows a value with <code>Ardzy.watch("speed", speed);</code> (sketch) or <code>from ardzy import watch; watch(speed=speed)</code> (Python); any line like <code>temp:42.5 fan:1200</code> or <code>state="running"</code> works too. <b>Record</b> keeps every value with its time and <b>Save CSV</b> writes it to a file. Example: 08.Board / WatchValues.</td></tr>
+<tr><td>Ctrl+1 ... Ctrl+9</td><td>Code, Board, I/O, Tools, Ready projects, Learn, Map, System, Blocks</td></tr>
+<tr><td>F1</td><td>The list of keys</td></tr>
+</table>
+<p>The status bar shows the cursor position (line, column, how much is selected). In Tools, <b>Trigger now</b> also starts a capture when none is waiting.</p>
+
+<h2 id="os">10. Ardzy OS 0.2</h2>
+<table>
+<tr><th>Part</th><th>Version</th></tr>
+<tr><td>Boot loader</td><td>U-Boot 2026.07 (SPL), with the safe-update boot script</td></tr>
+<tr><td>Kernel</td><td>Linux 6.18 (linux-xlnx), NAND read-only, compressed swap (zram)</td></tr>
+<tr><td>System</td><td>Debian 13, g++ 14, Python 3.13, i2c-tools, git, htop, nano, rsync, mtd-utils, ethtool</td></tr>
+<tr><td>Ardzy</td><td>ardzy command, web service and API, Arduino core + libraries + examples, pin-control FPGA design</td></tr>
+</table>
+<p><b>Settings file</b> <code>ardzy.txt</code> on the card's boot partition (the app writes it; Notepad works too). Applied at start, or at once from the app (System, Settings and update):</p>
+<table>
+<tr><th>Setting</th><th>Values</th><th>Default</th></tr>
+<tr><td>hostname</td><td>the board's name: <code>&lt;hostname&gt;.local</code></td><td>ardzy</td></tr>
+<tr><td>password</td><td>new root password; the board erases it from the file after using it</td><td>(root)</td></tr>
+<tr><td>network</td><td>auto (router or direct cable) / static / linklocal</td><td>auto</td></tr>
+<tr><td>address, gateway, dns</td><td>for static: <code>192.168.1.50/24</code>, <code>192.168.1.1</code>, <code>1.1.1.1</code></td><td></td></tr>
+<tr><td>timezone</td><td><code>Europe/Athens</code>, <code>UTC</code>, ...</td><td>chosen in the app</td></tr>
+<tr><td>ssh</td><td>on / off</td><td>on</td></tr>
+<tr><td>at_boot</td><td>pin-control / none / a project name</td><td>pin-control</td></tr>
+</table>
+<p>Also new: 256 MB of compressed swap in RAM (big libraries compile in 512 MB), logs limited to 64 MB (less wear of the card),
+a kernel that restarts by itself 5 s after a crash (<code>panic=5</code>), and the commands <code>ardzy config</code>, <code>ardzy update</code>, <code>ardzy pin-control</code>.</p>
+
+<h2 id="sd">11. Writing an SD card</h2>
+<ol class="steps">
+  <li>Put the microSD card in the PC (USB reader or built-in slot).</li>
+  <li>In the app: <b>SD card</b>. Choose the image (the app finds <code>Ardzy-0.2-sdcard.img.xz</code>), the card, and the board settings.</li>
+  <li><b>Write card</b>, confirm the card's name and size. Windows asks for administrator permission (writing a whole disk needs it).</li>
+  <li>The app writes, reads everything back to check it, and puts <code>ardzy.txt</code> on the boot partition.</li>
+  <li>Card in the board, boot jumpers on SD (JP2 and JP4), power on. After about 2 minutes the app finds <code>&lt;name&gt;.local</code>.</li>
+</ol>
+<div class="box bad"><b>Safety</b>
+Only removable USB / SD disks from 1 to 256 GB are offered; the PC's own disks are never listed as writable.
+The writer checks the disk again right before writing (number, size, name) and stops if anything changed.</div>
+
+<h2 id="update">12. Safe system updates</h2>
+<p>System, Settings and update, <b>Install update</b> sends an update file (<code>Ardzy-0.2-update.tar.gz</code>) to the board. It brings a new kernel,
+packages and Ardzy files. A new kernel is never trusted blindly:</p>
+<figure><svg viewBox="0 0 900 250" role="img" aria-label="Safe update">
+  <rect x="10" y="20" width="200" height="70" rx="10" class="d-box"/><text x="110" y="48" class="d-title" text-anchor="middle">Update installed</text><text x="110" y="70" class="d-small" text-anchor="middle">old kernel kept as .old, try = 1</text>
+  <path d="M210 55 H260" class="d-arrow"/>
+  <rect x="260" y="20" width="200" height="70" rx="10" class="d-acc"/><text x="360" y="48" class="d-title" text-anchor="middle">Next start (U-Boot)</text><text x="360" y="70" class="d-small" text-anchor="middle">tried = 1, new kernel starts</text>
+  <path d="M460 40 H520 V30 H560" class="d-arrow"/><path d="M460 70 H520 V160 H560" class="d-line"/>
+  <rect x="560" y="5" width="330" height="60" rx="10" class="d-acc"/><text x="725" y="30" class="d-title" text-anchor="middle">Linux comes up</text><text x="725" y="50" class="d-small" text-anchor="middle">"boot OK" after 90 s: the new kernel is kept</text>
+  <rect x="560" y="125" width="330" height="70" rx="10" class="d-red"/><text x="725" y="150" class="d-title" text-anchor="middle">It does not (crash, panic, hang)</text><text x="725" y="172" class="d-small" text-anchor="middle">panic = restart in 5 s; a hang: switch off and on</text>
+  <path d="M725 195 V225 H360 V95" class="d-line"/>
+  <text x="540" y="240" class="d-small" text-anchor="middle">next start: tried = 1 again, so U-Boot starts zImage.old and Linux puts the old kernel back for good</text>
+</svg></figure>
+<div class="box ok"><b>Tested in the emulator</b>
+<code>scripts\test_os2_qemu.sh</code> starts the image, installs the release update and a good new kernel (tried, then kept) and then an update with a broken kernel:
+the board went back to the previous kernel by itself and reported it. Result on the released image: 18 checks passed, 0 failed.
+The emulator runs a U-Boot that keeps its settings in <code>uboot.env</code> exactly like the board (<code>scripts\test_uboot_for_qemu.sh</code>);
+the real board's U-Boot reads the same file (its network MAC address comes only from there).</div>
+<div class="box info"><b>A board that runs Ardzy 0.1</b>
+1.0 has no update service yet. The app sees that and sends the installer together with the update, as a one-off program
+that runs once on the board; then it reads the result back and removes it. The settings file <code>ardzy.txt</code> is created
+from the board's current settings (name, time zone, SSH), so nothing changes by itself. Restart the board to start 0.2 (as a trial, like any new kernel).</div>
+<p>On the board by hand: <code>ardzy update /path/Ardzy-0.2-update.tar.gz</code>, then <code>reboot</code>. The status: System, Settings and update, or <code>/var/lib/ardzy/update_status</code>.</p>
+
+<h2 id="ref">13. Board API reference (new in Ardzy 0.2)</h2>
+<table>
+<tr><th>Call</th><th>What</th></tr>
+<tr><td>GET <code>/api/io</code>, <code>/api/io/pwm</code>, <code>/api/io/meas</code>, <code>/api/io/uart</code>, <code>/api/io/signals</code></td><td>pins, PWM channels, measuring channels, UART state, signal names</td></tr>
+<tr><td>POST <code>/api/io/func</code>, <code>/api/io/pwm/set</code>, <code>/api/io/meas/set</code>, <code>/api/io/uart/config|send|read</code></td><td>pin function, PWM, meters, UART</td></tr>
+<tr><td>POST <code>/api/la/start</code>, <code>/api/la/ctrl</code>; GET <code>/api/la</code>, <code>/api/la/data</code></td><td>logic analyzer</td></tr>
+<tr><td>POST <code>/api/i2c/scan|read|write|lines</code></td><td>I2C</td></tr>
+<tr><td>GET <code>/api/sys/procs|services|journal|dmesg|info</code>, POST <code>/api/sys/service</code>, <code>/api/sys/time</code></td><td>Linux information and control</td></tr>
+<tr><td>GET <code>/api/regs</code>, <code>/api/regs/block?b=</code></td><td>register explorer (read only)</td></tr>
+<tr><td>POST <code>/api/bench?test=cpu|mem|sd</code>; GET <code>/api/bench/download</code>; PUT <code>/api/bench/upload</code></td><td>speed tests</td></tr>
+<tr><td>POST <code>/api/build?p=</code>; POST <code>/api/serial/send</code></td><td>compile a sketch; text for Serial.read()</td></tr>
+<tr><td>GET / POST <code>/api/config</code> (JSON body)</td><td>board settings (ardzy.txt)</td></tr>
+<tr><td>PUT <code>/api/system/update</code>; GET <code>/api/update/status</code></td><td>system update</td></tr>
+</table>
+
+<h2 id="ideas">14. Ideas: what to build next</h2>
+<p>All of these use only parts measured as working on this chip with the built-in toolchain (chapter 2). The XC7Z010 has
+17,600 LUTs, 60 block RAMs (2.1 Mbit), 80 DSP multipliers and 2 MMCM + 2 PLL: pin-control uses about 16 % of the logic.</p>
+<table>
+<tr><th>Block</th><th>What it gives you</th><th>Uses</th></tr>
+<tr><td>WS2812 (NeoPixel) driver</td><td>exact LED-strip timing, thousands of LEDs from a RAM buffer; makes the Adafruit NeoPixel library work for real</td><td>block RAM, 1 pin</td></tr>
+<tr><td>Pattern generator</td><td>the opposite of the logic analyzer: play any digital pattern on up to 32 pins at up to 100 MHz</td><td>block RAM</td></tr>
+<tr><td>Quadrature encoder counters</td><td>motor position at any speed, no missed steps</td><td>logic, 2 pins each</td></tr>
+<tr><td>Stepper pulse generators</td><td>smooth acceleration for CNC / 3D printer axes, exact step timing</td><td>DSP, logic</td></tr>
+<tr><td>Hardware I2C and SPI with FIFOs</td><td>I2C 400 kHz to 1 MHz and SPI to 25 MHz without the ARM bit-banging</td><td>LUT RAM FIFOs</td></tr>
+<tr><td>Signal generator (DDS)</td><td>sine / triangle / sweep through a sigma-delta pin and an RC filter, or an 8-pin R-2R ladder</td><td>block RAM (sine table), DSP</td></tr>
+<tr><td>VGA output</td><td>640 x 480 picture with 5 pins and resistors: text console, graphs</td><td>MMCM (25.175 MHz), block RAM</td></tr>
+<tr><td>Audio</td><td>I2S to a DAC module, PDM microphone in, FIR filters</td><td>DSP, block RAM</td></tr>
+<tr><td>Sensor helpers</td><td>HC-SR04 distance timing, IR remote (NEC) decoder, capacitive touch</td><td>logic</td></tr>
+<tr><td>Soft RISC-V core (PicoRV32, SERV)</td><td>a third processor next to the two ARM cores, its program loaded by the ARM</td><td>block RAM, logic</td></tr>
+<tr><td>AXI-Stream building blocks</td><td>FIFOs, width converters, arbiters to connect blocks (open libraries such as verilog-axis, MIT license)</td><td>block / LUT RAM</td></tr>
+</table>
+<p>Possible later, needs more testing first: deep logic-analyzer captures straight into the 512 MB DDR through the PS7 HP ports;
+HDMI / DVI needs serializers (not working with the open tools yet) and differential pin pairs.</p>
+
+<h2 id="where">15. Where things are</h2>
+<table>
+<tr><th>What</th><th>Where</th></tr>
+<tr><td>Built-in FPGA toolchain</td><td><code>2_Ardzy\pc_app\tools\fpga</code> (made by <code>pc_app\fpga\make_toolchain.sh</code>); build flow <code>pc_app\fpga\flow.py</code>, bitstream writer <code>fasm2bit.py</code>, library <code>hdl\</code></td></tr>
+<tr><td>Toolchain sources (to rebuild nextpnr)</td><td><code>D:\ardzy_build</code>: MSYS2, nextpnr (patched), prjxray, prjxray-db; <code>build_nextpnr.sh</code></td></tr>
+<tr><td>Arduino core, libraries, examples, sketch builder</td><td><code>2_Ardzy\arduino</code> (on the board: <code>/usr/lib/ardzy/arduino</code>)</td></tr>
+<tr><td>Pin-control design</td><td><code>2_Ardzy\projects\ardzy_io</code> (open top: <code>ardzy_io_top.v</code>; Vivado: <code>build.tcl</code>); on the board <code>/usr/lib/ardzy/fpga/ardzy_io.bit</code></td></tr>
+<tr><td>SD image and update</td><td><code>2_Ardzy\out\release\Ardzy-0.2-sdcard.img.xz</code>, <code>Ardzy-0.2-update.tar.gz</code></td></tr>
+<tr><td>OS build scripts</td><td><code>2_Ardzy\scripts</code>: 03 kernel, 04 rootfs, 05 image, 06 release, 07 update bundle, test_os2_qemu.sh</td></tr>
+</table>
+</main>
+</body>
+</html>

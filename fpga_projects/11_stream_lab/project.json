@@ -1,0 +1,22 @@
+{
+  "id": "AXIS",
+  "title": "AXI-Stream lab (FIFO, CRC-32, arbiter)",
+  "category": "Computing",
+  "level": "advanced",
+  "summary": "The building blocks for data streams in the FPGA, at work: FIFOs, a width converter, a CRC-32 engine checked against Python, a 100-million-words-per-second source with a meter, and a frame-aware arbiter.",
+  "slots": {
+    "0": "Info",
+    "1": "Stream lab (chains A, B, C)"
+  },
+  "pins": {
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [],
+  "parts": [
+    "nothing: everything happens inside the FPGA"
+  ],
+  "tested": "the self-test passed 7 of 7 checks on the real board (October 2026), with nothing connected."
+}

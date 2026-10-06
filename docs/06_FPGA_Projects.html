@@ -1,0 +1,1218 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ardzy FPGA Projects</title><link rel="stylesheet" href="docs.css"></head><body id="top"><header class="top"><div class="wrap"><nav class="back"><a href="index.html">&larr; All documents</a></nav><div class="kicker">Document 6 &middot; Project 2_Ardzy</div><h1>FPGA projects: ready to upload</h1><p>Every idea as a complete project: the design, a prebuilt bitstream, a demo, a self-test, live controls in the app and a guide.</p></div></header><main class="wrap"><section class="intro">
+<h2>How to use these projects</h2>
+<p>Each project is a complete FPGA design for the S9 control board, ready to upload: a prebuilt bitstream, a Python demo, a self-test that measures every part on your own board, and a guide. In the Ardzy app open <b>Ready projects</b>, pick a card and press <b>Upload and run</b>, <b>Self-test</b> or <b>Guide</b>. <b>Copy to my projects</b> gives you an editable copy: change the Verilog or the program, press <b>Build FPGA</b> (the built-in toolchain, no Vivado needed) and <b>Upload</b>.</p>
+<p>All projects share one layout on the ARM side: a 64 KB register window at <code>0x43C0_0000</code> cut into 16 slots of 4 KB. Slot 0 is always the Info block (project name, seconds, the 4 LEDs). <code>blocks.py</code> has a Python driver for every block; the Verilog blocks are in the app's FPGA library (<code>fpga/hdl</code>) and can be combined in your own designs.</p>
+<p>Every self-test passed on the real board. Most need nothing connected: the FPGA reads its own pins back at the pads, and test generators inside stand in for sensors. The FM radio (project 12) sends radio signals: read its guide about the rules before you put an antenna on it.</p>
+</section>
+<div class="cards"><a class="card" href="#01_led_strip"><span class="n">Lights and display &middot; easy</span><h3>LED strip (WS2812 / NeoPixel)</h3><p>Drive WS2812B / SK6812 RGB LED strips with exact timing from the FPGA: up to 1024 LEDs, brightness and colour order in hardware.</p></a><a class="card" href="#02_pattern_gen"><span class="n">Test and measurement &middot; easy</span><h3>Pattern generator</h3><p>The opposite of the logic analyzer: play any digital pattern of up to 1024 steps on 16 pins, up to 100 million steps per second, checked at the pins.</p></a><a class="card" href="#03_encoders"><span class="n">Motors and motion &middot; easy</span><h3>Rotary encoders (quadrature counters)</h3><p>Count two quadrature encoders (knobs, motor encoders, linear scales) in hardware: never a missed step, position, speed and error counts, with a glitch filter.</p></a><a class="card" href="#04_steppers"><span class="n">Motors and motion &middot; medium</span><h3>Stepper motors (step / dir with acceleration)</h3><p>Two stepper axes for driver boards like A4988, DRV8825 or TMC2208: smooth speed-up and slow-down computed in hardware every microsecond, exact stop at the target.</p></a><a class="card" href="#05_spi_i2c"><span class="n">Communication &middot; medium</span><h3>SPI and I2C in hardware</h3><p>Fast, exact SPI (up to 50 MHz, all 4 modes, 1 to 32 bits) on J2 and an I2C controller (100 kHz to 1 MHz, clock stretching) on the board&#x27;s I2C bus: displays, sensors, ADCs, memories.</p></a><a class="card" href="#06_signal_gen"><span class="n">Test and measurement &middot; easy</span><h3>Signal generator (DDS)</h3><p>A function generator: sine, triangle, sawtooth and square from 0.02 Hz to several MHz in 0.023 Hz steps, amplitude, offset, duty and frequency sweeps, on four kinds of outputs.</p></a><a class="card" href="#07_vga"><span class="n">Lights and display &middot; medium</span><h3>VGA picture (640 x 480)</h3><p>Connect any VGA monitor with 8 resistors: a 320 x 240 picture with 16 colours (out of 64), text, lines, graphs, all drawn from Python.</p></a><a class="card" href="#08_audio"><span class="n">Sound &middot; medium</span><h3>Audio: I2S out and in, PDM microphone</h3><p>Play sound through an I2S DAC or amplifier module (PCM5102A, MAX98357A), record from an I2S ADC, or from a digital PDM microphone with a CIC filter in hardware. 48.8 kHz stereo, 16 bit.</p></a><a class="card" href="#09_sensors"><span class="n">Sensors &middot; easy</span><h3>Sensors: distance, IR remote, touch</h3><p>Three sensor helpers timed by the FPGA to the microsecond: HC-SR04 ultrasonic distance, any NEC infrared remote control, and a capacitive touch pad.</p></a><a class="card" href="#10_riscv"><span class="n">Computing &middot; advanced</span><h3>RISC-V processor in the FPGA</h3><p>A third processor next to the two ARM cores: Ardzy&#x27;s own RV32I RISC-V core with 16 KB RAM, LEDs, GPIO, timers, a console and mailboxes. Write assembly in the app, the ARM assembles and loads it.</p></a><a class="card" href="#11_stream_lab"><span class="n">Computing &middot; advanced</span><h3>AXI-Stream lab (FIFO, CRC-32, arbiter)</h3><p>The building blocks for data streams in the FPGA, at work: FIFOs, a width converter, a CRC-32 engine checked against Python, a 100-million-words-per-second source with a meter, and a frame-aware arbiter.</p></a><a class="card" href="#12_fm_radio"><span class="n">Radio &middot; advanced</span><h3>Radio transmitter (FM stereo + RDS, NFM, AM, SSB, CW, digital, pictures, AES67)</h3><p>A radio station on one pin, made inside the FPGA: FM stereo with your station name and text on the radio&#x27;s display (RDS), NFM, AM, USB, LSB and DSB, Morse code, RTTY and PSK31, pictures (SSTV), songs from WAV files and live sound from the network (AES67).</p></a><a class="card" href="#13_sha256"><span class="n">Computing &middot; intermediate</span><h3>SHA-256 miner (what the Antminer was built for)</h3><p>SHA-256 in hardware, three units side by side: hash any message, then mine like Bitcoin (double SHA-256 over a block header, searching the nonce) and race the ARM. Finds the real nonce of Bitcoin block 125552.</p></a><a class="card" href="#14_fir_filter"><span class="n">Sound &middot; intermediate</span><h3>FIR filter lab (DSP in hardware)</h3><p>A digital filter made of one hardware multiplier: up to 64 taps, 1.5 million samples per second, results equal to the math to the last bit. Design low-pass, high-pass or band-pass filters in Python, feed them sound or the built-in sine and noise generator, and measure their frequency response.</p></a><a class="card" href="#15_game_of_life"><span class="n">Computing &middot; beginner</span><h3>Game of Life (64 x 64 cells, 1.4 million generations per second)</h3><p>Conway&#x27;s Game of Life in hardware: 64 copies of the rule work side by side, a whole row per clock, so the FPGA runs about 1.4 million generations per second, thousands of times faster than Python. Draw patterns, watch gliders fly in the Monitor, find out what a still life, an oscillator and a spaceship are.</p></a></div><section id="01_led_strip" class="project"><div class="kicker">Lights and display &middot; easy</div><h2>LED strip (WS2812 / NeoPixel)</h2><p class="lead">Drive WS2812B / SK6812 RGB LED strips with exact timing from the FPGA: up to 1024 LEDs, brightness and colour order in hardware.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 13 of 13 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>LED strip registers</td></tr><tr><td>2</td><td><code>0x43C02000</code></td><td>LED strip pixels (1024 words)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>ws_pin</code></td><td>J7 pin 5</td><td>T20</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J7 pin 5</td><td>strip DIN</td><td>through a 74AHCT125 level shifter (5 V strips), or a 330 ohm resistor for a short test</td></tr><tr><td>J7 pin 1 or 2 (GND)</td><td>strip GND and the 5 V supply&#x27;s GND</td><td>common ground is a must</td></tr><tr><td>5 V supply</td><td>strip +5V</td><td>about 60 mA per LED at full white</td></tr></table><h3>Parts</h3><ul><li>WS2812B or SK6812 LED strip / ring</li><li>5 V power supply (1 A per 16 LEDs at full white)</li><li>74AHCT125 level shifter (or 330 ohm resistor)</li><li>1000 uF capacitor across the strip supply</li></ul><h2>What it does</h2>
+<p>Drives a strip of addressable RGB LEDs (WS2812B, WS2812, SK6812, "NeoPixel") from J7 pin 5: up to 1024 LEDs, any colour per LED, a brightness setting, and the colour order of your strip. The demo plays a rainbow, a colour wipe, a theatre chase and a breathing glow.</p>
+<h2>How it works</h2>
+<p>A WS2812 strip has one data wire. Every LED takes the first 24 bits it sees (8 green, 8 red, 8 blue), keeps them, and passes the rest on to the next LED. A bit is a high pulse in a 1.25 us slot: a <b>short</b> pulse (0.4 us) is a 0, a <b>long</b> one (0.8 us) is a 1. A pause of more than 50 us (here 300 us) means "show the colours now".</p>
+<p>The timing is tight (+-0.15 us), which is hard for Linux on the ARM but easy for the FPGA: a counter at 100 MHz makes every edge to 10 ns.</p>
+<pre><code>ARM writes pixels -&gt; pixel memory (1024 words) -&gt; brightness, colour order -&gt; bit timer -&gt; J7 pin 5
+                                                        pin read back at the pad -&gt; pulse counter</code></pre>
+<p>The FPGA also reads its own pin back: it counts the high pulses and measures the short and long ones. The self-test uses that to prove the real signal at the pin is right.</p>
+<h2>Try it</h2>
+<ol><li>Strip <b>DIN</b> to J7 pin 5, strip <b>GND</b> to pin 1 (GND). The strip needs its own 5 V supply (60 mA per LED at full white); connect its ground to the board's ground.</li><li>Most WS2812B strips take the 3.3 V signal. If yours flickers, add a level shifter (74AHCT125) or power the first LED from 4.5 V (a diode in its supply).</li><li><b>Upload and run</b>. Change <code>N</code> in main.py to the number of LEDs on your strip.</li></ol>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, LedStrip, rgb, wheel
+strip = LedStrip(Bus(), slot=1, count=60)
+strip.order('GRB')                   # WS2812B; many SK6812 are GRB too
+strip.brightness(64)                 # 0..255: saves power and eyes
+strip.fill(rgb(255, 80, 0))          # all orange
+strip.set(0, 0x0000FF)               # LED 0 blue
+strip.show()                         # send
+strip.write([wheel(i * 4) for i in range(60)])   # a rainbow, then show() again</code></pre>
+<p><code>pin_stats()</code> returns the pulses the FPGA saw at the pin in the last frame. For SK6812 use <code>strip.timing(300, 600, 1250, 80)</code>.</p>
+<h3>Registers (slot 1, pixels in slot 2)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>write 1: send; read [0] busy, [31:8] frames sent</td></tr>
+<tr><td>1</td><td>COUNT</td><td>number of LEDs, 1..1024</td></tr>
+<tr><td>2</td><td>BRIGHT</td><td>brightness 0..255</td></tr>
+<tr><td>3</td><td>ORDER</td><td>0 GRB, 1 RGB, 2 BRG, 3 RBG, 4 BGR, 5 GBR</td></tr>
+<tr><td>4..7</td><td>T0H, T1H, TBIT, TRESET</td><td>timing in 10 ns clocks</td></tr>
+<tr><td>8..10</td><td>PULSES, HI0, HI1</td><td>measured at the pin</td></tr>
+<tr><td>11</td><td>ID</td><td>"WS28"</td></tr>
+</table>
+<p>A frame of 60 LEDs takes 60 x 24 x 1.25 us + 300 us = 2.1 ms: more than 400 frames per second are possible.</p>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Exact pulse timing from a counter</td><td>the bit timer: 40 clocks for a short pulse, 80 for a long one, 125 per bit</td></tr>
+<tr><td>A protocol that is only timing (no clock wire)</td><td>WS2812: the pulse width is the bit</td></tr>
+<tr><td>Memory feeding a serial output</td><td>the pixel memory read word by word, 24 bits shifted out per LED</td></tr>
+<tr><td>Checking your own output</td><td>the pin read back at the pad, its pulses counted and measured</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>A strip of 300 LEDs: how long does one update take? (24 bits per LED, 1.25 us per bit, plus the 300 us reset)</li></ol>
+<details><summary>Answer</summary>
+300 x 24 x 1.25 us = 9 ms, plus 0.3 ms: about 9.3 ms, so up to about 100 updates per second.
+</details>
+<ol><li>Why can Python on Linux not make this signal itself by toggling a pin?</li></ol>
+<details><summary>Answer</summary>
+A pulse must be 0.4 or 0.8 us with +-0.15 us. Linux can pause any program for tens of microseconds at any moment; one pause ruins a frame. The FPGA's counter is exact to 10 ns.
+</details>
+<ol><li>SK6812 RGBW strips have a fourth (white) byte. What would change in the design?</li></ol>
+<details><summary>Answer</summary>
+32 bits per LED instead of 24: the shift counter counts to 32 and each pixel word carries the white byte too.
+</details>
+<h2>Ideas</h2>
+<ul><li>A clock, a VU meter with the audio project, a level for the encoder knob.</li><li>More strips: add more <code>ardzy_ws2812</code> blocks on other pins (one per slot pair) in a copy of the project.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>First LED wrong, the rest dark</b>: the 3.3 V level is too low for your strip: level shifter.</li><li><b>Colours swapped</b>: set the colour order (<code>strip.order('RGB')</code>).</li><li><b>Flicker at full white</b>: the supply is too weak, or the strip's ground is not connected to the board's ground.</li></ul><p><a href="#top">Back to the list</a></p></section><section id="02_pattern_gen" class="project"><div class="kicker">Test and measurement &middot; easy</div><h2>Pattern generator</h2><p class="lead">The opposite of the logic analyzer: play any digital pattern of up to 1024 steps on 16 pins, up to 100 million steps per second, checked at the pins.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 9 of 9 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Pattern generator registers</td></tr><tr><td>2</td><td><code>0x43C02000</code></td><td>Pattern table (1024 words, bit n = pin n)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>pins[0]</code></td><td>J5 pin 5</td><td>T16</td></tr><tr><td><code>pins[1]</code></td><td>J5 pin 11</td><td>V15</td></tr><tr><td><code>pins[2]</code></td><td>J5 pin 12</td><td>W15</td></tr><tr><td><code>pins[3]</code></td><td>J5 pin 15</td><td>U17</td></tr><tr><td><code>pins[4]</code></td><td>J6 pin 5</td><td>U14</td></tr><tr><td><code>pins[5]</code></td><td>J6 pin 11</td><td>U18</td></tr><tr><td><code>pins[6]</code></td><td>J6 pin 12</td><td>U19</td></tr><tr><td><code>pins[7]</code></td><td>J6 pin 15</td><td>U15</td></tr><tr><td><code>pins[8]</code></td><td>J7 pin 5</td><td>T20</td></tr><tr><td><code>pins[9]</code></td><td>J7 pin 11</td><td>V20</td></tr><tr><td><code>pins[10]</code></td><td>J7 pin 12</td><td>W20</td></tr><tr><td><code>pins[11]</code></td><td>J7 pin 15</td><td>U20</td></tr><tr><td><code>pins[12]</code></td><td>J8 pin 5</td><td>Y18</td></tr><tr><td><code>pins[13]</code></td><td>J8 pin 11</td><td>V16</td></tr><tr><td><code>pins[14]</code></td><td>J8 pin 12</td><td>W16</td></tr><tr><td><code>pins[15]</code></td><td>J8 pin 15</td><td>Y19</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J5..J8 pins 5, 11, 12, 15</td><td>the circuit under test, or a scope / logic analyzer</td><td>3.3 V levels, keep the current small (under 8 mA)</td></tr><tr><td>J5..J8 pin 1 or 2 (GND)</td><td>the circuit&#x27;s GND</td><td></td></tr></table><h3>Parts</h3><ul><li>nothing for the self-test</li><li>a scope or logic analyzer to see the patterns</li></ul><h2>What it does</h2>
+<p>A digital pattern generator: the opposite of a logic analyzer. It plays a table of up to 1024 steps on 16 pins (J5 to J8), one step every 10 ns up to every 43 s, once or over and over. Use it to make test signals: clocks, counters, serial data, PWM, stepper sequences, a fake sensor for another board.</p>
+<h2>How it works</h2>
+<p>The ARM writes the table into a block RAM in the FPGA: word n holds the levels of the 16 pins for step n (bit k = pin k). A counter divides the 100 MHz clock: every DIV + 1 clocks the next word goes to the pins. At DIV = 0 that is 100 million steps per second, far faster than any program on a processor can toggle pins, and with no jitter.</p>
+<pre><code>table (block RAM) -&gt; step counter (DIV) -&gt; output register -&gt; 16 pins
+                                       pins read back at the pads -&gt; MISMATCH counter</code></pre>
+<p>Each output is also read back at its pad: the FPGA compares what the pin shows with what it should show and counts the differences (MISMATCH). A short circuit or another device driving the pin shows up there.</p>
+<table>
+<tr><th>Pin bit</th><th>Connector</th></tr>
+<tr><td>0..3</td><td>J5 pins 5, 11, 12, 15</td></tr>
+<tr><td>4..7</td><td>J6 pins 5, 11, 12, 15</td></tr>
+<tr><td>8..11</td><td>J7 pins 5, 11, 12, 15</td></tr>
+<tr><td>12..15</td><td>J8 pins 5, 11, 12, 15</td></tr>
+</table>
+<h2>Try it</h2>
+<p><b>Upload and run</b>: the demo plays a few patterns (a binary counter, a walking 1, a burst). Look at them with a scope, or with the <b>Tools</b> page's logic analyzer on another board, or with a cheap USB logic analyzer (and PulseView).</p>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, PatternGen
+pg = PatternGen(Bus(), slot=1)
+pg.outputs(0xFFFF)                       # all 16 pins are outputs
+pg.load([i for i in range(256)])         # an 8-bit counter on pins 0..7
+pg.rate(1_000_000)                       # 1 million steps per second
+pg.start(loop=True)
+print(pg.status())                       # step, loops, mismatches
+pg.stop()</code></pre>
+<p>A UART byte at 9600 baud on pin 0: <code>pg.rate(9600)</code>, then the bits of <code>[0] + data bits (LSB first) + [1]</code> as steps.</p>
+<h3>Registers (slot 1, the table in slot 2)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] run (start from step 0), [1] loop</td></tr>
+<tr><td>1</td><td>LENGTH</td><td>steps, 1..1024</td></tr>
+<tr><td>2</td><td>DIV</td><td>clocks per step minus 1</td></tr>
+<tr><td>3</td><td>OE</td><td>output enable per pin</td></tr>
+<tr><td>4</td><td>IDLE</td><td>levels when stopped</td></tr>
+<tr><td>5..8</td><td>STEP, LOOPS, MISMATCH, INPUTS</td><td>(read)</td></tr>
+<tr><td>9</td><td>ID</td><td>"PATG"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Block RAM as a pattern table</td><td>one word per step, bit k = pin k</td></tr>
+<tr><td>A divider sets the speed</td><td>DIV + 1 clocks per step: 100 million steps per second at DIV = 0</td></tr>
+<tr><td>No jitter: hardware timing</td><td>every edge exactly on a 10 ns clock edge</td></tr>
+<tr><td>Self-checking outputs</td><td>each pin read back at its pad, differences counted in MISMATCH</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>You want a 1 MHz square wave on pin 0 with a 2-step table (1, 0). What DIV?</li></ol>
+<details><summary>Answer</summary>
+Each step lasts DIV + 1 clocks and a period is 2 steps: 2 x (DIV + 1) x 10 ns = 1 us, so DIV = 49.
+</details>
+<ol><li>How would you make a 4-phase stepper motor sequence on pins 0..3?</li></ol>
+<details><summary>Answer</summary>
+A 4-step table: 0b0001, 0b0010, 0b0100, 0b1000 (or 8 half steps), looping, with DIV setting the step rate.
+</details>
+<ol><li>MISMATCH counts up while a pin is shorted to ground. Why is that useful?</li></ol>
+<details><summary>Answer</summary>
+The FPGA notices that the pin does not show what it drives: a wiring error, a short or two drivers fighting are found without a scope.
+</details>
+<h2>Ideas</h2>
+<ul><li>Drive a 7-segment display, a shift register (74HC595) or an R-2R ladder (a slow waveform).</li><li>Make the test signals for another project: encoder A/B signals for project 03, step/dir for a motor driver.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>MISMATCH counts up</b>: something else drives the pin, or the pin is shorted. Pins set as inputs (OE bit 0) are not checked.</li><li><b>Edges look slow on a scope at 100 MHz</b>: that is the pin and the probe; use short wires and the scope's 10x probe.</li></ul><p><a href="#top">Back to the list</a></p></section><section id="03_encoders" class="project"><div class="kicker">Motors and motion &middot; easy</div><h2>Rotary encoders (quadrature counters)</h2><p class="lead">Count two quadrature encoders (knobs, motor encoders, linear scales) in hardware: never a missed step, position, speed and error counts, with a glitch filter.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 8 of 8 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Encoder counters</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>enc[0]</code></td><td>J5 pin 5</td><td>T16</td></tr><tr><td><code>enc[1]</code></td><td>J5 pin 11</td><td>V15</td></tr><tr><td><code>enc[2]</code></td><td>J5 pin 12</td><td>W15</td></tr><tr><td><code>enc[3]</code></td><td>J5 pin 15</td><td>U17</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J5 pin 5 / pin 11</td><td>encoder 0 A / B</td><td>3.3 V signals; a 5 V encoder needs a divider or a level shifter</td></tr><tr><td>J5 pin 12 / pin 15</td><td>encoder 1 A / B</td><td></td></tr><tr><td>J5 pin 16 (3.3 V) and pin 1 (GND)</td><td>encoder + and GND</td><td>a plain knob encoder: common pin to GND, A and B to the pins (the pull-ups are on)</td></tr></table><h3>Parts</h3><ul><li>rotary encoder knob (for example KY-040) or a motor with encoder</li><li>nothing for the self-test</li></ul><h2>What it does</h2>
+<p>Counts rotary encoders (the knobs with clicks, KY-040) and motor encoders: two channels on J5, position and speed, never missing a step, even at millions of counts per second. The demo shows both positions and speeds and puts encoder 0 on the 4 LEDs.</p>
+<h2>How it works</h2>
+<p>An encoder has two outputs, <b>A</b> and <b>B</b>, square waves a quarter period apart. The order of their edges gives the direction: A rises before B one way, B before A the other way. Every edge of A or B is one count, so an encoder with 20 lines gives 80 counts per turn.</p>
+<pre><code>     ___     ___
+A __|   |___|   |___      one direction: A leads B
+       ___     ___
+B ____|   |___|   |___</code></pre>
+<p>Software on Linux would miss edges when the knob turns fast; the FPGA looks at both pins every 10 ns. A <b>glitch filter</b> takes a level only after it was steady for 0.2 us (bouncing contacts of cheap knobs make short spikes). If A and B change in the same clock, the step is impossible to tell: that is counted in ERRORS (too fast, or noise).</p>
+<p>The speed is the number of counts in a gate time (0.1 s by default).</p>
+<p>For the self-test there is a <b>generator</b> inside: it makes A/B signals at a set speed, either straight into the counters or out on encoder 0's real pins, so the whole path through the pads is checked.</p>
+<h2>Try it</h2>
+<ol><li>A KY-040 board: <b>CLK</b> to J5 pin 5 (A), <b>DT</b> to J5 pin 11 (B), <b>+</b> to 3.3 V (pin 16), <b>GND</b> to pin 1. The second encoder: J5 pins 12 and 15.</li><li>Bare knobs without a board need pull-ups: the FPGA pins have them, and the common pin goes to GND.</li><li><b>Upload and run</b>, turn the knob.</li></ol>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, Encoders
+enc = Encoders(Bus(), slot=1)
+enc.config(0, reverse=False, filter_ns=500)   # longer filter for cheap knobs
+enc.count(0, 0)                                # set position 0
+while True:
+    print(enc.count(0), enc.speed(0), 'counts per gate', enc.errors(0))</code></pre>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>8c + 0</td><td>COUNT</td><td>position of channel c (signed), write sets it</td></tr>
+<tr><td>8c + 1</td><td>SPEED</td><td>counts in the last gate</td></tr>
+<tr><td>8c + 2</td><td>ERRORS</td><td>impossible steps</td></tr>
+<tr><td>8c + 3</td><td>CFG</td><td>[0] reverse, [15:8] filter clocks</td></tr>
+<tr><td>64</td><td>GATE</td><td>speed gate in clocks</td></tr>
+<tr><td>65..68</td><td>TEST, GEN_PERIOD, GEN_RUN, GEN_DONE</td><td>the test generator</td></tr>
+<tr><td>69</td><td>ID</td><td>"QUAD"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Quadrature decoding: direction from edge order</td><td>A leads B one way, B leads A the other</td></tr>
+<tr><td>Glitch filtering</td><td>a level is taken only after 0.2 us without change</td></tr>
+<tr><td>Counting in hardware never misses</td><td>every edge seen at 100 MHz</td></tr>
+<tr><td>A test generator inside the design</td><td>A/B signals made by the FPGA to test its own counters</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>An encoder with 24 lines turns once per second. How many counts per second?</li></ol>
+<details><summary>Answer</summary>
+Every edge of A and B counts: 4 x 24 = 96 counts per second.
+</details>
+<ol><li>Why does a change of A and B in the same clock count as an error?</li></ol>
+<details><summary>Answer</summary>
+In correct quadrature only one of the two changes at a time. Both at once means the step was too fast to see or there was noise: the direction cannot be known.
+</details>
+<ol><li>How fast may the encoder go before the 0.2 us filter swallows real edges?</li></ol>
+<details><summary>Answer</summary>
+Edges must be at least 0.2 us apart: up to 5 million edges per second, far beyond any knob or most motor encoders.
+</details>
+<h2>Ideas</h2>
+<ul><li>A menu knob for the VGA project, a volume knob for the radio.</li><li>Motor position control together with project 04 (steppers) or a DC motor with a PWM from the Tools page.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>Counts jump by 2 or go back</b>: a bouncing knob: raise the filter (<code>filter_ns=1000</code>).</li><li><b>Wrong direction</b>: <code>reverse=True</code>, or swap A and B.</li><li><b>ERRORS rise</b>: the signals are too fast for the filter, or a wire picks up noise.</li></ul><p><a href="#top">Back to the list</a></p></section><section id="04_steppers" class="project"><div class="kicker">Motors and motion &middot; medium</div><h2>Stepper motors (step / dir with acceleration)</h2><p class="lead">Two stepper axes for driver boards like A4988, DRV8825 or TMC2208: smooth speed-up and slow-down computed in hardware every microsecond, exact stop at the target.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 8 of 8 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Stepper axes (16 registers per axis)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>step[0]</code></td><td>J8 pin 5</td><td>Y18</td></tr><tr><td><code>dir[0]</code></td><td>J8 pin 11</td><td>V16</td></tr><tr><td><code>step[1]</code></td><td>J8 pin 12</td><td>W16</td></tr><tr><td><code>dir[1]</code></td><td>J8 pin 15</td><td>Y19</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J8 pin 5 / pin 11</td><td>axis 0 driver STEP / DIR</td><td>the driver&#x27;s logic supply at 3.3 V (VDD of the A4988 / DRV8825 board)</td></tr><tr><td>J8 pin 12 / pin 15</td><td>axis 1 driver STEP / DIR</td><td></td></tr><tr><td>J8 pin 1 (GND)</td><td>driver GND</td><td>and the motor supply&#x27;s GND</td></tr><tr><td>driver EN</td><td>GND</td><td>enabled all the time (or a spare pin)</td></tr></table><h3>Parts</h3><ul><li>stepper driver board (A4988, DRV8825, TMC2208)</li><li>stepper motor (NEMA 17)</li><li>motor power supply (12 to 24 V)</li><li>100 uF capacitor at the driver&#x27;s motor supply</li></ul><h2>What it does</h2>
+<p>Two step/dir outputs for stepper motor drivers (A4988, DRV8825, TMC2208, TB6600) with smooth acceleration: tell an axis "go to position 12000" and the FPGA ramps the speed up, runs at the top speed, and slows down so it stops exactly there. The demo moves axis 0 back and forth and axis 1 at half the speed.</p>
+<h2>How it works</h2>
+<p>A stepper driver makes the motor take one (micro)step for every pulse on STEP, in the direction set by DIR. Fast moves need a <b>ramp</b>: a motor that starts at full speed just buzzes and loses steps.</p>
+<p>Every microsecond each axis adds its <b>speed</b> to a 40-bit phase; every time the phase overflows, one step pulse goes out. Every microsecond the speed also grows by ACCEL until VMAX. The FPGA counts the steps it took while speeding up; when the steps left to the target are that many, it slows down the same way. The result is a trapezoid speed profile with the stop exactly on the target.</p>
+<pre><code>speed
+  |     ______________
+  |    /              \
+  |   /                \
+  |__/                  \__  time
+     accelerate  cruise  slow down</code></pre>
+<p>Because it is hardware, the pulses keep a steady rhythm while Linux is busy, and two axes run at the same time. Each STEP pin is read back at the pad and its pulses are counted (PIN_STEPS): the self-test proves every step really left the board.</p>
+<h2>Try it</h2>
+<ol><li>Driver <b>STEP</b> to J8 pin 5, <b>DIR</b> to J8 pin 11 (axis 1: pins 12 and 15), driver logic <b>GND</b> to pin 1, driver <b>VDD</b> (logic) to 3.3 V.</li><li>The motor supply (12 to 24 V) goes to the driver only. Set the driver's current limit first.</li><li>Set the microsteps on the driver (the demo assumes 200 x 16 = 3200 steps per turn).</li><li><b>Upload and run</b>.</li></ol>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, Stepper
+ax = Stepper(Bus(), slot=1, axis=0)
+ax.setup(max_speed=8000, accel=20000, start_speed=200)   # steps/s, steps/s^2, steps/s
+ax.move_to(3200)          # one turn at 16 microsteps
+ax.wait()
+ax.move(-1600)            # half a turn back
+ax.stop()                 # slow down and stop (stop(now=True): at once)
+print(ax.position(), ax.pin_steps())</code></pre>
+<h3>Registers (slot 1, axis n at word 16n)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>+0</td><td>TARGET</td><td>where to go (writing it starts the move)</td></tr>
+<tr><td>+1</td><td>POSITION</td><td>where the axis is</td></tr>
+<tr><td>+2, +3</td><td>VMAX</td><td>top speed (40 bits)</td></tr>
+<tr><td>+4, +5</td><td>ACCEL, VSTART</td><td>speed change per us, start speed</td></tr>
+<tr><td>+6, +7</td><td>STATUS, SPEED</td><td>moving, direction, slowing down; the speed now</td></tr>
+<tr><td>+8</td><td>PULSE</td><td>step pulse length (2 us)</td></tr>
+<tr><td>+9</td><td>STOP</td><td>1 slow down and stop, 2 stop at once</td></tr>
+<tr><td>+10</td><td>PIN_STEPS</td><td>steps counted at the STEP pin</td></tr>
+<tr><td>+11</td><td>DIR_SETUP</td><td>time between a direction change and the next step</td></tr>
+<tr><td>64</td><td>ID</td><td>"STEP"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Phase accumulator for exact step rates</td><td>a 40-bit phase plus the speed every microsecond</td></tr>
+<tr><td>Acceleration ramps (trapezoid profile)</td><td>speed grows by ACCEL until VMAX, the same way down</td></tr>
+<tr><td>Planning the stop in hardware</td><td>the steps used to speed up = the steps needed to slow down</td></tr>
+<tr><td>Proving every pulse left the board</td><td>STEP pins read back at their pads (PIN_STEPS)</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>Why does a stepper motor that starts at full speed often just buzz?</li></ol>
+<details><summary>Answer</summary>
+The rotor cannot follow a sudden fast pulse train: its inertia needs a few milliseconds of rising speed. Without a ramp it misses steps and stalls.
+</details>
+<ol><li>The axis speeds up for 1200 steps and the move is 2000 steps. How many steps at full speed?</li></ol>
+<details><summary>Answer</summary>
+Slowing down takes as many steps as speeding up: 2000 - 2 x 1200 is negative, so it never reaches VMAX: it speeds up for 1000 steps and slows down for 1000 (a triangle profile).
+</details>
+<ol><li>A 200-step motor with 1/16 microstepping should turn 3 times per second. What step rate?</li></ol>
+<details><summary>Answer</summary>
+200 x 16 x 3 = 9600 steps per second.
+</details>
+<h2>Ideas</h2>
+<ul><li>A camera slider, a plotter with two axes, a turntable for 3D scanning.</li><li>Home switch: read a pin, stop, <code>position(0)</code>.</li><li>An encoder (project 03) on the motor shaft to check for lost steps.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>The motor buzzes but does not turn</b>: too fast a start: lower <code>start_speed</code> and <code>accel</code>, or raise the driver's current.</li><li><b>Wrong direction</b>: swap one coil pair, or use negative targets.</li><li><b>The driver gets very hot</b>: lower its current limit; TMC2208 drivers run cooler.</li></ul><p><a href="#top">Back to the list</a></p></section><section id="05_spi_i2c" class="project"><div class="kicker">Communication &middot; medium</div><h2>SPI and I2C in hardware</h2><p class="lead">Fast, exact SPI (up to 50 MHz, all 4 modes, 1 to 32 bits) on J2 and an I2C controller (100 kHz to 1 MHz, clock stretching) on the board&#x27;s I2C bus: displays, sensors, ADCs, memories.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 18 of 18 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>SPI controller</td></tr><tr><td>2</td><td><code>0x43C02000</code></td><td>I2C controller</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>spi_cs</code></td><td>J2 pin 5</td><td>R19</td></tr><tr><td><code>spi_mosi</code></td><td>J2 pin 11</td><td>V12</td></tr><tr><td><code>spi_miso</code></td><td>J2 pin 12</td><td>W13</td></tr><tr><td><code>spi_sclk</code></td><td>J2 pin 15</td><td>V13</td></tr><tr><td><code>i2c_scl</code></td><td>SCL, J1..J8 pin 4</td><td>W18</td></tr><tr><td><code>i2c_sda</code></td><td>SDA, J1..J8 pin 3</td><td>W19</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J2 pin 5 / 11 / 12 / 15</td><td>SPI device CS / MOSI (DIN) / MISO (DOUT) / SCLK</td><td>3.3 V devices</td></tr><tr><td>pin 3 / pin 4 of any of J1..J8</td><td>I2C device SDA / SCL</td><td>the board has 1 kohm pull-ups to 3.3 V</td></tr><tr><td>pin 16 (3.3 V), pin 1 (GND)</td><td>device VCC and GND</td><td>small modules only (under 100 mA)</td></tr></table><h3>Parts</h3><ul><li>any SPI module (MAX7219 display, MCP3008 ADC, W25Q flash...)</li><li>any I2C module (BME280, SSD1306 OLED, DS3231 clock...)</li><li>nothing for the self-test</li></ul><h2>What it does</h2>
+<p>Hardware SPI and I2C controllers for sensors, displays, memories and clocks: exact bus timing from the FPGA, buffers so the ARM writes a whole message at once, and up to 50 MHz SPI. The demo scans the I2C bus, names what it finds (BME280 / BMP280, DS3231 clock, SSD1306 display ...) and reads the ID of an SPI flash chip.</p>
+<h2>How it works</h2>
+<h3>SPI</h3>
+<p>SPI has 4 wires: <b>SCLK</b> (clock from the master), <b>MOSI</b> (master out), <b>MISO</b> (master in) and <b>CS</b> (chip select, low = talking). Every clock both sides shift one bit: sending and receiving happen together. The 4 SPI <b>modes</b> say on which clock edge the data changes (CPOL = clock level when idle, CPHA = which edge reads).</p>
+<p>The FPGA block has a 64-word send buffer and a 64-word receive buffer, words of 1 to 32 bits, MSB or LSB first, all 4 modes, and SCLK = 100 MHz / (2 x (DIV + 1)): 50 MHz, 25 MHz ... down to slow. With automatic chip select, CS stays low while the words go back to back.</p>
+<h3>I2C</h3>
+<p>I2C has 2 wires shared by many devices, each with a 7-bit address: <b>SDA</b> (data) and <b>SCL</b> (clock). Both are <b>open drain</b>: devices only pull the lines low; resistors pull them high (the board has 1 kohm pull-ups on its I2C pins). A message: START, the address and a read / write bit, bytes each answered with an ACK, STOP.</p>
+<p>The ARM queues <b>commands</b> (START, WRITE byte, READ with ACK, READ with NACK, STOP); the FPGA runs them with exact timing (100 kHz, 400 kHz, 1 MHz) and queues the results. It also waits when a slow device holds SCL low (clock stretching), with a timeout.</p>
+<h2>Try it</h2>
+<table>
+<tr><th>Device</th><th>Wiring</th></tr>
+<tr><td>SPI flash (W25Q32, W25Q64)</td><td>CS to J2 pin 5, DI to J2 pin 11, DO to J2 pin 12, CLK to J2 pin 15, VCC 3.3 V, GND</td></tr>
+<tr><td>I2C sensor / display</td><td>SDA to pin 3, SCL to pin 4 of any of J1..J8, VCC 3.3 V, GND</td></tr>
+</table>
+<p><b>Upload and run</b>: the Monitor lists the I2C devices found and the flash chip's ID (for example EF 40 17 = Winbond W25Q64).</p>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, SPI, I2C
+spi = SPI(Bus(), slot=1)
+spi.setup(hz=10_000_000, mode=0, bits=8)
+print(spi.transfer([0x9F, 0, 0, 0]))          # JEDEC ID: [x, maker, type, size]
+
+i2c = I2C(Bus(), slot=2, hz=400_000)
+print([hex(a) for a in i2c.scan()])           # e.g. ['0x3c', '0x68', '0x76']
+i2c.write(0x76, bytes([0xF4, 0x27]))          # BME280: start measuring
+print(i2c.read(0x76, 6, reg=0xF7))            # 6 bytes from register 0xF7</code></pre>
+<h3>SPI registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] CPHA [1] CPOL [2] LSB first [3] loopback [4] automatic CS</td></tr>
+<tr><td>1</td><td>DIV</td><td>SCLK = 100 MHz / (2 x (DIV + 1))</td></tr>
+<tr><td>2</td><td>WIDTH</td><td>bits per word, 1..32</td></tr>
+<tr><td>3, 4</td><td>TX, RX</td><td>send a word / take a received word</td></tr>
+<tr><td>5</td><td>STATUS</td><td>words waiting, received words, busy, overflow</td></tr>
+<tr><td>6</td><td>CS</td><td>chip select level (manual mode)</td></tr>
+<tr><td>7</td><td>ID</td><td>"SPIM"</td></tr>
+</table>
+<h3>I2C registers (slot 2)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CMD</td><td>queue: [10:8] 1 START, 2 STOP, 3 WRITE, 4 READ+ACK, 5 READ+NACK; [7:0] data</td></tr>
+<tr><td>1</td><td>RESULT</td><td>[31] valid, [9] from a READ, [8] ACK, [7:0] byte</td></tr>
+<tr><td>2</td><td>STATUS</td><td>commands / results waiting, busy, SCL and SDA levels, timeout</td></tr>
+<tr><td>3, 4</td><td>DIV, TIMEOUT</td><td>speed, clock stretching limit</td></tr>
+<tr><td>5</td><td>ID</td><td>"I2CM"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Shift registers: send and receive at the same time</td><td>SPI: every SCLK edge shifts a bit out and a bit in</td></tr>
+<tr><td>Clock polarity and phase (modes 0..3)</td><td>CPOL, CPHA in the control register</td></tr>
+<tr><td>Open-drain buses shared by many devices</td><td>I2C: devices only pull low, resistors pull high</td></tr>
+<tr><td>A command queue between software and exact timing</td><td>the ARM queues START, WRITE, READ, STOP; the FPGA runs them</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>SPI at DIV = 4: what clock frequency, and how long for a 16-bit word?</li></ol>
+<details><summary>Answer</summary>
+100 MHz / (2 x 5) = 10 MHz; 16 bits take 1.6 us.
+</details>
+<ol><li>Why must I2C lines be open drain with pull-up resistors?</li></ol>
+<details><summary>Answer</summary>
+Several devices share one wire. If any could drive it high while another drives it low, they would short. With open drain they can only pull low; the resistor makes high. Clock stretching and acknowledges work because anyone may hold a line low.
+</details>
+<ol><li>An I2C device does not answer its address. What does the master see?</li></ol>
+<details><summary>Answer</summary>
+No ACK: SDA stays high (the pull-up) in the ninth clock. The FPGA reports a NACK; usually a wrong address, a missing pull-up or a device without power.
+</details>
+<h2>Ideas</h2>
+<ul><li>An SSD1306 OLED showing the board's temperature; a BME280 weather station with the plotter.</li><li>Read and write a whole SPI flash (save data, or reprogram another board's flash).</li><li>An SPI display (ST7789) at 50 MHz: fast enough for animation.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>I2C scan finds nothing</b>: check SDA / SCL are not swapped and the device has power. Very long wires: lower the speed.</li><li><b>SPI reads 0xFF</b>: MISO not connected (the pull-up reads high) or wrong mode; most chips use mode 0.</li><li><b>Garbage at high SPI speed</b>: long wires; keep them short or go down to 10 MHz.</li></ul><p><a href="#top">Back to the list</a></p></section><section id="06_signal_gen" class="project"><div class="kicker">Test and measurement &middot; easy</div><h2>Signal generator (DDS)</h2><p class="lead">A function generator: sine, triangle, sawtooth and square from 0.02 Hz to several MHz in 0.023 Hz steps, amplitude, offset, duty and frequency sweeps, on four kinds of outputs.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 10 of 10 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Signal generator</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>sd</code></td><td>J6 pin 5</td><td>U14</td></tr><tr><td><code>pwm</code></td><td>J6 pin 11</td><td>U18</td></tr><tr><td><code>sync</code></td><td>J6 pin 12</td><td>U19</td></tr><tr><td><code>par[0]</code></td><td>J5 pin 5</td><td>T16</td></tr><tr><td><code>par[1]</code></td><td>J5 pin 11</td><td>V15</td></tr><tr><td><code>par[2]</code></td><td>J5 pin 12</td><td>W15</td></tr><tr><td><code>par[3]</code></td><td>J5 pin 15</td><td>U17</td></tr><tr><td><code>par[4]</code></td><td>J8 pin 5</td><td>Y18</td></tr><tr><td><code>par[5]</code></td><td>J8 pin 11</td><td>V16</td></tr><tr><td><code>par[6]</code></td><td>J8 pin 12</td><td>W16</td></tr><tr><td><code>par[7]</code></td><td>J8 pin 15</td><td>Y19</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J6 pin 5 (sigma-delta)</td><td>1 kohm resistor, then 10 nF to GND: the analog signal is at the capacitor</td><td>best for audio and low frequencies (up to about 20 kHz)</td></tr><tr><td>J6 pin 11 (PWM DAC)</td><td>1 kohm, then 100 nF to GND</td><td>390 kHz carrier, 8-bit</td></tr><tr><td>J6 pin 12 (sync)</td><td>scope trigger, or a clock input</td><td>a clean square wave at the set frequency</td></tr><tr><td>J5 pins 5/11/12/15 + J8 pins 5/11/12/15</td><td>R-2R ladder (bit 0 on J5 pin 5 ... bit 7 on J8 pin 15)</td><td>8-bit output, up to several MHz</td></tr></table><h3>Parts</h3><ul><li>resistors and capacitors for the filters</li><li>R-2R network (10 k / 20 k) for the parallel output</li><li>a scope to see the waves</li><li>nothing for the self-test</li></ul><h2>What it does</h2>
+<p>A function generator: sine, triangle, sawtooth and square waves from 0.02 Hz up, with amplitude, offset, duty cycle and frequency sweeps. It comes out four ways at the same time: a 1-bit sigma-delta DAC, an 8-bit PWM DAC, a square sync output, and 8 parallel bits for a resistor ladder.</p>
+<h2>How it works</h2>
+<p><b>Direct digital synthesis (DDS)</b>: a 32-bit phase grows by FREQ every clock (100 million times per second). The top 10 bits of the phase pick a value from a 1024-point sine table (or make a triangle, sawtooth or square from the phase itself).</p>
+<pre><code>frequency = FREQ x 100 MHz / 2^32         (steps of 0.023 Hz)
+1 kHz     -&gt; FREQ = 42 950</code></pre>
+<p>The value is then scaled (AMP), moved (OFFSET), and turned into a voltage:</p>
+<ul><li><b>sigma-delta</b> (J6 pin 5): a 1-bit stream at 100 MHz whose average follows the value. A 1 kohm resistor and a 10 nF capacitor (a low-pass) smooth it into the analog wave: clean up to about 20 kHz.</li><li><b>PWM</b> (J6 pin 11): 8 bits at 390.6 kHz; 1 kohm + 100 nF.</li><li><b>sync</b> (J6 pin 12): high for the first half of each period, a perfect square for a scope trigger or as a clock.</li><li><b>R-2R</b> (J5 + J8, 8 pins): the top 8 bits in parallel: with an R-2R ladder (10 k / 20 k resistors) you get an 8-bit DAC that is good up to several MHz.</li></ul>
+<p>A <b>sweep</b> adds SWEEP_STEP to FREQ every SWEEP_RATE clocks: the frequency glides from start to stop, for measuring filters and speakers. The FPGA measures the frequency at its own sync pin (read back at the pad) to prove the output.</p>
+<h2>Try it</h2>
+<ol><li>A resistor of 1 kohm from J6 pin 5, a 10 nF capacitor from its other end to GND (pin 1): the wave is on the capacitor.</li><li>A scope on the capacitor and its trigger on J6 pin 12, or headphones through a 10 uF capacitor (keep the volume low).</li><li><b>Upload and run</b>: the demo steps through the waves, then sweeps 100 Hz to 10 kHz.</li></ol>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, SignalGen
+g = SignalGen(Bus(), slot=1)
+g.wave('sine')
+g.frequency(440)
+g.amplitude(0.8)          # 0..1
+g.on()
+g.sweep(100, 10000, seconds=5, repeat=True)
+print(g.measured_hz())    # counted at the sync pin</code></pre>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] on [1] sweep running [2] sweep repeats</td></tr>
+<tr><td>1</td><td>FREQ</td><td>phase step</td></tr>
+<tr><td>2</td><td>WAVE</td><td>0 sine, 1 triangle, 2 sawtooth, 3 square</td></tr>
+<tr><td>3..5</td><td>AMP, OFFSET, DUTY</td><td>0..65535, signed, 32768 = 50 %</td></tr>
+<tr><td>6..8</td><td>SWEEP_STOP, SWEEP_STEP, SWEEP_RATE</td><td>the sweep</td></tr>
+<tr><td>9</td><td>PHASE</td><td>set the phase</td></tr>
+<tr><td>10..12</td><td>SAMPLE, MEAS_HZ, FREQ_NOW</td><td>(read)</td></tr>
+<tr><td>13</td><td>ID</td><td>"DDSG"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Direct digital synthesis</td><td>a 32-bit phase + FREQ every clock, a 1024-point sine table</td></tr>
+<tr><td>Digital to analog without a DAC chip</td><td>sigma-delta and PWM outputs plus an RC low-pass</td></tr>
+<tr><td>An R-2R ladder DAC</td><td>8 pins and 8 + 8 resistors make an 8-bit analog output</td></tr>
+<tr><td>Measuring your own output</td><td>the frequency at the sync pin, read back at the pad</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>What FREQ gives 440 Hz (the note A)?</li></ol>
+<details><summary>Answer</summary>
+440 x 2^32 / 100 000 000 = 18 898 (18 897.7 rounded): the real frequency is 440.003 Hz.
+</details>
+<ol><li>A 1 kohm and 10 nF low-pass: what is its corner frequency, and why does it suit the sigma-delta output?</li></ol>
+<details><summary>Answer</summary>
+1 / (2 pi R C) = 15.9 kHz: it keeps audio but removes the 100 MHz switching of the bit stream.
+</details>
+<ol><li>Why is an R-2R ladder good to several MHz while the sigma-delta is clean only to about 20 kHz?</li></ol>
+<details><summary>Answer</summary>
+The ladder outputs the whole 8-bit value at once every clock; the sigma-delta needs many clocks of 1-bit pulses averaged by a slow filter to make one value.
+</details>
+<h2>Ideas</h2>
+<ul><li>A two-tone (DTMF) generator: two blocks added together.</li><li>A frequency response meter: sweep through a filter and measure the level with the Zynq's XADC.</li><li>A clock source for another circuit: sync output up to 25 MHz.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>The wave is stairs or fuzzy</b>: the RC filter is missing or too small; the sigma-delta needs 10 nF with 1 kohm.</li><li><b>The level is low</b>: the outputs swing 0 to 3.3 V; the RC filter adds no gain. Use an op-amp for more.</li></ul><p><a href="#top">Back to the list</a></p></section><section id="07_vga" class="project"><div class="kicker">Lights and display &middot; medium</div><h2>VGA picture (640 x 480)</h2><p class="lead">Connect any VGA monitor with 8 resistors: a 320 x 240 picture with 16 colours (out of 64), text, lines, graphs, all drawn from Python.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 7 of 7 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>VGA registers (palette at 16..31)</td></tr><tr><td>2-11</td><td><code>0x43C02000 .. 0x43C0BFFF</code></td><td>Frame buffer (9600 words, 8 pixels each)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>red[1]</code></td><td>J6 pin 5</td><td>U14</td></tr><tr><td><code>red[0]</code></td><td>J6 pin 11</td><td>U18</td></tr><tr><td><code>green[1]</code></td><td>J6 pin 12</td><td>U19</td></tr><tr><td><code>green[0]</code></td><td>J6 pin 15</td><td>U15</td></tr><tr><td><code>blue[1]</code></td><td>J8 pin 5</td><td>Y18</td></tr><tr><td><code>blue[0]</code></td><td>J8 pin 11</td><td>V16</td></tr><tr><td><code>hsync</code></td><td>J8 pin 12</td><td>W16</td></tr><tr><td><code>vsync</code></td><td>J8 pin 15</td><td>Y19</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J6 pin 5 (red 1) + J6 pin 11 (red 0)</td><td>VGA pin 1 (red) through 470 ohm and 1 kohm</td><td>the two resistors join at the VGA pin: a 2-bit DAC</td></tr><tr><td>J6 pin 12 (green 1) + J6 pin 15 (green 0)</td><td>VGA pin 2 (green) through 470 ohm and 1 kohm</td><td></td></tr><tr><td>J8 pin 5 (blue 1) + J8 pin 11 (blue 0)</td><td>VGA pin 3 (blue) through 470 ohm and 1 kohm</td><td></td></tr><tr><td>J8 pin 12 (HSYNC)</td><td>VGA pin 13 through 100 ohm</td><td></td></tr><tr><td>J8 pin 15 (VSYNC)</td><td>VGA pin 14 through 100 ohm</td><td></td></tr><tr><td>J6 / J8 pin 1 (GND)</td><td>VGA pins 5, 6, 7, 8, 10 (GND)</td><td></td></tr></table><h3>Parts</h3><ul><li>VGA connector (DB15 female) or a cut VGA cable</li><li>3 x 470 ohm, 3 x 1 kohm, 2 x 100 ohm resistors</li><li>a VGA monitor (or an HDMI monitor with a VGA adapter)</li></ul><h2>What it does</h2>
+<p>Shows a picture on any VGA monitor or TV: 640 x 480 at 60 Hz, made from a 320 x 240 frame buffer with 16 colours (chosen from 64). Python draws pixels, lines, rectangles and text into it. The demo is a status screen: the board's temperature as a graph, a clock and colour bars.</p>
+<h2>How it works</h2>
+<p>A VGA monitor draws the picture line by line, like an old TV. The board sends three analog colour signals (red, green, blue) and two sync pulses: <b>HSYNC</b> starts a new line (31.25 kHz), <b>VSYNC</b> a new frame (59.5 Hz). The timing is fixed: 800 pixel clocks per line (640 visible), 525 lines per frame (480 visible), a pixel clock of 25 MHz.</p>
+<pre><code>MMCM: 100 MHz x 10 / 40 = 25 MHz pixel clock
+  -&gt; pixel and line counters -&gt; HSYNC, VSYNC
+  -&gt; frame buffer (block RAM, 320 x 240 x 4 bits) -&gt; palette (16 x 6 bits) -&gt; 2 bits per colour -&gt; resistors -&gt; monitor</code></pre>
+<p>Each frame-buffer pixel is shown as 2 x 2 screen pixels. The palette turns a 4-bit value into a colour with 2 bits of red, green and blue. Two resistors per colour make the voltage: a 2-bit DAC (470 ohm for the high bit, 1 kohm for the low bit, into the monitor's 75 ohm input).</p>
+<p>The frame buffer is a dual-port block RAM: the ARM writes, the picture side reads at the same time. The sync pins are read back at their pads and their periods are measured (HS_PERIOD, VS_PERIOD). PROBE tells which colour the picture shows at any screen point: that is how the self-test checks the picture without a camera.</p>
+<h2>Try it</h2>
+<table>
+<tr><th>VGA connector (DE-15)</th><th>Board</th></tr>
+<tr><td>1 red</td><td>J6 pin 5 through 470 ohm, J6 pin 11 through 1 kohm</td></tr>
+<tr><td>2 green</td><td>J6 pin 12 through 470 ohm, J6 pin 15 through 1 kohm</td></tr>
+<tr><td>3 blue</td><td>J8 pin 5 through 470 ohm, J8 pin 11 through 1 kohm</td></tr>
+<tr><td>13 HSYNC</td><td>J8 pin 12 (through 100 ohm)</td></tr>
+<tr><td>14 VSYNC</td><td>J8 pin 15 (through 100 ohm)</td></tr>
+<tr><td>5, 6, 7, 8, 10 ground</td><td>GND</td></tr>
+</table>
+<p><b>Upload and run</b>. A breakout board for the VGA connector makes the wiring easy.</p>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, VGA
+v = VGA(Bus(), slot=1)
+v.on()
+v.clear(0)
+v.palette(1, 3, 3, 3)                 # colour 1 = white (r, g, b each 0..3)
+v.rect(10, 10, 100, 40, 2)
+v.line(0, 239, 319, 0, 3)
+v.text(20, 60, 'Hello Ardzy', 1, scale=2)
+v.show()                              # send the picture to the frame buffer
+print(v.sync_check())</code></pre>
+<p>Drawing happens in a copy in Python; <code>show()</code> sends it (or <code>show((y0, y1))</code> only some rows).</p>
+<h3>Registers (slot 1, frame buffer in slots 2..11)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] picture on [1] test pattern</td></tr>
+<tr><td>1..3</td><td>FRAMES, HS_PERIOD, VS_PERIOD</td><td>(read) measured at the pins</td></tr>
+<tr><td>4</td><td>ID</td><td>"VGA6"</td></tr>
+<tr><td>5, 6</td><td>PROBE_XY, PROBE</td><td>what the screen shows at (x, y)</td></tr>
+<tr><td>16..31</td><td>palette</td><td>[5:4] red [3:2] green [1:0] blue</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>A clock made inside the FPGA (MMCM)</td><td>100 MHz x 10 / 40 = 25 MHz pixel clock</td></tr>
+<tr><td>Video timing from two counters</td><td>800 clocks per line, 525 lines per frame, sync pulses at fixed counts</td></tr>
+<tr><td>A dual-port frame buffer</td><td>the ARM writes, the screen side reads, at the same time</td></tr>
+<tr><td>A resistor DAC</td><td>470 ohm + 1 kohm make 4 levels per colour</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>How many bytes does the frame buffer need (320 x 240 pixels, 4 bits each)?</li></ol>
+<details><summary>Answer</summary>
+320 x 240 x 4 / 8 = 38 400 bytes: about 10 block RAMs of the 60.
+</details>
+<ol><li>Why 25 MHz? (800 x 525 clocks per frame at about 60 frames per second)</li></ol>
+<details><summary>Answer</summary>
+800 x 525 x 60 = 25.2 million pixel clocks per second: the VGA standard's 25.175 MHz; 25.0 MHz gives 59.5 Hz, which monitors accept.
+</details>
+<ol><li>How would you draw a moving ball without the ARM?</li></ol>
+<details><summary>Answer</summary>
+Compare the pixel counters with the ball's position registers: inside the square -> white. Update the position once per frame (at VSYNC). No frame buffer needed: that is how Pong was built.
+</details>
+<h2>Ideas</h2>
+<ul><li>A dashboard for the radio (frequency, RDS, meters) or the sensors.</li><li>Pong with two encoders (project 03).</li><li>More colours: 3 or 4 resistors per colour.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>"Out of range" or no picture</b>: check HSYNC and VSYNC; the self-test measures them. Some monitors want 25.175 MHz exactly; most take 25.0.</li><li><b>Wrong colours</b>: a resistor on the wrong pin, or palette entries changed.</li></ul><p><a href="#top">Back to the list</a></p></section><section id="08_audio" class="project"><div class="kicker">Sound &middot; medium</div><h2>Audio: I2S out and in, PDM microphone</h2><p class="lead">Play sound through an I2S DAC or amplifier module (PCM5102A, MAX98357A), record from an I2S ADC, or from a digital PDM microphone with a CIC filter in hardware. 48.8 kHz stereo, 16 bit.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 5 of 5 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Audio block</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>mclk</code></td><td>J3 pin 5</td><td>T14</td></tr><tr><td><code>bclk</code></td><td>J3 pin 11</td><td>P14</td></tr><tr><td><code>dout</code></td><td>J3 pin 12</td><td>R14</td></tr><tr><td><code>lrclk</code></td><td>J3 pin 15</td><td>T15</td></tr><tr><td><code>din</code></td><td>J6 pin 5</td><td>U14</td></tr><tr><td><code>pdm_clk</code></td><td>J6 pin 11</td><td>U18</td></tr><tr><td><code>pdm_dat</code></td><td>J6 pin 12</td><td>U19</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J3 pin 11 (BCLK), pin 12 (DOUT), pin 15 (LRCLK)</td><td>DAC module BCK, DIN, LCK (PCM5102A) or BCLK, DIN, LRC (MAX98357A)</td><td>PCM5102A: SCK pin to GND (it makes its own clock), FMT to GND</td></tr><tr><td>J3 pin 5 (MCLK, 12.5 MHz)</td><td>DAC / ADC modules that need a master clock</td><td></td></tr><tr><td>J6 pin 5 (DIN)</td><td>I2S ADC module DOUT</td><td></td></tr><tr><td>J6 pin 11 / 12</td><td>PDM microphone CLK / DATA (SEL to GND = left)</td><td>for example an SPH0641 or MP34DT01 board</td></tr><tr><td>pin 16 (3.3 V), pin 1 (GND)</td><td>module VIN and GND</td><td>MAX98357A also works at 5 V from an outside supply</td></tr></table><h3>Parts</h3><ul><li>PCM5102A DAC board + headphones / amplifier, or a MAX98357A amplifier board + speaker</li><li>optional: PDM microphone board, I2S ADC board</li><li>nothing for the self-test</li></ul><h2>What it does</h2>
+<p>Digital sound in and out: I2S to a DAC or amplifier module (headphones, a speaker), I2S in from an ADC module, and a PDM microphone with the decimation filter in hardware. 48.8 kHz, 16-bit stereo. The demo plays a melody made in Python, a tone sweep, and <code>sound.wav</code> if you put one in the project.</p>
+<h2>How it works</h2>
+<p><b>I2S</b> is how chips pass sound: <b>BCLK</b> (bit clock), <b>LRCLK</b> (which channel: left or right, it is also the sample rate) and <b>DATA</b> (the bits, most significant first). Here one 100 MHz clock makes everything:</p>
+<table>
+<tr><th>Signal</th><th>Rate</th></tr>
+<tr><td>MCLK (for modules that need it)</td><td>12.5 MHz</td></tr>
+<tr><td>BCLK</td><td>3.125 MHz (64 bits per frame)</td></tr>
+<tr><td>LRCLK = sample rate</td><td>48828.125 Hz (100 MHz / 2048)</td></tr>
+</table>
+<p>That is not 48 kHz exactly, but DACs with their own PLL (PCM5102A, MAX98357A, UDA1334A) take any rate. Python resamples your sound to 48828 Hz.</p>
+<p>The ARM writes samples into a 2048-sample FIFO (42 ms); the FPGA sends one frame per LRCLK period. If the FIFO runs empty, the FPGA counts an underflow and sends silence. The <b>tone generator</b> (a DDS with a sine table) plays without the ARM.</p>
+<p>A <b>PDM microphone</b> sends 1-bit samples at 3.125 MHz: the density of ones is the sound. A CIC filter (sums and differences) in the FPGA turns them into 16-bit samples at 48.8 kHz.</p>
+<p>The DOUT pin is read back at its pad and received again: the self-test plays samples and checks they come back exactly.</p>
+<h2>Try it</h2>
+<table>
+<tr><th>Module</th><th>Wiring</th></tr>
+<tr><td>PCM5102A DAC</td><td>BCK to J3 pin 11, DIN to J3 pin 12, LCK to J3 pin 15, SCK to GND, VIN 3.3 V, GND</td></tr>
+<tr><td>MAX98357A amplifier</td><td>BCLK J3 pin 11, DIN J3 pin 12, LRC J3 pin 15, VIN 3.3 or 5 V, GND, a 4 to 8 ohm speaker</td></tr>
+<tr><td>PDM microphone</td><td>CLK J6 pin 11, DATA J6 pin 12, SEL to GND, 3.3 V, GND</td></tr>
+<tr><td>I2S ADC</td><td>its DOUT to J6 pin 5, its clocks from J3</td></tr>
+</table>
+<p><b>Upload and run</b>. Put a WAV file named <code>sound.wav</code> (16-bit PCM) in the project to hear it.</p>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, Audio
+import math
+a = Audio(Bus(), slot=1)
+a.setup(out=True)
+a.volume(0.5)
+fs = a.FS
+a.play((int(8000 * math.sin(2 * math.pi * 440 * n / fs)),) * 2 for n in range(int(fs)))   # 1 s of A4
+a.setup(out=True, tone=True)
+a.tone(1000)                         # the hardware tone generator
+a.setup(out=False, rx=True, rx_source='pdm')
+samples = a.record(48828)            # 1 s from the microphone</code></pre>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] out on [1] tone [3:2] in source: DIN, loop, DOUT pin, PDM [4] in on [5] PDM test</td></tr>
+<tr><td>1, 2</td><td>TX, TX_LEVEL</td><td>put a sample (R x 65536 + L) / samples waiting</td></tr>
+<tr><td>3, 4</td><td>RX, RX_LEVEL</td><td>take a received sample / waiting</td></tr>
+<tr><td>5, 6</td><td>TONE_INC, VOLUME</td><td>tone frequency, volume 0..256</td></tr>
+<tr><td>7, 8</td><td>UNDERFLOWS, OVERFLOWS</td><td>gaps / lost samples</td></tr>
+<tr><td>9, 10</td><td>LR_PERIOD, FS</td><td>measured at the pin; 48828</td></tr>
+<tr><td>11</td><td>ID</td><td>"AUD0"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Deriving clocks by division</td><td>MCLK, BCLK and LRCLK all from 100 MHz</td></tr>
+<tr><td>A FIFO absorbs the software's irregular timing</td><td>2048 samples = 42 ms in hand</td></tr>
+<tr><td>Serial audio (I2S)</td><td>DATA most significant bit first, LRCLK selects the channel</td></tr>
+<tr><td>Turning 1-bit PDM into samples</td><td>a CIC filter: sums and differences</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>Why can the board's I2S run at 48 828 Hz instead of 48 000 Hz?</li></ol>
+<details><summary>Answer</summary>
+100 MHz / 2048 = 48 828.125 Hz is a whole divider of the clock; DACs with their own PLL lock to whatever LRCLK they get. Python resamples the sound to match.
+</details>
+<ol><li>The FIFO holds 2048 samples. How long may Python pause before the sound breaks?</li></ol>
+<details><summary>Answer</summary>
+2048 / 48 828 = 42 ms: any pause shorter than that (minus what is still in the FIFO) is heard as nothing.
+</details>
+<ol><li>A PDM microphone sends 3.125 million bits per second. Why does a filter turn them into sound?</li></ol>
+<details><summary>Answer</summary>
+The density of ones follows the air pressure. A low-pass filter averages the bits: the average is the sound sample; decimating by 64 gives 48.8 kHz.
+</details>
+<h2>Ideas</h2>
+<ul><li>An internet radio player (the board has a network), a doorbell, sound effects for a game.</li><li>A spectrum analyzer on the VGA screen from the microphone.</li><li>Feed the FM radio (project 12) from the microphone: a live studio.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>Silence with a PCM5102A</b>: its SCK pin must go to GND (it then makes its own clock), FMT and XSMT as the module's instructions say (XSMT high = not muted).</li><li><b>Crackling</b>: the FIFO runs empty: write in bigger bursts (<code>play()</code> does that), and close other programs.</li></ul><p><a href="#top">Back to the list</a></p></section><section id="09_sensors" class="project"><div class="kicker">Sensors &middot; easy</div><h2>Sensors: distance, IR remote, touch</h2><p class="lead">Three sensor helpers timed by the FPGA to the microsecond: HC-SR04 ultrasonic distance, any NEC infrared remote control, and a capacitive touch pad.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 10 of 10 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Sensors</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>trig</code></td><td>J8 pin 5</td><td>Y18</td></tr><tr><td><code>echo</code></td><td>J8 pin 11</td><td>V16</td></tr><tr><td><code>ir</code></td><td>J8 pin 12</td><td>W16</td></tr><tr><td><code>touch</code></td><td>J8 pin 15</td><td>Y19</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J8 pin 5 (TRIG)</td><td>HC-SR04 TRIG</td><td>3.3 V is enough to trigger it</td></tr><tr><td>J8 pin 11 (ECHO)</td><td>HC-SR04 ECHO through a divider: 1 kohm from ECHO, 2 kohm to GND</td><td>ECHO is 5 V: never connect it directly</td></tr><tr><td>J8 pin 12 (IR)</td><td>IR receiver OUT (VS1838B, TSOP38238)</td><td>receiver VCC to 3.3 V (pin 16)</td></tr><tr><td>J8 pin 15 (touch)</td><td>a wire or a coin as the pad, and 1 Mohm to 3.3 V</td><td>works without the resistor too (less sensitive)</td></tr><tr><td>pin 16 (3.3 V) / outside 5 V</td><td>IR receiver VCC / HC-SR04 VCC (5 V)</td><td>common GND</td></tr></table><h3>Parts</h3><ul><li>HC-SR04 ultrasonic sensor + 1 k and 2 k resistors</li><li>IR receiver VS1838B and any TV / NEC remote</li><li>1 Mohm resistor and a coin or foil for the touch pad</li><li>nothing for the self-test</li></ul><h2>What it does</h2>
+<p>Three sensors that need exact timing, measured by the FPGA: an <b>HC-SR04</b> ultrasonic distance sensor, an <b>IR remote</b> receiver (NEC codes, most cheap remotes) and a <b>capacitive touch</b> pad made of a wire or a coin. The demo prints distance, remote buttons and touches as they happen; LED 0 lights while the pad is touched.</p>
+<h2>How it works</h2>
+<h3>Distance (HC-SR04)</h3>
+<p>The FPGA sends a 10 us pulse on TRIG every 60 ms. The sensor sends 8 ultrasonic pulses and raises ECHO until the sound comes back. The FPGA times ECHO to the microsecond:</p>
+<pre><code>distance in mm = echo time in us x 343 / 2000      (sound at 20 C: 343 m/s, there and back)</code></pre>
+<p>No echo within 38 ms means "nothing in range" (more than about 4 m). An <b>echo simulator</b> inside can stand in for the sensor (the self-test uses it).</p>
+<h3>IR remote (NEC)</h3>
+<p>A remote flashes infrared light at 38 kHz; a receiver module (VS1838B, TSOP38238) turns the flashes into a clean low signal. The NEC code: a 9 ms start pulse, a 4.5 ms gap, then 32 bits (address, inverted address, command, inverted command), each bit a 0.56 ms pulse followed by a short (0 bit) or long (1 bit) gap. Holding a button sends <b>repeat codes</b>. The FPGA measures every gap, checks the inverted copies, and counts codes, repeats and errors. An IR transmitter inside the FPGA can send a test code to the decoder.</p>
+<h3>Touch</h3>
+<p>The pin pulls its wire low, lets go, and counts how long the 1 Mohm resistor to 3.3 V takes to charge it until it reads high: a few microseconds. A finger adds capacitance, so it takes longer. The base level follows slow changes (temperature, humidity); a difference above TOUCH_DIFF is a touch.</p>
+<h2>Try it</h2>
+<table>
+<tr><th>Sensor</th><th>Wiring</th></tr>
+<tr><td>HC-SR04</td><td>VCC 5 V, GND, TRIG to J8 pin 5, ECHO to J8 pin 11 <b>through a divider</b> (1 k to the pin, 2 k from the pin to GND): ECHO is 5 V!</td></tr>
+<tr><td>IR receiver</td><td>OUT to J8 pin 12, VCC 3.3 V, GND</td></tr>
+<tr><td>touch pad</td><td>a wire or a coin on J8 pin 15, and a 1 Mohm resistor from J8 pin 15 to 3.3 V</td></tr>
+</table>
+<p><b>Upload and run</b>, then wave a hand in front of the sensor, press remote buttons, touch the pad.</p>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, Sensors
+s = Sensors(Bus(), slot=1)
+s.setup(distance=True, touch=True)
+print(s.distance_mm())        # None when nothing is in range
+print(s.ir())                 # {'count', 'repeats', 'errors', 'address', 'command', ...}
+print(s.touch())              # {'raw', 'base', 'touched', 'touches'}</code></pre>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] distance [1] echo simulator [2] touch [3] IR test</td></tr>
+<tr><td>1</td><td>PERIOD</td><td>time between measurements</td></tr>
+<tr><td>2..5</td><td>ECHO_US, DIST_MM, RANGINGS, TIMEOUTS</td><td>(read)</td></tr>
+<tr><td>6</td><td>SIM_US</td><td>echo simulator</td></tr>
+<tr><td>7..10</td><td>IR_CODE, IR_COUNT, IR_REPEATS, IR_ERRORS</td><td>(read)</td></tr>
+<tr><td>11</td><td>TEST_CODE</td><td>the IR test code</td></tr>
+<tr><td>12..15</td><td>TOUCH_RAW, TOUCH_BASE, TOUCHED, TOUCH_DIFF</td><td>touch</td></tr>
+<tr><td>16</td><td>ID</td><td>"SENS"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Timing a pulse to the microsecond</td><td>the ECHO pin's high time</td></tr>
+<tr><td>Decoding a protocol from pulse lengths</td><td>NEC IR: a 0 and a 1 differ only in the gap after the pulse</td></tr>
+<tr><td>Measuring capacitance by charge time</td><td>touch: how long a 1 Mohm resistor takes to charge the pin</td></tr>
+<tr><td>Simulators inside the design</td><td>an echo simulator stands in for the sensor in the self-test</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>The echo lasts 5830 us. How far is the object?</li></ol>
+<details><summary>Answer</summary>
+5830 x 343 / 2000 = 1000 mm: one metre.
+</details>
+<ol><li>Why does the NEC code send the address and the command twice, the second time inverted?</li></ol>
+<details><summary>Answer</summary>
+To catch errors: a byte and its inverse always add up to 0xFF. A disturbed bit breaks that and the code is thrown away.
+</details>
+<ol><li>Why does the touch sensor follow a slowly changing base level?</li></ol>
+<details><summary>Answer</summary>
+Humidity, temperature and the cable change the charge time slowly. A touch is a quick, big change on top of that; tracking the base keeps one threshold working all day.
+</details>
+<h2>Ideas</h2>
+<ul><li>A parking sensor with the LED strip (project 01) as a bar, or a beeper.</li><li>Control the radio (project 12) with a TV remote: next song, volume.</li><li>A theremin: the distance sets the pitch of the audio project's tone.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>Distance always None</b>: the divider on ECHO is missing a ground, or the sensor has no 5 V.</li><li><b>Jumping distances</b>: soft or slanted surfaces scatter the sound; measure flat, hard things.</li><li><b>IR codes with errors</b>: the receiver needs 3.3 V and a clean supply (a 100 nF capacitor at its pins helps); some remotes are not NEC (RC5, Sony).</li><li><b>Touch too sensitive / not enough</b>: change TOUCH_DIFF (<code>s.touch_threshold(clocks)</code>).</li></ul><p><a href="#top">Back to the list</a></p></section><section id="10_riscv" class="project"><div class="kicker">Computing &middot; advanced</div><h2>RISC-V processor in the FPGA</h2><p class="lead">A third processor next to the two ARM cores: Ardzy&#x27;s own RV32I RISC-V core with 16 KB RAM, LEDs, GPIO, timers, a console and mailboxes. Write assembly in the app, the ARM assembles and loads it.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 6 of 6 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>RISC-V control (run, status, console, mailboxes)</td></tr><tr><td>2-5</td><td><code>0x43C02000 .. 0x43C05FFF</code></td><td>RISC-V RAM (16 KB)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>gpio_out[0]</code></td><td>J8 pin 5</td><td>Y18</td></tr><tr><td><code>gpio_out[1]</code></td><td>J8 pin 11</td><td>V16</td></tr><tr><td><code>gpio_out[2]</code></td><td>J8 pin 12</td><td>W16</td></tr><tr><td><code>gpio_out[3]</code></td><td>J8 pin 15</td><td>Y19</td></tr><tr><td><code>gpio_in[0]</code></td><td>J5 pin 5</td><td>T16</td></tr><tr><td><code>gpio_in[1]</code></td><td>J5 pin 11</td><td>V15</td></tr><tr><td><code>gpio_in[2]</code></td><td>J5 pin 12</td><td>W15</td></tr><tr><td><code>gpio_in[3]</code></td><td>J5 pin 15</td><td>U17</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J8 pins 5, 11, 12, 15</td><td>RISC-V GPIO outputs 0..3 (address 0x8000_0004)</td><td>LEDs with 330 ohm, buzzers through a transistor</td></tr><tr><td>J5 pins 5, 11, 12, 15</td><td>RISC-V GPIO inputs 0..3 (address 0x8000_0008)</td><td>buttons to GND (the pull-ups are on)</td></tr></table><h3>Parts</h3><ul><li>nothing needed: the 4 board LEDs show the programs</li><li>optional: LEDs and buttons on J8 / J5</li></ul><h2>What it does</h2>
+<p>A third processor on the board: a small <b>RISC-V</b> (RV32I, the base instruction set) built from FPGA logic, with 16 KB of RAM, a console, the LEDs, 4 output and 4 input pins, a microsecond timer and mailboxes to talk to the ARM. Python on the ARM assembles your program, loads it, starts it and shows what it prints. The demo runs a running light with a greeting, then counts the prime numbers below 12000 with a sieve and compares the time with the same sieve in Python on the ARM.</p>
+<h2>How it works</h2>
+<p>RISC-V is an open instruction set: anyone may build a processor for it. This one is <b>multi-cycle</b>: each instruction goes through fetch, decode, execute and memory steps, about 5 clocks, so about 20 million instructions per second at 100 MHz. That is slow next to the ARM (667 MHz, two cores) but it is <i>exactly</i> predictable: no caches, no operating system, every instruction always takes the same time. That is what you want for precise timing jobs.</p>
+<pre><code>ARM (Python)  --writes program--&gt;  16 KB RAM (block RAM, two ports)  &lt;--fetch / load / store--  RISC-V core
+              &lt;--console, mail--  peripherals at 0x8000_0000  &lt;--------------------------------</code></pre>
+<ul><li>32 registers x0..x31, all RV32I instructions (add, sub, logic, shifts, compares, branches, jumps, loads and stores of bytes, halves and words).</li><li>ECALL or EBREAK stop the program (the normal way to end); anything unknown stops it with "illegal".</li><li>The ARM can read and write the RAM while the program runs: shared memory.</li></ul>
+<h3>The program's addresses</h3>
+<table>
+<tr><th>Address</th><th>What</th></tr>
+<tr><td>0x0000_0000 .. 0x0000_3FFF</td><td>RAM: the program starts at 0, the stack at the top (0x4000)</td></tr>
+<tr><td>0x8000_0000</td><td>LEDS (write, 4 bits)</td></tr>
+<tr><td>0x8000_0004 / 0x8000_0008</td><td>GPIO out to J8 (write) / GPIO in from J5 (read)</td></tr>
+<tr><td>0x8000_000C</td><td>CYCLES: a 100 MHz counter</td></tr>
+<tr><td>0x8000_0010</td><td>CONSOLE: write a character, it appears in the Monitor</td></tr>
+<tr><td>0x8000_0014 / 0x8000_0018</td><td>MAIL_IN (from the ARM) / MAIL_OUT (to the ARM)</td></tr>
+<tr><td>0x8000_001C</td><td>MICROS: microseconds since the start</td></tr>
+</table>
+<h2>Try it</h2>
+<p><b>Upload and run</b>: the LEDs run, then the primes below 12000 are counted on the RISC-V and in Python. The Monitor shows the speed of both.</p>
+<p>Write your own: <b>Copy to my projects</b>, copy <code>blink.s</code> to <code>mine.s</code>, change it, add <code>'mine.s'</code> to <code>PROGRAMS</code> in main.py, Upload.</p>
+<pre><code>.equ LEDS, 0x80000000
+        li   t0, LEDS
+        li   t1, 0b0101
+        sw   t1, 0(t0)        # LEDs 0 and 2 on
+        ebreak                # stop</code></pre>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, RiscV
+from riscv import assemble, Sim
+rv = RiscV(Bus(), slot=1)
+words, labels = assemble(open('blink.s').read())
+rv.load(words)
+rv.start()
+print(rv.wait(timeout=10))     # what the program printed
+print(rv.status())             # running, halted, illegal, pc, retired
+
+sim = Sim(words)               # the same program in the Python simulator, for testing
+sim.run()
+print(sim.console)</code></pre>
+<p><code>riscv.py</code> is a complete assembler (labels, all RV32I instructions, li, la, call, ret, .word, .ascii, .equ ...) and an instruction-exact simulator. The self-test runs 2000 random instructions on both and compares every register and memory word.</p>
+<h3>Registers (slot 1, RAM in slots 2..5)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] run (0 holds the core in reset)</td></tr>
+<tr><td>1</td><td>STATUS</td><td>[0] running [1] halted [2] illegal</td></tr>
+<tr><td>2</td><td>PC</td><td>where the program is</td></tr>
+<tr><td>3, 4</td><td>CONSOLE, CON_LEVEL</td><td>characters printed</td></tr>
+<tr><td>5, 6</td><td>MAIL_IN, MAIL_OUT</td><td>the mailboxes</td></tr>
+<tr><td>7</td><td>RETIRED</td><td>instructions done</td></tr>
+<tr><td>8</td><td>GPIO</td><td>the program's outputs and the LEDs</td></tr>
+<tr><td>9</td><td>ID</td><td>"RV32"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>What a processor is: fetch, decode, execute</td><td>the multi-cycle core, about 5 clocks per instruction</td></tr>
+<tr><td>Memory-mapped peripherals</td><td>LEDs, GPIO, console at 0x8000_0000</td></tr>
+<tr><td>Shared memory between two processors</td><td>the ARM reads and writes the RISC-V's RAM while it runs</td></tr>
+<tr><td>Machine code</td><td><code>blink.s</code>, <code>primes.s</code> and the assembler in <code>riscv.py</code></td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>At about 5 clocks per instruction and 100 MHz, how long does a loop of 4 instructions take, 1 million times?</li></ol>
+<details><summary>Answer</summary>
+4 x 5 x 10 ns x 1 000 000 = 0.2 s.
+</details>
+<ol><li>Why is this slow core still useful next to two 667 MHz ARM cores?</li></ol>
+<details><summary>Answer</summary>
+It is exactly predictable: no caches, no operating system, no interrupts it did not ask for. A loop always takes the same time, to the nanosecond: good for precise control and for learning.
+</details>
+<ol><li>How does the ARM send a number to a running RISC-V program?</li></ol>
+<details><summary>Answer</summary>
+It writes MAIL_IN (or any shared RAM word); the program polls the address and reads it. MAIL_OUT works the other way.
+</details>
+<h2>Ideas</h2>
+<ul><li>Let the RISC-V do a precise job (a protocol, a fast loop) while Python does the rest.</li><li>Compile C for it: <code>riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -nostdlib</code>, then load the binary words.</li><li>Add the M extension (multiply / divide) to the core using the DSP blocks.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>"illegal" at once</b>: the program uses an instruction outside RV32I (mul, csr ...) or jumped into data.</li><li><b>Nothing printed</b>: CONSOLE takes one character per write; end the program with <code>ebreak</code> so the ARM stops waiting.</li></ul><p><a href="#top">Back to the list</a></p></section><section id="11_stream_lab" class="project"><div class="kicker">Computing &middot; advanced</div><h2>AXI-Stream lab (FIFO, CRC-32, arbiter)</h2><p class="lead">The building blocks for data streams in the FPGA, at work: FIFOs, a width converter, a CRC-32 engine checked against Python, a 100-million-words-per-second source with a meter, and a frame-aware arbiter.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 7 of 7 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Stream lab (chains A, B, C)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr></table><h3>Parts</h3><ul><li>nothing: everything happens inside the FPGA</li></ul><h2>What it does</h2>
+<p>A lab bench for <b>AXI-Stream</b>, the way data flows between blocks in FPGA designs (Xilinx IP, video, network, DSP chains all use it). Three small chains show the building blocks of the Ardzy library at work: FIFOs, a width converter, a CRC-32 engine checked against Python, a source that makes 100 million words per second with a meter that checks every one, and an arbiter that merges two streams without breaking their frames.</p>
+<h2>How it works</h2>
+<p>A stream moves one word when the source has data (<b>tvalid</b>) and the sink can take it (<b>tready</b>) at the same clock edge. <b>tlast</b> marks the last word of a frame (a packet). Either side may wait: that is <b>back pressure</b>, and it is what makes streams safe to connect in any order.</p>
+<pre><code>          tdata[31:0] ------------&gt;
+source    tvalid      ------------&gt;    sink        a word moves when tvalid AND tready
+          tlast       ------------&gt;
+          tready      &lt;------------</code></pre>
+<p>The three chains:</p>
+<table>
+<tr><th>Chain</th><th>Path</th><th>What it shows</th></tr>
+<tr><td>A</td><td>ARM -&gt; FIFO -&gt; 32 to 8 bits -&gt; CRC-32</td><td>the CRC of each frame, the same number as Python's <code>zlib.crc32</code></td></tr>
+<tr><td>B</td><td>counter source -&gt; FIFO -&gt; meter</td><td>100 million words per second; with back pressure (the meter takes a word only every n clocks) nothing is lost</td></tr>
+<tr><td>C</td><td>two sources -&gt; arbiter -&gt; FIFO -&gt; ARM</td><td>frames of 3 and 5 words arrive whole, the sources take turns</td></tr>
+</table>
+<p>The blocks (in <code>ardzy_axis.v</code>, ready for your own designs): <code>ardzy_axis_fifo</code>, <code>ardzy_axis_32to8</code>, <code>ardzy_axis_crc32</code>, <code>ardzy_axis_arb2</code>, <code>ardzy_axis_counter</code>, <code>ardzy_axis_meter</code>.</p>
+<h2>Try it</h2>
+<p>Nothing to wire. <b>Upload and run</b>: the Monitor shows the CRC of a text (FPGA and Python agree), the speed of chain B at 1, 2, 4 and 10 clocks per word, and the frames of chain C.</p>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, StreamLab
+import zlib
+lab = StreamLab(Bus(), slot=1)
+lab.reset()
+data = b'Hello, stream!  '
+print(hex(lab.crc_frame(data)), hex(zlib.crc32(data)))
+lab.sources(b=True)
+lab.slow(3)                         # the meter takes 1 word in 4 clocks
+print(lab.meter())                  # words per second, errors</code></pre>
+<p>Use the blocks in your own design: copy the project, and in <code>top.v</code> chain them with the <code>tdata / tvalid / tready / tlast</code> wires, as <code>streamlab.v</code> does.</p>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] reset [1] source B on [2] sources C on</td></tr>
+<tr><td>1, 2</td><td>IN_DATA, IN_LAST</td><td>a word into chain A / the last word of a frame</td></tr>
+<tr><td>3..5</td><td>CRC, CRC_FRAMES, CRC_BYTES</td><td>(read)</td></tr>
+<tr><td>6..8</td><td>B_PER_SEC, B_WORDS, B_ERRORS</td><td>the meter</td></tr>
+<tr><td>9, 10</td><td>B_SLOW, B_LEN</td><td>back pressure, frame length</td></tr>
+<tr><td>11..13</td><td>C_DATA, C_LEVEL, C_INFO</td><td>take a word from chain C</td></tr>
+<tr><td>14</td><td>A_LEVEL</td><td>words waiting in chain A</td></tr>
+<tr><td>15</td><td>ID</td><td>"AXIS"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Handshake: data moves only when valid and ready</td><td>tvalid / tready on every stream</td></tr>
+<tr><td>Back pressure</td><td>the meter takes a word only every n clocks; nothing is lost</td></tr>
+<tr><td>FIFOs decouple producers and consumers</td><td><code>ardzy_axis_fifo</code> between every pair of blocks</td></tr>
+<tr><td>Frames and arbitration</td><td>tlast marks the end of a frame; the arbiter never splits one</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>A source offers 100 million words per second, the sink takes 1 in 4 clocks. What happens to the source?</li></ol>
+<details><summary>Answer</summary>
+It sees tready low 3 clocks in 4 and waits: 25 million words per second pass, none lost. That is back pressure.
+</details>
+<ol><li>Why does CRC-32 detect any single changed bit in a frame?</li></ol>
+<details><summary>Answer</summary>
+CRC is the remainder of a polynomial division; a single changed bit adds a term the generator polynomial cannot divide, so the remainder always changes.
+</details>
+<ol><li>Why must a block never lower tvalid or change tdata before the word is taken?</li></ol>
+<details><summary>Answer</summary>
+The sink may take it at any later clock; changing it early would lose or corrupt that word. The rule makes any two blocks safe to connect.
+</details>
+<h2>Ideas</h2>
+<ul><li>A packet filter: pass only frames whose first word matches.</li><li>A moving average or FIR filter as a stream block between the source and the meter.</li><li>Feed the FM radio's audio from a stream.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li>The self-test checks every block; if your own chain loses words, look for a block that ignores tready (it must hold tvalid and the data until the word is taken).</li></ul><p><a href="#top">Back to the list</a></p></section><section id="12_fm_radio" class="project"><div class="kicker">Radio &middot; advanced</div><h2>Radio transmitter (FM stereo + RDS, NFM, AM, SSB, CW, digital, pictures, AES67)</h2><p class="lead">A radio station on one pin, made inside the FPGA: FM stereo with your station name and text on the radio&#x27;s display (RDS), NFM, AM, USB, LSB and DSB, Morse code, RTTY and PSK31, pictures (SSTV), songs from WAV files and live sound from the network (AES67).</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 36 of 36 checks on the real board (October 2026), with nothing connected; the radio service test 23 of 23.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Radio registers</td></tr><tr><td>2</td><td><code>0x43C02000</code></td><td>RDS blocks (2 banks of 256)</td></tr><tr><td>3</td><td><code>0x43C03000</code></td><td>MPX capture, samples 0..1023</td></tr><tr><td>4</td><td><code>0x43C04000</code></td><td>MPX capture, samples 1024..2047</td></tr><tr><td>5</td><td><code>0x43C05000</code></td><td>MPX capture, samples 2048..3071</td></tr><tr><td>6</td><td><code>0x43C06000</code></td><td>MPX capture, samples 3072..4095</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>rf</code></td><td>J9 pin 11</td><td>T17</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J9 pin 11 (RF)</td><td>a short wire, 10 to 20 cm, as the antenna</td><td>a few meters of range in a room; the self-test needs nothing</td></tr><tr><td>J9 pin 11 through a 1 kohm resistor</td><td>an SDR input (RTL-SDR) through a 30 to 40 dB attenuator</td><td>never the pin straight into an SDR: the resistor and the attenuator protect it and keep the signal off the air</td></tr><tr><td>pin 1 (GND)</td><td>the ground (outer conductor) of the SDR cable</td><td></td></tr></table><h3>Parts</h3><ul><li>an FM radio with RDS (a car radio, a kitchen radio, a phone with an FM chip)</li><li>optional: an RTL-SDR stick to see the spectrum, the RDS and the digital modes</li><li>nothing for the self-test</li></ul><div class="box warn"><b>Radio rules first.</b> Sending radio signals is regulated everywhere. Without a licence you may only use very weak transmitters: in the EU and the UK, small FM transmitters (the kind for a car stereo) may send up to 50 nW e.r.p. in 87.5 to 108 MHz; in the USA, Part 15 allows 250 uV/m at 3 m. Choose a frequency nobody uses where you live, keep the power setting low and the antenna short (10 to 20 cm), and never send on aviation, emergency or other services' frequencies. The Ardzy pin sends a square wave: it also has harmonics (3 and 5 times the frequency). For anything more than a bench test use a filter, or connect an SDR through an attenuator instead of an antenna. You are responsible for what you send.</div>
+<h2>What it does</h2>
+<p>This project turns one FPGA pin (J9 pin 11) into a complete radio station:</p>
+<ul><li><b>FM stereo</b> (WFM) with the 19 kHz pilot, so receivers light their "stereo" lamp</li><li><b>RDS</b>: your station name (8 characters), a radio text of up to 64 characters (it can show the song that is playing), the programme type (Pop, Rock, News ...), the clock time (car radios set their clock from it), traffic flags and other frequencies</li><li><b>NFM</b> (narrow FM, like walkie-talkies), <b>AM</b>, <b>USB</b>, <b>LSB</b> and <b>DSB</b> for scanners, short-wave receivers and SDRs</li><li><b>sound</b> from four sources: test tones, songs (WAV files on the board, in a playlist), <b>pictures</b> (SSTV) and live <b>network sound</b> (AES67)</li><li><b>digital modes</b>: Morse code (CW), radio teletype (RTTY), PSK31, a melody beacon and frequency sweeps</li></ul>
+<table>
+<tr><th>Mode</th><th>What a receiver needs</th><th>How it is made</th></tr>
+<tr><td>WFM</td><td>any FM radio</td><td>the stereo multiplex moves the carrier frequency, up to 75 kHz</td></tr>
+<tr><td>NFM</td><td>a scanner or an SDR in NFM</td><td>the voice band (300 to 2700 Hz) moves the frequency, 2.5 or 5 kHz</td></tr>
+<tr><td>AM</td><td>an AM radio, SDR in AM</td><td>the sound changes the carrier's strength</td></tr>
+<tr><td>USB, LSB</td><td>a short-wave receiver, SDR in USB / LSB</td><td>only one side band, no carrier: strength and phase from I and Q</td></tr>
+<tr><td>DSB</td><td>SDR in DSB (or USB / LSB)</td><td>both side bands, no carrier</td></tr>
+<tr><td>CW, RTTY, PSK31</td><td>SDR in CW / USB, fldigi for RTTY and PSK31</td><td>the symbol player</td></tr>
+</table>
+<p>(Your SDR also offers <b>RAW</b>: that only shows the raw I / Q of what it receives; there is nothing to send for it.)</p>
+<p>Everything is made inside the FPGA. The ARM only writes settings, sound samples and RDS data. In the Ardzy app open <b>Ready projects</b> and press <b>Open</b> on the FM radio card: that is the station's control page. This guide explains how it all works.</p>
+<h2>How the signal is made</h2>
+<h3>1. A carrier from a counter</h3>
+<p>A 32-bit number, the <b>phase</b>, grows by a step every sample. When it passes 2^32 it starts again from 0: one turn of the carrier. The pin is high while the phase is in the first half of the turn. A bigger step gives a higher frequency:</p>
+<pre><code>frequency = step * 500 MHz / 2^32        (steps of 0.116 Hz)
+96.0 MHz  -&gt;  step = 824 633 721</code></pre>
+<p>The FPGA cannot toggle a pin 500 million times per second with ordinary logic, so it uses two tricks: a 250 MHz clock made by the MMCM (the clock multiplier: 100 MHz x 10 / 4), and an <b>ODDR</b>, a flip-flop in the pin itself that sends one value on the rising edge of the clock and another on the falling edge. Two samples per clock: 500 million per second. Carriers up to about 200 MHz are possible; the counter that measures the pin reaches 125 MHz.</p>
+<p>The adders run at 250 MHz, so they are split: each 32-bit sum is made of two 16-bit halves, with the carry passed on one clock later. The result is exactly the same number, just a few clocks later.</p>
+<h3>2. FM: the stereo multiplex (MPX)</h3>
+<p>FM moves the carrier frequency with the sound. For stereo, the sound is first packed into one signal, the <b>multiplex</b> (MPX), 390625 samples per second:</p>
+<table>
+<tr><th>Part</th><th>Where</th><th>What it is</th></tr>
+<tr><td>L+R</td><td>30 Hz to 15 kHz</td><td>left plus right: what a mono radio plays</td></tr>
+<tr><td>pilot</td><td>19 kHz</td><td>a quiet tone that says "this is stereo" (9 %)</td></tr>
+<tr><td>L-R</td><td>23 to 53 kHz</td><td>left minus right, on a 38 kHz carrier that is then removed (DSB-SC)</td></tr>
+<tr><td>RDS</td><td>54.6 to 59.4 kHz</td><td>the data, on 57 kHz (3 x 19)</td></tr>
+</table>
+<p>A stereo radio locks to the 19 kHz pilot, doubles it to 38 kHz, gets L-R back, and makes L = (L+R) + (L-R) and R = (L+R) - (L-R). All the parts use one phase counter, so 19, 38 and 57 kHz stay exactly in step.</p>
+<p>The sound path in the FPGA, one stage after the other:</p>
+<ol><li><b>resampler</b>: songs come at any rate (44.1 kHz, 48 kHz ...); the FPGA takes them at that rate and turns them into 48828 samples per second (linear interpolation)</li><li><b>volume</b>, then <b>pre-emphasis</b>: the highs are made louder (50 us in Europe, 75 us in the Americas); the radio makes them quieter again and the hiss goes down with them</li><li><b>15 kHz low-pass</b>, 63 taps: nothing may reach the 19 kHz pilot (19.5 kHz is blocked by more than 80 dB)</li><li><b>M and S</b>: M = (L+R)/2, S = (L-R)/2</li><li><b>x8 interpolation</b>, 96 taps: from 48828 to 390625 samples per second without mirror images</li><li><b>the sum</b>: 87 % sound, 9 % pilot, 4 % RDS, then the deviation: 75 kHz at full MPX</li></ol>
+<h3>3. RDS</h3>
+<p>RDS sends 1187.5 bits per second (19 kHz / 16). The data comes in <b>groups</b> of 4 blocks; each block has 16 data bits and a 10-bit check word that also marks which block it is, so a receiver finds the start and corrects errors.</p>
+<table>
+<tr><th>Group</th><th>Carries</th></tr>
+<tr><td>0A</td><td>2 characters of the station name (PS) per group, the PTY, TP, TA and music / speech flags, other frequencies</td></tr>
+<tr><td>2A</td><td>4 characters of the radio text (RT) per group, and the A/B flag that flips for a new text</td></tr>
+<tr><td>1A</td><td>the extended country code (ECC): with the first digit of the PI it names the country</td></tr>
+<tr><td>3A + 11A</td><td>RT+ (RadioText Plus): which part of the text is the title and which the artist, so car radios can show them apart</td></tr>
+<tr><td>10A</td><td>the programme type name (PTYN): 8 characters of your own, for example "House"</td></tr>
+<tr><td>4A</td><td>the date and the time (UTC and the local offset), once a minute; only when the board's clock is known to be right (network time, or the Ardzy app set it), because the board has no battery clock</td></tr>
+</table>
+<p>The ARM (rds.py) builds the groups and writes them into one of two <b>banks</b> in the FPGA. The FPGA sends a bank round after round; when the ARM has filled the other bank and asks for it, the change happens at the end of a round, so a receiver never sees half a group. Both banks share one length register, so rds.py always keeps them the same length: a shorter round is padded with its own groups and the bank on air is extended with its own groups before a longer one is asked for. That way a round is never cut short and no old block from an earlier round can slip on air. Each bit is sent differentially coded (a 1 flips the level) and as one smooth sine period (biphase), which keeps the RDS signal narrow and leaves no carrier at 57 kHz.</p>
+<h3>4. NFM, AM, SSB and DSB</h3>
+<p><b>NFM</b> is FM with a small deviation (5 kHz) and only the voice band. The FPGA's voice filter is the same 256-tap filter the side band modes use; it passes 300 to 2700 Hz and is mono.</p>
+<p><b>AM</b> and the <b>power</b> setting change the strength, see below.</p>
+<p><b>USB / LSB</b> (single side band) sends only one half of what AM sends, without the carrier: half the width and all the power in the sound. The classic way to make it is the phasing method: from the sound make two copies 90 degrees apart, <b>I</b> and <b>Q</b> (Q is the Hilbert transform of I), and then</p>
+<pre><code>USB = I x cos(carrier) - Q x sin(carrier)       LSB: Q with the other sign</code></pre>
+<p>The FPGA makes I and Q with one complex filter of 256 taps (a 1200 Hz low-pass moved up to 1500 Hz): 32 taps in each of the 8 MPX samples of an audio sample, so it fits in the time. The other side band is about 70 dB down (computed from the stored coefficients) and measured more than 40 dB down in the self-test. A pin can only be high or low, so the signal is made in <b>polar</b> form: a small CORDIC (14 shift-and-add steps) turns I and Q into a <b>strength</b> (the pulse width, through the same table as AM) and a <b>phase</b> (added to the carrier's phase), 390625 times a second. <b>DSB</b> is the same with Q = 0: the strength follows the size of the sound and the phase turns by half a turn when the sound changes sign.</p>
+<p>The strength is made from pulses of whole 2 ns samples, so these modes are cleanest on medium and short wave (below about 30 MHz), where a period has many samples.</p>
+<h3>5. The strength (AM, power) and the digital modes</h3>
+<p>The strength of the pin's square wave depends on how long it is high in each turn: half a turn gives the strongest carrier, shorter pulses a weaker one (the strength is sin(pi x width)). <b>AM</b> changes the width with the sound (through a small table, so the strength follows the sound in a straight line). The <b>power</b> setting uses the same idea.</p>
+<p>A pulse cannot be shorter than one sample (2 ns). At 96 MHz a period is only about 5 samples, so the weakest clean setting there is about 57 %: the service never goes lower (the page shows it) because shorter pulses would come and go irregularly and make spurious signals. For less power at FM frequencies use a resistor in series with the antenna, or a shorter antenna. On short wave (a few MHz) the power can go almost to zero.</p>
+<p>The FPGA measures this at the pin: it counts the time the pin is high (RF_HIGH). The self-test checks the power setting and AM against the formula at 6.78 MHz, after it has measured the pad's own edge timing (its rise and fall differ by about 2 ns).</p>
+<p>The <b>symbol player</b> takes a list of steps, each one: a frequency offset, a time in microseconds, a strength and a phase. That is enough for:</p>
+<ul><li><b>CW</b>: carrier on and off, with soft edges (4 ms) so the signal stays narrow</li><li><b>RTTY</b>: two tones 170 Hz apart, 45.45 bits per second, the 5-bit Baudot code</li><li><b>PSK31</b>: 31.25 bits per second; a 0 turns the phase by half a turn, the strength goes through zero while it does</li><li><b>beacon</b>: a melody: each note is a carrier offset, so an SSB receiver plays it as a tone</li><li><b>sweep</b>: the carrier steps across a range (to measure a filter or an antenna)</li></ul>
+<h2>Try it</h2>
+<ol><li>Choose a free frequency. In the FM band, listen with a radio first: between two stations is not enough, the place must be silent.</li><li>Wire a 10 to 20 cm wire to J9 pin 11 (or nothing at all for the first test: the pin and its track radiate a little).</li><li>In the Ardzy app open <b>Ready projects</b>, the FM radio card, <b>Open</b> (press <b>Start the radio on the board</b> if it is not running yet).</li><li>Set the frequency, keep the power low, press <b>OFF AIR</b> so it says <b>ON AIR</b>. The test tones play: 1000 Hz on the left, 400 Hz on the right.</li><li>Tune your radio to the frequency. The station name appears after a second or two, the radio text a few seconds later.</li><li><b>Songs</b>: press <b>Send a WAV file</b>. When it has arrived it joins the playlist. The radio text can show the song: write <code>{title}</code> in it.</li><li><b>Pictures</b>: choose <b>Picture</b>, pick any image (it is fitted to 320 x 256; you can write a call sign on it), choose the SSTV mode and press <b>Send this picture</b>.</li><li><b>Network sound</b>: choose <b>Network</b>; streams announced on the network appear in the list, or type an address and port.</li></ol>
+<h2>The studio console (in the app)</h2>
+<p>The radio page is laid out like a broadcast desk (always dark, like a studio):</p>
+<ul><li><b>ON AIR lamp</b> (press it to go on or off air), the frequency in LED digits (red on air), the tuning buttons, the mode and the power.</li><li><b>Status lamps</b>: ON AIR, CARRIER (seen at the pin), PLL (the 250 MHz clock locked), STEREO, RDS (decoded on the board), TA, AUDIO, CLIP, NET (network sound arriving), DELAY (blue when set, amber while it fills), GAPS (red for 5 s after a gap in the sound).</li><li><b>Studio clock</b>: the PC's time with a ring of 60 seconds.</li><li><b>Timers</b>: how long the station has been on air; the song's elapsed and remaining time (amber in the last 20 s, red and blinking in the last 10 s; LIVE for network sound and test tones); the next song; the time to the top of the hour; when the RDS name and text change next; a stopwatch; a countdown you set (minutes:seconds).</li><li><b>Meter bridge</b>: LED peak meters with a 2 s peak hold for the sound coming in, going out of the processing and on air in the FPGA (after pre-emphasis), the MPX in % of the deviation (100 % = full deviation) and GR, how much the limiter turns the sound down.</li><li><b>Stereo image</b>: a goniometer (a vertical line is mono, a wide cloud is wide stereo, a horizontal line is left and right in opposite phase, which would cancel on a mono radio) and the correlation meter (+1 mono, 0 unrelated, below 0 a phase problem).</li><li><b>Real-time analyzer</b>: the sound after the processing in 31 third-octave bands (20 Hz to 20 kHz) with peak markers; the blue line is the sound before the processing.</li><li><b>MPX spectrum and waterfall</b>: the signal that moves the carrier, 0 to 80 kHz: L+R, the 19 kHz pilot (its level is shown), L-R around 38 kHz and RDS at 57 kHz, with an amber peak trace and a waterfall of the last minute. Live, it asks the board for a capture about once a second; that never touches the settings or the sound.</li></ul>
+<h2>Sound in and out (buffer, processing, delay)</h2>
+<p>Every sound that is not a test tone (songs, pictures, network sound) passes the same chain on the board before the FPGA gets it:</p>
+<p><b>source</b> -&gt; resampled to 48 kHz -&gt; <b>gain, balance, mono, swap</b> -&gt; <b>AGC</b> (an automatic level) -&gt; <b>limiter</b> (never above the ceiling) -&gt; <b>delay</b> -&gt; the FPGA's buffer -&gt; pre-emphasis -&gt; FM -&gt; the pin.</p>
+<p>The <b>Sound in and out</b> card in the app shows this flow with live meters: the level before and after the processing (peak and average, with a peak hold), a 20 ms waveform of each, the levels on air in the FPGA, the last 30 s as a graph, how much the limiter works, the delay right now and a <b>click counter</b>.</p>
+<ul><li><b>Buffer</b> (network sound, 20 to 2000 ms, 150 ms by default): the sound kept in hand against late packets. Clicks come from a buffer that runs dry, so if you hear any, make it bigger: 300 ms rides out almost any network hiccup. A change takes effect at once (a moment of silence or a short skip). The board then follows the sender's clock by nudging its own rate by a few hundred ppm, so the buffer stays where you set it for hours.</li><li><b>Clicks</b>: counts gaps in the sound while a source is really playing (not between songs, before a stream or while the delay fills). It should stay at "none".</li><li><b>Gain / Balance / Mono / Swap</b>: the usual. <b>AGC</b> brings quiet sound up and loud sound down, slowly, towards its target. <b>Limiter</b>: nothing goes above the ceiling, so the station never over-modulates. <b>Bypass</b> sends the sound as it comes.</li><li><b>Delay</b> (0 to 10 s): the whole programme is heard later, for example to match a video stream. The radio text follows: a new song shows up in RDS when it is heard, not when it starts in the delay line. When the sound stops, what is still in the delay plays out to its end.</li></ul>
+<p>An MPX capture (the spectrum in the app) runs beside the sound and does not disturb it.</p>
+<h2>Pictures (SSTV)</h2>
+<p>Slow-scan television sends a picture as sound: the pitch is the brightness, from 1500 Hz (black) to 2300 Hz (white); a 1200 Hz pulse starts every line, and before the picture the <b>VIS code</b> (0.9 s of tones) tells the receiver the mode.</p>
+<table>
+<tr><th>Mode</th><th>Picture</th><th>Time</th><th>Colours</th></tr>
+<tr><td>Martin 1</td><td>320 x 256</td><td>114 s</td><td>green, blue, red per line</td></tr>
+<tr><td>Scottie 1</td><td>320 x 256</td><td>110 s</td><td>green, blue, then the sync, then red</td></tr>
+<tr><td>Robot 36</td><td>320 x 240</td><td>36 s</td><td>brightness, and every other line one colour difference</td></tr>
+</table>
+<p>The board makes the sound (with numpy, in about a second) and plays it like a song, so a picture works in <b>every sound mode</b>: FM for a phone next to a radio (the free app <b>Robot36</b> decodes it from the speaker), USB / LSB on short wave for MMSSTV or QSSTV. A test checks the sound itself: the VIS codes and the pixels measured from the pitch come back within 1 of 255.</p>
+<h2>Network sound (AES67)</h2>
+<p><b>AES67</b> is the standard for uncompressed sound over a network: studio consoles and RAVENNA devices, Dante devices in AES67 mode, PipeWire on Linux and ffmpeg all speak it. The sound goes in RTP packets over UDP, usually to a multicast address (239.x.x.x, port 5004): 48 kHz, 24 bit (L24) or 16 bit (L16), 1 ms per packet. Senders announce their streams with <b>SAP</b> (a short SDP text with the name, address and format).</p>
+<p>The radio service listens to SAP and lists the streams it hears; choose one, or type the address, port and format. It collects the buffer (150 ms unless you choose another size), then plays, and keeps the buffer at that size by nudging the FPGA's resampler by up to 0.4 %: the level is smoothed over a second, a proportional part pulls it back within about 10 s and a slow integral part learns the real difference between the two clocks, so the buffer settles without swinging and never runs dry or over. (AES67 devices also share a PTP clock; a receiver like this one just follows the stream's own pace, which is all a radio needs.) The stream is also received with the transmitter off, so the meters show it before you go on air.</p>
+<h3>The easy way: from the Ardzy app</h3>
+<p>On the radio's page choose <b>Network</b>, then under <b>From this PC</b>:</p>
+<ul><li><b>Send this PC's sound</b>: pick "Everything this PC plays on: ..." (your speakers, or VB-CABLE if Windows plays into it) or an input (a microphone). The app takes the sound with Windows' own audio interface (WASAPI) and sends it as AES67 (L24, 1 ms packets) <b>straight to the board</b>, over the same cable the app already talks to it on.</li><li><b>AES67 streams this PC hears</b>: any AES67 program on this PC, or a device on another network this PC is on, that announces itself (SAP) appears in this list; <b>pass on to the radio</b> relays it to the board the same way.</li></ul>
+<p>Why this matters: an AES67 program sends multicast out of <b>one</b> network card. With two cards (the internet one with the default route, and the cable to the board), Windows usually picks the internet card, and the board never sees the stream. Sending straight to the board, or relaying, makes the choice of card irrelevant. A new sender (another program, a restart) is followed at once: the board watches the sender's id (SSRC) and starts counting its packets anew.</p>
+<h3>Other senders</h3>
+<p>From this PC, without the app:</p>
+<pre><code>python aes67_send.py song.wav                  (in the project folder: a WAV file, over and over)
+python aes67_send.py --tone 1000 --name "Test"</code></pre>
+<p>Live sound from the PC (a microphone, or everything the PC plays through a virtual cable such as VB-CABLE) with ffmpeg; then type 239.69.83.67, port 5004, L24, 48000, 2 on the page:</p>
+<pre><code>ffmpeg -f dshow -i audio="CABLE Output (VB-Audio Virtual Cable)" -ac 2 -ar 48000 -c:a pcm_s24be -payload_type 96 -f rtp "rtp://239.69.83.67:5004?localaddr=192.168.137.1&amp;pkt_size=300"</code></pre>
+<p>(<code>localaddr</code> is this PC's address on the cable to the board.) With PipeWire on Linux, load the AES67 module; Dante devices need AES67 mode switched on in Dante Controller.</p>
+<p>The <b>What radios show</b> box is decoded on the board from the bits the FPGA really sent, the way a car radio does it. The <b>MPX signal</b> card captures 4096 samples inside the FPGA and draws their spectrum: you can see the sound, the pilot, the stereo part and RDS.</p>
+<h3>Listening with an SDR</h3>
+<p>An RTL-SDR stick with SDR# or SDR++ shows everything: the FM signal and its RDS (WFM mode, RDS on), NFM, the AM carrier and its side bands, USB / LSB / DSB voice, the CW and RTTY tones (USB mode). Connect the pin through a 1 kohm resistor and a 30 to 40 dB attenuator to the SDR input, never directly. For RTTY and PSK31 run <b>fldigi</b>: set the SDR to USB about 1 kHz below the frequency and send its sound to fldigi (a virtual audio cable).</p>
+<h2>Program it</h2>
+<p>The radio's control page writes <code>radio.json</code> on the board; the radio service (main.py) does the rest. You can also use the block directly from Python:</p>
+<pre><code>from blocks import Bus, Radio
+import rds, modes
+
+r = Radio(Bus(), slot=1)
+r.frequency(96.0e6)
+r.power(0.2)                         # 20 % strength
+r.setup(tx=True, stereo=True, rds=True, preemph=50, tones=True)
+r.tones(1000, 400)
+r.mode('fm')
+
+st = rds.Station(pi=0x1A2D, ps='MY RADIO', rt='Hello from the FPGA', pty=10)
+r.rds_load(st.cycle(), bank=1)       # the FPGA changes to bank 1 at the end of the round
+
+r.mode('symbols')                    # Morse code at 20 words per minute
+r.send(modes.cw('CQ CQ DE ARDZY', wpm=20))</code></pre>
+<p>Other helpers: <code>r.mode('usb')</code> (or <code>'lsb'</code>, <code>'dsb'</code>), <code>r.setup(narrow=True)</code> (the voice filter: NFM, narrow AM), <code>r.input_rate(44100)</code> and <code>r.push(words)</code> for your own sound (8192 places), <code>r.capture()</code> for 4096 MPX samples, <code>r.capture_iq()</code> for 2048 I / Q pairs, <code>r.peaks()</code>, <code>r.rf_hz()</code> (the carrier counted at the pin), <code>r.rf_duty()</code> (the time the pin is high), <code>rds.decode(r.rds_log())</code> to read back what was sent, <code>modes.rtty()</code>, <code>modes.psk31()</code>, <code>modes.beacon()</code>, <code>modes.sweep()</code>, <code>sstv.audio_words(rgb, 'martin1')</code>, <code>aes67.Receiver(r, '239.69.83.67', 5004)</code>.</p>
+<h3>The radio service (radio.json)</h3>
+<table>
+<tr><th>Key</th><th>Meaning</th></tr>
+<tr><td><code>on</code>, <code>mode</code>, <code>freq_mhz</code>, <code>power</code></td><td>the transmitter: mode fm, nfm, am, usb, lsb, dsb, carrier, cw, rtty, psk31, beacon or sweep</td></tr>
+<tr><td><code>audio.source</code></td><td>tones, playlist, sstv, network or silence; <code>audio.playlist</code>, <code>loop</code>, <code>shuffle</code>, <code>volume</code>, <code>tone_l</code>, <code>tone_r</code></td></tr>
+<tr><td><code>nfm</code>, <code>am</code></td><td><code>nfm.deviation_khz</code>; <code>am.depth</code>, <code>am.voice</code> (the voice filter)</td></tr>
+<tr><td><code>sstv</code></td><td><code>mode</code> (martin1, scottie1, robot36), <code>image</code> (320 x 256 RGB bytes), <code>repeat_s</code>, <code>id</code> (change it to send again)</td></tr>
+<tr><td><code>network</code></td><td><code>stream</code> (address:port of an announced stream) or <code>address</code>, <code>port</code>, <code>encoding</code> (L24, L16), <code>rate</code>, <code>channels</code>, <code>buffer_ms</code>, <code>label</code></td></tr>
+<tr><td><code>process</code></td><td><code>gain_db</code>, <code>balance</code> (-1..1), <code>mono</code>, <code>swap</code>, <code>agc</code>, <code>agc_target_db</code>, <code>limiter</code>, <code>ceiling_db</code>, <code>bypass</code></td></tr>
+<tr><td><code>delay_s</code></td><td>the delay of the programme, 0 to 10 s</td></tr>
+<tr><td><code>rds</code></td><td><code>ps</code>, <code>rt</code>, <code>pi</code>, <code>pty</code>, <code>tp</code>, <code>ta</code>, <code>music</code>, <code>ct</code>, <code>af</code>, <code>ptyn</code>, <code>ecc</code> (2 hex digits), <code>rtplus</code></td></tr>
+<tr><td><code>rds.ps_mode</code></td><td><code>fixed</code> (<code>ps</code>), <code>list</code> (<code>ps_list</code>: names with their seconds), <code>scroll</code> or <code>words</code> (<code>scroll</code> text, <code>scroll_s</code> per step)</td></tr>
+<tr><td><code>rds.rt_list</code></td><td>a loop of texts, each with its seconds; empty: the one text <code>rt</code></td></tr>
+<tr><td><code>fm</code></td><td><code>stereo</code>, <code>preemph</code> (50, 75, 0), <code>deviation_khz</code>, <code>audio</code>, <code>pilot</code>, <code>rds_level</code> (shares, 0..1)</td></tr>
+<tr><td><code>digital</code></td><td><code>text</code>, <code>wpm</code>, <code>baud</code>, <code>shift</code>, <code>offset_hz</code>, <code>melody</code>, <code>tempo</code>, <code>sweep_...</code>, <code>repeat_s</code>, <code>id</code> (change it to send again)</td></tr>
+</table>
+<p>The service writes <code>status.json</code> twice a second: the carrier counted at the pin, the time it is high, the power used, the level meters, the song or picture and its position, what RDS receivers decode, the network streams and the receiver (packets, losses, buffer, clock follow), gaps in the sound. A thread of its own keeps the sound and the symbols flowing every 5 ms.</p>
+<h4>RDS texts: lists, loops and variables</h4>
+<p>The station name can be fixed, a <b>list</b> of names (each shown for its own seconds), a <b>scrolling</b> text or a text shown <b>word by word</b>. The radio text can be one text or a <b>loop</b> of texts. Both can use variables, filled in on the board and updated when they change: <code>{title}</code>, <code>{artist}</code>, <code>{song}</code> (artist - title), <code>{time}</code>, <code>{date}</code>, <code>{freq}</code>, <code>{station}</code>. The app shows a preview of what goes on air and what receivers decode. Note that many car radios ignore a station name that changes quickly; a list with 4 s or more per name is the friendly way.</p>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] transmit [1] stereo [2] RDS [3] pilot [5:4] pre-emphasis [6] mute [7] test tones [8] voice filter</td></tr>
+<tr><td>1</td><td>MODE</td><td>0 off, 1 carrier, 2 FM, 3 AM, 4 symbols, 5 USB, 6 LSB, 7 DSB</td></tr>
+<tr><td>2</td><td>FREQ</td><td>carrier = FREQ x 500 MHz / 2^32</td></tr>
+<tr><td>3</td><td>DEV</td><td>deviation at full MPX, 1288530 = 75 kHz</td></tr>
+<tr><td>4..6</td><td>G_AUDIO, G_PILOT, G_RDS</td><td>shares of the MPX, Q15</td></tr>
+<tr><td>7</td><td>VOLUME</td><td>256 = 1.0</td></tr>
+<tr><td>8</td><td>RATIO</td><td>input rate / 48828.125, Q16.16</td></tr>
+<tr><td>9, 10</td><td>AUDIO, AUDIO_LEVEL</td><td>one stereo sample: R x 65536 + L (8192 places); write 10 to empty the FIFO</td></tr>
+<tr><td>11, 12</td><td>TONE_L, TONE_R</td><td>test tones</td></tr>
+<tr><td>13</td><td>AM_DEPTH</td><td>Q15</td></tr>
+<tr><td>14</td><td>LEVEL</td><td>carrier width (512 = full), [16] key for the carrier mode</td></tr>
+<tr><td>15</td><td>RDS_N</td><td>blocks per bank, [16] bank asked for, [17] bank on air</td></tr>
+<tr><td>16, 17</td><td>SYM_LO, SYM_HI</td><td>one symbol: offset, phase / width, time in us (17 queues it)</td></tr>
+<tr><td>18</td><td>SYM_LEVEL</td><td>symbols waiting; write to empty the queue</td></tr>
+<tr><td>19</td><td>CAPTURE</td><td>write 1: record 4096 MPX samples, 3: 2048 I / Q pairs (slots 3 to 6)</td></tr>
+<tr><td>20, 21</td><td>RDS_LOG, RDS_LOG_LEVEL</td><td>the RDS bits sent, 32 per word</td></tr>
+<tr><td>22..24</td><td>PEAK_L, PEAK_R, PEAK_MPX</td><td>largest level since the last read</td></tr>
+<tr><td>25</td><td>RF_HZ</td><td>rising edges counted at the pin per second</td></tr>
+<tr><td>26, 27</td><td>UNDERRUNS, SYM_UNDER</td><td>gaps in the sound / in the symbols</td></tr>
+<tr><td>28, 29</td><td>STATUS, ID</td><td>[0] 250 MHz clock locked; "FMTX"</td></tr>
+<tr><td>30</td><td>RF_HIGH</td><td>250 MHz samples with the pin high in the last 0.1 s (25 000 000 = always)</td></tr>
+</table>
+<h2>The self-test</h2>
+<p><b>Self-test</b> on the project card measures 36 things on your board, with nothing connected: the MPX levels (1 kHz, the pilot, the stereo side bands), the stereo signal decoded back (more than 90 dB between left and right), the 15 kHz filter, the pre-emphasis, the RDS waveform demodulated bit by bit, the RDS data decoded back to the station name, the carrier counted at the pin at 27.12 and 40.68 MHz (ISM frequencies, for a few seconds), the FM deviation as a shift of the carrier, the power setting and AM as the time the pin is high (at 6.78 MHz, ISM), USB (the other side band captured inside the FPGA, the 1 kHz tone at +1000 Hz at the pin), LSB (-1000 Hz), DSB, the NFM voice filter, the PSK phase path, the symbol player, the sound resampler and the FIFOs.</p>
+<p>On the PC, <code>pc_app/tests</code> also decodes CW, RTTY and PSK31 back to text, decodes the SSTV sound back to pixels, and drives the whole service on the board (songs, RDS, pictures, an AES67 stream from the PC).</p>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>A numerically controlled oscillator</td><td>the 32-bit RF phase at 500 million samples per second</td></tr>
+<tr><td>Frequency modulation</td><td>the MPX signal adds to the phase step</td></tr>
+<tr><td>Stereo multiplex</td><td>L+R, a 19 kHz pilot, L-R on 38 kHz, RDS on 57 kHz</td></tr>
+<tr><td>Digital data on a radio signal</td><td>RDS: groups, check words, biphase symbols</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>FM broadcast deviates +-75 kHz. With a 32-bit phase at 500 MHz, how big is the phase step change for 75 kHz?</li></ol>
+<details><summary>Answer</summary>
+75 000 x 2^32 / 500 000 000 = 644 245 steps: the MPX value is scaled to that at full level.
+</details>
+<ol><li>Why is the stereo pilot exactly 19 kHz, half of the 38 kHz subcarrier?</li></ol>
+<details><summary>Answer</summary>
+The receiver doubles the pilot to rebuild the 38 kHz carrier in exact phase, and demodulates L-R with it. RDS at 57 kHz is the third harmonic, locked too.
+</details>
+<ol><li>RDS sends 1187.5 bits per second. How long does a station name (4 groups of 104 bits) take?</li></ol>
+<details><summary>Answer</summary>
+416 bits / 1187.5 = 0.35 s; in practice the name is sent between other groups, so receivers show it within a second or two.
+</details>
+<h2>Ideas</h2>
+<ul><li>A <b>band-pass filter</b> (or a 110 MHz low-pass) between the pin and the antenna removes the harmonics; a small amplifier is only allowed with a licence.</li><li><b>Time signal</b>: the board's clock goes out in RDS every minute; send a beep every hour with the test tones.</li><li>Use the <b>I2S audio</b> project's microphone or line input as a live source (copy both blocks into one design).</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>No station name</b>: RDS needs a good signal. Move closer, check that RDS is on and the RDS share is 3 to 5 %.</li><li><b>No stereo lamp</b>: stereo on, the pilot share 8 to 10 %, and a strong enough signal (radios switch to mono when it is weak).</li><li><b>Hiss or distortion</b>: lower the volume until the MPX meter stays below 0 dB; the sound share plus pilot plus RDS should stay at or below 100 %.</li><li><b>Gaps in the songs</b>: the status shows gaps per second; very large WAV files at 96 kHz need more of the ARM's time. Use 44.1 or 48 kHz.</li><li><b>No network streams listed / nothing received</b>: use <b>From this PC</b> in the app (it does not depend on the network card); for a program that announces itself, use <b>pass on to the radio</b>. A sender on another device must send to the board's network: in its settings choose the network card that leads to the board, or send unicast to the board's address. RAVENNA devices that announce only with mDNS / RTSP (not SAP): type their stream's address and port.</li><li><b>The picture is slanted or the colours are off</b>: choose the same SSTV mode in the decoder, or let it detect the VIS code; a weak signal blurs it.</li><li><b>Power shows "lowest clean power"</b>: at FM frequencies the pin cannot make weaker clean pulses; use a resistor or a shorter antenna.</li><li><b>The pin counter shows 0</b>: the transmitter is off, the power is 0, or the frequency is above 125 MHz (the counter cannot follow; the carrier is still there).</li></ul><p><a href="#top">Back to the list</a></p></section><section id="13_sha256" class="project"><div class="kicker">Computing &middot; intermediate</div><h2>SHA-256 miner (what the Antminer was built for)</h2><p class="lead">SHA-256 in hardware, three units side by side: hash any message, then mine like Bitcoin (double SHA-256 over a block header, searching the nonce) and race the ARM. Finds the real nonce of Bitcoin block 125552.</p><div class="box ok"><b>Tested on the real board</b> 8/8 on the board 2026-10-05, 1 127 820 double hashes per second, 127.5 MHz</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>SHA-256 core and miner</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr></table><h3>Parts</h3><ul><li>nothing: everything happens inside the FPGA</li></ul><h2>What it does</h2>
+<p>This board was made to control a Bitcoin miner: the Antminer S9 sent work to 189 ASIC chips that did nothing but <b>SHA-256</b>. This project puts SHA-256 into the board's own FPGA:</p>
+<ul><li><b>Hash anything</b>: the FPGA compresses each 64-byte block of a message; the result equals Python's <code>hashlib.sha256</code> to the last bit.</li><li><b>Mine like Bitcoin</b>: give it an 80-byte block header and it tries nonce after nonce, hashing each header twice (double SHA-256), until the hash starts with enough zero bits. It finds the real nonce of Bitcoin block 125552.</li><li><b>Race the ARM</b>: three hashing units side by side do about 1.1 million double hashes per second, many times what Python on the ARM manages.</li></ul>
+<p>Nothing to connect. LED 0 blinks while mining, LED 1 lights when a nonce was found.</p>
+<h2>How it works</h2>
+<h3>1. A hash in one picture</h3>
+<p>A hash function turns any data into a fixed-size fingerprint (32 bytes for SHA-256). Change one bit of the input and about half the output bits change; there is no way back from the fingerprint to the data, and no shortcut to find data with a chosen fingerprint except trying.</p>
+<p>SHA-256 cuts the message into <b>blocks of 64 bytes</b> (the last one padded with a 1 bit, zeros and the message length) and runs a <b>compression</b> on each block. The compression mixes the block into an 8-word state (H0 .. H7). The state starts with fixed numbers (the square roots of the first 8 primes) and the final state is the hash.</p>
+<figure>
+<svg viewBox="0 0 860 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SHA-256 chains compressions">
+<defs><marker id="ah13" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="currentColor"/></marker></defs>
+<rect x="10" y="60" width="110" height="50" rx="8" class="d-box"/><text x="65" y="82" class="d-title" text-anchor="middle">IV</text><text x="65" y="100" class="d-small" text-anchor="middle">8 fixed words</text>
+<rect x="190" y="50" width="150" height="70" rx="8" class="d-pl"/><text x="265" y="80" class="d-title" text-anchor="middle">compress</text><text x="265" y="100" class="d-small" text-anchor="middle">64 rounds</text>
+<rect x="430" y="50" width="150" height="70" rx="8" class="d-pl"/><text x="505" y="80" class="d-title" text-anchor="middle">compress</text><text x="505" y="100" class="d-small" text-anchor="middle">64 rounds</text>
+<rect x="680" y="60" width="160" height="50" rx="8" class="d-acc"/><text x="760" y="82" class="d-title" text-anchor="middle">hash</text><text x="760" y="100" class="d-small" text-anchor="middle">H0 .. H7 = 32 bytes</text>
+<rect x="190" y="5" width="150" height="30" rx="6" class="d-ps"/><text x="265" y="25" class="d-small" text-anchor="middle">block 1 (64 bytes)</text>
+<rect x="430" y="5" width="150" height="30" rx="6" class="d-ps"/><text x="505" y="25" class="d-small" text-anchor="middle">block 2 (+ padding)</text>
+<path d="M120 85 H186" class="d-arrow" marker-end="url(#ah13)" color="#b8860b"/><path d="M340 85 H426" class="d-arrow" marker-end="url(#ah13)" color="#b8860b"/><path d="M580 85 H676" class="d-arrow" marker-end="url(#ah13)" color="#b8860b"/>
+<path d="M265 35 V46" class="d-line" marker-end="url(#ah13)" color="#888"/><path d="M505 35 V46" class="d-line" marker-end="url(#ah13)" color="#888"/>
+<text x="383" y="140" class="d-small" text-anchor="middle">state</text><text x="628" y="140" class="d-small" text-anchor="middle">state</text>
+<text x="430" y="163" class="d-small" text-anchor="middle">the state after block 1 is the "midstate": blocks after it only need the midstate, not block 1 again</text>
+</svg>
+<figcaption>SHA-256 = a chain of compressions, one per 64-byte block.</figcaption>
+</figure>
+<h3>2. One round of the compression</h3>
+<p>Inside a compression, 64 <b>rounds</b> each mix one word of the block (W[t]) and one constant (K[t], from the cube roots of the first 64 primes) into eight working words a .. h:</p>
+<pre><code>T1 = h + S1(e) + Ch(e, f, g) + K[t] + W[t]       S1(e) = e&gt;&gt;&gt;6 ^ e&gt;&gt;&gt;11 ^ e&gt;&gt;&gt;25    Ch = e chooses f or g
+T2 = S0(a) + Maj(a, b, c)                         S0(a) = a&gt;&gt;&gt;2 ^ a&gt;&gt;&gt;13 ^ a&gt;&gt;&gt;22    Maj = the majority of a, b, c
+h = g   g = f   f = e   e = d + T1   d = c   c = b   b = a   a = T1 + T2</code></pre>
+<p><code>&gt;&gt;&gt;</code> is a rotation (the bits that fall off the right come back on the left). Only 16 words of W come from the block; W[16] .. W[63] are made from the earlier ones as the rounds go (the <b>message schedule</b>). The file <code>sha256_model.py</code> has the whole algorithm in 25 lines of Python, the same steps the hardware takes.</p>
+<h3>3. Why a round takes two clocks here</h3>
+<p>In software a round is a few instructions. In hardware every line above is wires and adders that settle in a certain time. The longest path, <code>a = h + S1 + Ch + K + W + S0 + Maj</code>, adds seven 32-bit numbers: about 13 ns in this FPGA, but the clock ticks every 10 ns (100 MHz). The first version of this project did a round per clock and the build tools reported only 75 to 90 MHz: it would have computed wrong hashes.</p>
+<p>The fix is a <b>pipeline stage</b>: the first clock computes T1, T2 and the next schedule word into registers, the second clock adds them into a .. h. Each half is short, so 100 MHz is easy. A compression now takes 129 clocks (1.29 us).</p>
+<div class="box info">This is the most important trade-off in digital design: a shorter path between registers lets the clock run faster, a longer one does more per clock. The build log tells you which one you have: "clock 'clk' 75.4 MHz (FAIL at 100 MHz)" means the longest path is too long.</div>
+<h3>4. Mining</h3>
+<p>A Bitcoin block header is 80 bytes: version, the previous block's hash, the merkle root (a hash of all transactions), the time, the difficulty ("bits") and a 4-byte <b>nonce</b>. Miners change the nonce and compute <code>SHA-256(SHA-256(header))</code> until the result, read as a little-endian number, is below the target: in other words it <b>starts with enough zero bits</b> when shown the usual way.</p>
+<figure>
+<svg viewBox="0 0 860 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The miner">
+<defs><marker id="bh13" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="currentColor"/></marker></defs>
+<rect x="10" y="20" width="200" height="80" rx="8" class="d-ps"/><text x="110" y="45" class="d-title" text-anchor="middle">ARM (Python)</text>
+<text x="110" y="65" class="d-small" text-anchor="middle">header bytes 0..63 -&gt; midstate</text><text x="110" y="83" class="d-small" text-anchor="middle">bytes 64..75 -&gt; tail</text>
+<path d="M210 60 H266" class="d-arrow" marker-end="url(#bh13)" color="#b8860b"/>
+<rect x="270" y="10" width="330" height="230" rx="10" class="d-box"/><text x="435" y="30" class="d-title" text-anchor="middle">FPGA: 3 units side by side</text>
+<g><rect x="285" y="42" width="300" height="40" rx="6" class="d-pl"/><text x="300" y="67" class="d-small">unit 0: nonce n    compress(midstate, tail+n) -&gt; compress(IV, ...)</text></g>
+<g><rect x="285" y="90" width="300" height="40" rx="6" class="d-pl"/><text x="300" y="115" class="d-small">unit 1: nonce n+1  ...</text></g>
+<g><rect x="285" y="138" width="300" height="40" rx="6" class="d-pl"/><text x="300" y="163" class="d-small">unit 2: nonce n+2  ...</text></g>
+<path d="M600 134 H656" class="d-arrow" marker-end="url(#bh13)" color="#b8860b"/>
+<rect x="660" y="94" width="190" height="80" rx="8" class="d-acc"/><text x="755" y="120" class="d-title" text-anchor="middle">enough zero bits?</text>
+<text x="755" y="140" class="d-small" text-anchor="middle">yes: report the first one</text><text x="755" y="158" class="d-small" text-anchor="middle">no: n = n + 3, again</text>
+</svg>
+<figcaption>The ARM does the part that never changes (the midstate) once; the FPGA does the part that changes with every nonce.</figcaption>
+</figure>
+<p>Two tricks every miner uses, and this one too:</p>
+<ul><li><b>Midstate</b>: the first 64 header bytes do not depend on the nonce, so their compression is done once (by the ARM). Each nonce then needs only 2 compressions instead of 3.</li><li><b>Many units</b>: units do not need each other, so more units means more hashes. Three units here, about 1.1 million double hashes per second. The S9's 189 chips did 14 thousand billion (14 TH/s); the demo measures how many Python on the ARM manages.</li></ul>
+<p>Every extra zero bit doubles the work: 20 bits take about a million tries (under a second here), 32 bits about 4 billion (about an hour). Bitcoin needed about 78 zero bits in 2024.</p>
+<h2>Try it</h2>
+<p>Nothing to wire. <b>Upload and run</b>. The Monitor shows:</p>
+<ol><li>The SHA-256 of a text from the FPGA and from <code>hashlib</code>: the same.</li><li>Bitcoin block 125552: the FPGA searches a million nonces and stops at the block's real nonce, whose hash starts with 16 zero hex digits.</li><li>A 2-second race on a made-up header: Python on the ARM against the FPGA.</li><li>Mining for ever on a header that changes its time field: every "block" with 28 zero bits is printed.</li></ol>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, ShaMiner
+import hashlib
+sha = ShaMiner(Bus(), slot=1)
+print(sha.sha256(b'hello').hex())               # = hashlib.sha256(b'hello').hexdigest()
+header = bytes(80)                               # any 80 bytes
+r = sha.mine(header, start=0, count=0, zero_bits=20, timeout=10)
+print(r['found'], r['nonce'], r['hash'], r['rate'])</code></pre>
+<p><code>mine()</code> returns <code>found</code>, <code>nonce</code>, <code>hash</code> (shown the Bitcoin way), <code>hashes</code> tried, <code>seconds</code> and <code>rate</code>. <code>stop()</code> ends a search, <code>result()</code> reads one without waiting.</p>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>write: [0] start raw [1] start mining [2] stop</td></tr>
+<tr><td>1</td><td>STATUS</td><td>[0] raw busy [1] mining [2] found [3] finished</td></tr>
+<tr><td>2, 3, 4</td><td>NONCE_START, NONCE_COUNT, ZERO_BITS</td><td>the search (count 0 = all 2^32)</td></tr>
+<tr><td>5, 6, 7</td><td>FOUND_NONCE, HASHES, CYCLES</td><td>the result, nonces tried, clocks used</td></tr>
+<tr><td>8 .. 15</td><td>MIDSTATE</td><td>the state after the header's first 64 bytes</td></tr>
+<tr><td>16 .. 18</td><td>TAIL</td><td>header bytes 64 .. 75</td></tr>
+<tr><td>24 .. 31, 32 .. 47</td><td>H_IN, BLOCK</td><td>raw mode: one compression of any state and block</td></tr>
+<tr><td>48 .. 55</td><td>H_OUT</td><td>raw mode result</td></tr>
+<tr><td>56 .. 63</td><td>FOUND_HASH</td><td>the double hash of the nonce found</td></tr>
+<tr><td>126, 127</td><td>UNITS, ID</td><td>4, "SHA2"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Pipelining: cut a long path with registers to run the clock faster</td><td><code>sha256_core</code>: the first and second half of a round</td></tr>
+<tr><td>Parallelism: copies of a block work at the same time</td><td><code>generate for</code> in <code>sha_miner</code>: NU units</td></tr>
+<tr><td>Precomputing what does not change</td><td>the midstate, made once by the ARM</td></tr>
+<tr><td>Hardware and software sharing a job</td><td><code>blocks.py ShaMiner.mine()</code>: Python prepares, the FPGA searches</td></tr>
+<tr><td>Checking hardware against a model</td><td><code>selftest.py</code> and <code>sim/run_sim.py</code> compare with <code>hashlib</code></td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li><b>Count the clocks.</b> A compression takes 129 clocks, a nonce needs two, and three units work at once. Estimate the hashes per second at 100 MHz, then compare with what the demo prints.</li></ol>
+<details><summary>Answer</summary>
+Each batch of 3 nonces takes 2 x 129 = 258 clocks plus a few for starting and checking (about 264): 3 / 264 x 100 000 000 = about 1.14 million per second.
+</details>
+<ol><li><b>How long for N bits?</b> On average a hash with N leading zero bits takes 2^N tries. How long does the FPGA need for 24, 28 and 32 bits?</li></ol>
+<details><summary>Answer</summary>
+2^24 = 16.8 million tries: about 15 s. 2^28: about 4 minutes. 2^32: about 63 minutes (and then all nonces are used: miners change the time or other fields and start again).
+</details>
+<ol><li><b>More units.</b> <code>top.v</code> makes 3 units: <code>sha_miner #(.SLOT(1), .NU(3))</code>. Change it to 2, <b>Build FPGA</b>, upload and run the demo: is it 2/3 of the speed? Then look at the LUT and flip-flop counts in the build log. With 4 units the design needs about 9 500 LUTs and 13 000 flip-flops, and the open-source placer gives up ("unable to find legal placement") even though the chip has 17 600 LUTs: why can a chip be "full" before every LUT is used?</li></ol>
+<details><summary>Answer</summary>
+A unit is about 2 600 LUTs and 3 600 flip-flops. LUTs and flip-flops are grouped in slices (4 LUTs and 8 flip-flops each), and the flip-flops of one slice must share the same clock enable and reset. Registers with many different enables cannot share slices, so slices run out before LUTs do; the long wires between them also get crowded. Vivado packs more tightly, so it may fit 4.
+</details>
+<ol><li><b>Avalanche.</b> In Python, hash <code>b'Ardzy'</code> and <code>b'Ardzz'</code> with <code>sha.sha256()</code> and count the bits that differ (<code>bin(a ^ b).count('1')</code> on the two digests as integers). Why is it close to 128?</li></ol>
+<details><summary>Answer</summary>
+Each output bit depends on every input bit through 64 rounds of mixing, so a changed input bit flips each output bit with a probability of one half: about 128 of 256 bits.
+</details>
+<ol><li><b>One clock per round, done right.</b> Real miners do a round (or more) per clock. Read <code>sha256_core</code>: which additions could be made in the clock before (as <code>hkw</code> already is), so that the remaining path fits in 10 ns? (Hint: <code>d + T1</code> and <code>T1 + T2</code> share T1.)</li></ol>
+<h2>Ideas</h2>
+<ul><li>Show the hash rate live in the app's Plotter: print <code>rate:</code> once a second.</li><li>Make a "proof of work" for your own messages: find a nonce that makes the hash of your text start with 20 zero bits, and let a friend check it with Python.</li><li>Add a SHA-256 stream block to project 11 (AXI-Stream) to hash files as they arrive over the network.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>"The FPGA does not hold the SHA2 project"</b>: upload this project first (Upload and run).</li><li><b>Hashes differ from hashlib</b>: run the self-test; the simulation test (<code>python sim/run_sim.py</code> on the PC, needs Icarus Verilog) shows whether the design or the board is at fault.</li><li><b>Mining never finds anything</b>: each extra zero bit doubles the time; try 20 bits first.</li></ul><p><a href="#top">Back to the list</a></p></section><section id="14_fir_filter" class="project"><div class="kicker">Sound &middot; intermediate</div><h2>FIR filter lab (DSP in hardware)</h2><p class="lead">A digital filter made of one hardware multiplier: up to 64 taps, 1.5 million samples per second, results equal to the math to the last bit. Design low-pass, high-pass or band-pass filters in Python, feed them sound or the built-in sine and noise generator, and measure their frequency response.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 8 of 8 checks on the real board (October 2026), with nothing connected: 900 random samples equal to the integer math, 1.471 million samples per second at 63 taps.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>FIR filter, generator, meters</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr></table><h3>Parts</h3><ul><li>nothing: everything happens inside the FPGA</li></ul><h2>What it does</h2>
+<p>A <b>digital filter</b> in hardware, the kind inside every phone, sound card, radio and hearing aid: it keeps some frequencies and removes others. You design the filter in Python (low-pass, high-pass, band-pass, band-stop), the FPGA runs it on up to 1.5 million samples per second, and the results equal the math to the last bit.</p>
+<ul><li>Up to <b>64 taps</b> (coefficients), 18-bit coefficients, 16-bit samples, a 48-bit accumulator.</li><li>Samples from the <b>ARM</b> (your data, sound) or from a built-in <b>generator</b> (a sine of any frequency plus white noise).</li><li><b>Peak meters</b> on the input and the output: sweep the generator and you have measured the filter's frequency response.</li></ul>
+<p>Nothing to connect. LED 0 shows how busy the filter is.</p>
+<h2>How it works</h2>
+<h3>1. What a FIR filter computes</h3>
+<p>A FIR (finite impulse response) filter makes each output sample from the last N input samples, each multiplied by its own coefficient:</p>
+<pre><code>y[n] = c[0] x[n] + c[1] x[n-1] + c[2] x[n-2] + ... + c[N-1] x[n-N+1]</code></pre>
+<p>That is all. The coefficients decide what the filter does. A moving average (all c = 1/N) is the simplest low-pass: fast wiggles average out, slow changes stay.</p>
+<figure>
+<svg viewBox="0 0 860 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FIR filter structure">
+<defs><marker id="ah14" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="currentColor"/></marker></defs>
+<text x="10" y="45" class="d-text">x[n]</text>
+<path d="M50 40 H86" class="d-arrow" marker-end="url(#ah14)" color="#b8860b"/>
+<rect x="90" y="22" width="70" height="36" rx="6" class="d-box"/><text x="125" y="45" class="d-small" text-anchor="middle">delay</text>
+<path d="M160 40 H196" class="d-arrow" marker-end="url(#ah14)" color="#b8860b"/>
+<rect x="200" y="22" width="70" height="36" rx="6" class="d-box"/><text x="235" y="45" class="d-small" text-anchor="middle">delay</text>
+<path d="M270 40 H306" class="d-arrow" marker-end="url(#ah14)" color="#b8860b"/>
+<text x="320" y="45" class="d-text">. . .</text>
+<path d="M70 40 V96" class="d-line" marker-end="url(#ah14)" color="#888"/><path d="M180 40 V96" class="d-line" marker-end="url(#ah14)" color="#888"/><path d="M290 40 V96" class="d-line" marker-end="url(#ah14)" color="#888"/>
+<circle cx="70" cy="115" r="17" class="d-pl"/><text x="70" y="120" class="d-text" text-anchor="middle">x</text><text x="96" y="120" class="d-small">c0</text>
+<circle cx="180" cy="115" r="17" class="d-pl"/><text x="180" y="120" class="d-text" text-anchor="middle">x</text><text x="206" y="120" class="d-small">c1</text>
+<circle cx="290" cy="115" r="17" class="d-pl"/><text x="290" y="120" class="d-text" text-anchor="middle">x</text><text x="316" y="120" class="d-small">c2</text>
+<path d="M70 132 V170 H560" class="d-line"/><path d="M180 132 V170" class="d-line"/><path d="M290 132 V170" class="d-line"/>
+<rect x="560" y="150" width="90" height="40" rx="6" class="d-acc"/><text x="605" y="175" class="d-title" text-anchor="middle">sum</text>
+<path d="M650 170 H716" class="d-arrow" marker-end="url(#ah14)" color="#b8860b"/><text x="725" y="175" class="d-text">y[n]</text>
+<text x="430" y="115" class="d-small">N multiplications and N additions</text><text x="430" y="133" class="d-small">for every sample</text>
+</svg>
+<figcaption>The textbook picture: a line of delays, one multiplier per tap, one big sum.</figcaption>
+</figure>
+<h3>2. How the FPGA does it with one multiplier</h3>
+<p>Drawing it as the textbook does needs 64 multipliers; the chip has 80, so it would fit, but most of them would wait. Here <b>one</b> multiplier (a DSP48 slice, made for exactly this) does one tap per clock, again and again:</p>
+<ol><li>A new sample goes into a 64-word memory (the history) at the next place.</li><li>For k = 0 .. N-1 the design reads x[n-k] and c[k] (stage 1), multiplies them (stage 2) and adds the product to the accumulator (stage 3). The three stages work on three different taps at the same time: a <b>pipeline</b>.</li><li>After the last tap the accumulator holds the sum. It is shifted right by SHIFT bits (dividing by 2^SHIFT), limited to 16 bits and sent to the output FIFO.</li></ol>
+<p>A sample takes N + 4 clocks: 68 clocks for 64 taps, 1.47 million samples per second.</p>
+<p>The end of the chain is a pipeline too: dividing the 48-bit sum by 2^SHIFT (a "barrel shifter", 6 levels of multiplexers), limiting it to 16 bits and updating the meters took 13 ns in the first version, longer than one 10 ns clock. Now each of the three gets its own clock; a result leaves 3 clocks later, and a new sample can start meanwhile.</p>
+<div class="box info">Time-sharing one multiplier is the classic DSP trade-off: fewer multipliers = less chip, more clocks per sample. A 4-tap filter could do 12 million samples per second with the same hardware.</div>
+<h3>3. Numbers without a decimal point (fixed point)</h3>
+<p>The FPGA has no floating point here: everything is integers. A coefficient like 0.0732 becomes <code>round(0.0732 x 2^17) = 9594</code>, and the result is divided by 2^17 again at the end (SHIFT = 17). 18-bit coefficients give about 5 decimal digits of precision, enough for filters that remove 60 to 80 dB. The accumulator has 48 bits, so even 64 full-scale products cannot overflow it.</p>
+<h3>4. Designing a filter</h3>
+<p><code>fir_design()</code> in <code>blocks.py</code> uses the <b>windowed sinc</b> method: the ideal low-pass filter's coefficients are a sinc function (sin x / x); cutting it to N taps makes ripples, and a window (Hamming, Blackman) smooths the cut. More taps = a steeper edge between pass and stop.</p>
+<table>
+<tr><th>Filter</th><th>Keeps</th><th>Example</th></tr>
+<tr><td>low-pass, f1</td><td>below f1</td><td>remove hiss above the voice</td></tr>
+<tr><td>high-pass, f1</td><td>above f1</td><td>remove hum and rumble</td></tr>
+<tr><td>band-pass, f1 .. f2</td><td>f1 to f2</td><td>pick one radio channel or tone</td></tr>
+<tr><td>band-stop, f1 .. f2</td><td>all but f1 to f2</td><td>remove 50 Hz mains hum</td></tr>
+</table>
+<p>Frequencies are given as a fraction of the sample rate (0 to 0.5, because a sampled signal cannot hold anything above half its sample rate: the Nyquist limit).</p>
+<h2>Try it</h2>
+<p>Nothing to wire. <b>Upload and run</b>. The Monitor shows:</p>
+<ol><li>A 10 kHz sine buried in noise before and after a 50 kHz low-pass filter: the noise is gone, the sine stays.</li><li>The frequency response measured with the generator next to the computed one: they agree.</li><li>Live noise levels: change <code>f1</code>, <code>taps</code> or the window in <code>main.py</code> and upload again.</li></ol>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, FirLab, fir_design, fir_gain
+fir = FirLab(Bus(), slot=1)
+fir.reset()
+q = fir.set_filter(fir_design('bandpass', f1=0.1, f2=0.15, taps=63))
+print(fir.filter([0, 1000, 0, -1000] * 50))          # your own samples through the filter
+fir.generator(120e3, rate=100, amp=16000)            # a 120 kHz sine at 1 million samples/s
+print(fir.peaks(0.1))                                 # (largest |input|, largest |output|)
+print(fir.response([50e3, 120e3, 200e3]))             # measured gains</code></pre>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] reset [1] source: 0 ARM, 1 generator</td></tr>
+<tr><td>1</td><td>STATUS</td><td>[7:0] input FIFO, [17:8] output FIFO, [24] busy</td></tr>
+<tr><td>2, 3</td><td>TAPS, SHIFT</td><td>1 .. 64 taps; the result is divided by 2^SHIFT</td></tr>
+<tr><td>4, 5</td><td>IN, OUT</td><td>write a sample; read [31:16] the result and [15:0] its input</td></tr>
+<tr><td>7 .. 10</td><td>GEN_FREQ, GEN_RATE, GEN_AMP, GEN_NOISE</td><td>the generator</td></tr>
+<tr><td>11, 12</td><td>PEAK_IN, PEAK_OUT</td><td>the meters (start over when read)</td></tr>
+<tr><td>13, 14, 16</td><td>SAMPLES, CLIPPED, LOST</td><td>counters</td></tr>
+<tr><td>15</td><td>CAPTURE</td><td>the generator's next n results also go to the FIFO</td></tr>
+<tr><td>64 .. 127</td><td>COEF</td><td>signed 18-bit coefficients</td></tr>
+<tr><td>1023</td><td>ID</td><td>"FIR1"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Multiply-accumulate (MAC), the heart of all DSP</td><td><code>fir_lab.v</code>: <code>prod &lt;= xa * ca</code>, <code>acc &lt;= acc + prod</code></td></tr>
+<tr><td>A pipeline: issue, multiply, accumulate on different taps at once</td><td>the <code>v1</code>, <code>v2</code> valid flags</td></tr>
+<tr><td>Fixed-point arithmetic</td><td><code>set_filter()</code> scales by 2^17, SHIFT divides back</td></tr>
+<tr><td>Hardware equal to a model, bit for bit</td><td><code>selftest.py</code>: 900 random samples against Python</td></tr>
+<tr><td>FIFOs between fast hardware and slow software</td><td><code>ardzy_axis_fifo</code> on the input and the output</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li><b>Moving average.</b> Make an 8-tap moving average: <code>fir.set_coef([1 &lt;&lt; 14] * 8, 17)</code> (each coefficient is 1/8). Feed it <code>[0]*8 + [8000]*16 + [0]*16</code> with <code>fir.filter()</code> and print the result. Why does it climb in 8 steps?</li></ol>
+<details><summary>Answer</summary>
+Each output is the average of the last 8 inputs; when the step arrives, one more of the 8 is 8000 at each sample: 1000, 2000, ... 8000. It falls the same way after the step ends.
+</details>
+<ol><li><b>Find the cut-off.</b> With the demo's 63-tap low-pass (f1 = 0.05 at 1 MS/s), use <code>fir.response()</code> to find the frequency where the gain is 0.5 (-6 dB). Why is it at about 50 kHz?</li></ol>
+<ol><li><b>Taps against steepness.</b> Design the same low-pass with 15, 31 and 63 taps. Measure the gain at 80 kHz for each. What does doubling the taps do?</li></ol>
+<details><summary>Answer</summary>
+The transition from pass to stop gets about twice as narrow with twice the taps, so at 80 kHz the 63-tap filter removes much more (tens of dB) than the 15-tap one.
+</details>
+<ol><li><b>Remove a hum.</b> Make a band-stop at 50 kHz +- 5 kHz (<code>fir_design('bandstop', 0.045, 0.055, 63)</code>) and run the generator at 50 kHz and at 20 kHz. Compare the output peaks.</li></ol>
+<ol><li><b>How many multipliers?</b> The chip has 80 DSP48 slices. If you used all of them for one filter (one tap each), how many samples per second could a 64-tap filter process?</li></ol>
+<details><summary>Answer</summary>
+With one multiplier per tap a sample per clock is possible: 100 million samples per second, 68 times more than now. That is how FPGAs filter radio signals in real time.
+</details>
+<h2>Ideas</h2>
+<ul><li>Filter real sound: record with project 08 (I2S microphone), filter here, play back.</li><li>An equalizer: three band-pass filters (bass, middle, treble) with adjustable gains.</li><li>A decimating filter: keep only every 10th result, for a sample rate converter.</li><li>Use it as the channel filter of an SDR receiver (with an ADC on the pins).</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>Results are all 32767 or -32768 (CLIPPED grows)</b>: the coefficients are too large for SHIFT; use <code>set_filter()</code> (it scales correctly) or a larger SHIFT.</li><li><b>LOST grows</b>: the output FIFO (512 results) was full; read results more often or use CAPTURE with a smaller n.</li><li><b>The response at high frequencies looks a little low</b>: the peak meter sees the sampled points of a fast sine, not always its very top. Measure longer or lower the frequency.</li></ul><p><a href="#top">Back to the list</a></p></section><section id="15_game_of_life" class="project"><div class="kicker">Computing &middot; beginner</div><h2>Game of Life (64 x 64 cells, 1.4 million generations per second)</h2><p class="lead">Conway&#x27;s Game of Life in hardware: 64 copies of the rule work side by side, a whole row per clock, so the FPGA runs about 1.4 million generations per second, thousands of times faster than Python. Draw patterns, watch gliders fly in the Monitor, find out what a still life, an oscillator and a spaceship are.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 11 of 11 checks on the real board (October 2026), with nothing connected: the rules against Python, a glider around the torus, 1 428 572 generations per second.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Life engine (two banks of 64 x 64 cells)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr></table><h3>Parts</h3><ul><li>nothing: everything happens inside the FPGA</li></ul><h2>What it does</h2>
+<p><b>Conway's Game of Life</b> (1970) is a grid of cells, each alive or dead, and four rules. From them come patterns that stay still, blink, fly across the grid, and even guns that shoot gliders for ever. This project runs it in hardware on a 64 x 64 grid whose edges wrap around (a torus):</p>
+<ul><li>A whole <b>row of 64 cells per clock</b>, about <b>1.43 million generations per second</b>, thousands of times faster than the same rules in Python.</li><li>Famous patterns by name (glider, spaceship, pulsar, Gosper glider gun, R-pentomino ...), random soup, your own drawings.</li><li>The grid shown in the Monitor with block characters.</li></ul>
+<p>Nothing to connect. LED 0 flickers while it runs.</p>
+<h2>How it works</h2>
+<h3>1. The rules</h3>
+<p>Every cell has 8 neighbours. For the next generation, at the same moment for all cells:</p>
+<table>
+<tr><th>This cell</th><th>Live neighbours</th><th>Next generation</th></tr>
+<tr><td>alive</td><td>2 or 3</td><td>stays alive</td></tr>
+<tr><td>alive</td><td>0, 1 (lonely) or 4 .. 8 (crowded)</td><td>dies</td></tr>
+<tr><td>dead</td><td>exactly 3</td><td>is born</td></tr>
+<tr><td>dead</td><td>any other number</td><td>stays dead</td></tr>
+</table>
+<figure>
+<svg viewBox="0 0 860 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A glider over four generations">
+<g transform="translate(20,20)">
+<text x="0" y="-5" class="d-small">generation 0</text>
+<rect x="0" y="0" width="100" height="100" class="d-box"/>
+<rect x="40" y="0" width="20" height="20" class="d-pl"/><rect x="60" y="20" width="20" height="20" class="d-pl"/><rect x="20" y="40" width="20" height="20" class="d-pl"/><rect x="40" y="40" width="20" height="20" class="d-pl"/><rect x="60" y="40" width="20" height="20" class="d-pl"/>
+</g>
+<g transform="translate(190,20)">
+<text x="0" y="-5" class="d-small">1</text>
+<rect x="0" y="0" width="100" height="100" class="d-box"/>
+<rect x="20" y="20" width="20" height="20" class="d-pl"/><rect x="60" y="20" width="20" height="20" class="d-pl"/><rect x="40" y="40" width="20" height="20" class="d-pl"/><rect x="60" y="40" width="20" height="20" class="d-pl"/><rect x="40" y="60" width="20" height="20" class="d-pl"/>
+</g>
+<g transform="translate(360,20)">
+<text x="0" y="-5" class="d-small">2</text>
+<rect x="0" y="0" width="100" height="100" class="d-box"/>
+<rect x="60" y="20" width="20" height="20" class="d-pl"/><rect x="20" y="40" width="20" height="20" class="d-pl"/><rect x="60" y="40" width="20" height="20" class="d-pl"/><rect x="40" y="60" width="20" height="20" class="d-pl"/><rect x="60" y="60" width="20" height="20" class="d-pl"/>
+</g>
+<g transform="translate(530,20)">
+<text x="0" y="-5" class="d-small">3</text>
+<rect x="0" y="0" width="100" height="100" class="d-box"/>
+<rect x="40" y="20" width="20" height="20" class="d-pl"/><rect x="60" y="40" width="20" height="20" class="d-pl"/><rect x="80" y="40" width="20" height="20" class="d-pl"/><rect x="40" y="60" width="20" height="20" class="d-pl"/><rect x="60" y="60" width="20" height="20" class="d-pl"/>
+</g>
+<g transform="translate(700,20)">
+<text x="0" y="-5" class="d-small">4: the same shape, 1 down and 1 right</text>
+<rect x="0" y="0" width="100" height="100" class="d-box"/>
+<rect x="60" y="20" width="20" height="20" class="d-pl"/><rect x="80" y="40" width="20" height="20" class="d-pl"/><rect x="40" y="60" width="20" height="20" class="d-pl"/><rect x="60" y="60" width="20" height="20" class="d-pl"/><rect x="80" y="60" width="20" height="20" class="d-pl"/>
+</g>
+<text x="430" y="160" class="d-small" text-anchor="middle">a glider: after 4 generations it is back, one cell further down and right. Nothing in the rules says "move".</text>
+</svg>
+<figcaption>Five cells and four rules make something that travels.</figcaption>
+</figure>
+<h3>2. Why hardware is fast at this</h3>
+<p>In Python, each of the 4096 cells needs its 8 neighbours counted one after the other: about 50 000 small steps per generation. In the FPGA, the rule for a cell is a little circuit (an 8-input adder and a compare, about 15 LUTs). The design has <b>64 copies</b> of it, one per column, all working in the same clock.</p>
+<figure>
+<svg viewBox="0 0 860 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The life engine">
+<defs><marker id="ah15" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="currentColor"/></marker></defs>
+<rect x="10" y="20" width="150" height="190" rx="8" class="d-ps"/><text x="85" y="45" class="d-title" text-anchor="middle">bank A</text><text x="85" y="65" class="d-small" text-anchor="middle">64 rows x 64 bits</text><text x="85" y="85" class="d-small" text-anchor="middle">(the grid now)</text>
+<path d="M160 115 H216" class="d-arrow" marker-end="url(#ah15)" color="#b8860b"/><text x="188" y="105" class="d-small" text-anchor="middle">a row</text><text x="188" y="135" class="d-small" text-anchor="middle">per clock</text>
+<rect x="220" y="40" width="190" height="34" rx="6" class="d-box"/><text x="315" y="62" class="d-mono" text-anchor="middle">above (row r-1)</text>
+<rect x="220" y="98" width="190" height="34" rx="6" class="d-box"/><text x="315" y="120" class="d-mono" text-anchor="middle">here  (row r)</text>
+<rect x="220" y="156" width="190" height="34" rx="6" class="d-box"/><text x="315" y="178" class="d-mono" text-anchor="middle">below (row r+1)</text>
+<path d="M410 115 H466" class="d-arrow" marker-end="url(#ah15)" color="#b8860b"/>
+<rect x="470" y="60" width="180" height="110" rx="8" class="d-pl"/><text x="560" y="95" class="d-title" text-anchor="middle">64 x the rule</text><text x="560" y="117" class="d-small" text-anchor="middle">count 8 neighbours,</text><text x="560" y="135" class="d-small" text-anchor="middle">alive or dead</text>
+<path d="M650 115 H696" class="d-arrow" marker-end="url(#ah15)" color="#b8860b"/>
+<rect x="700" y="20" width="150" height="190" rx="8" class="d-acc"/><text x="775" y="45" class="d-title" text-anchor="middle">bank B</text><text x="775" y="65" class="d-small" text-anchor="middle">new row r</text><text x="775" y="85" class="d-small" text-anchor="middle">(the next grid)</text>
+<text x="430" y="222" class="d-small" text-anchor="middle">after row 63 the banks swap: B becomes the grid, A receives the next generation</text>
+</svg>
+<figcaption>A generation: 64 rows, one per clock, plus 6 clocks to start, finish and swap = 70 clocks, 0.7 microseconds.</figcaption>
+</figure>
+<p>Three ideas make it work:</p>
+<ul><li><b>Two banks (double buffering)</b>: all cells must change at the same moment, so the new generation is written into the other bank while the old one is still read. Then they swap.</li><li><b>A sliding window of three rows</b>: to make row r, only rows r-1, r and r+1 are needed. Each clock the window slides down by one row.</li><li><b>Wrap-around</b>: column 0's left neighbour is column 63, row 0's upper neighbour is row 63; a glider leaving the right edge comes back on the left.</li><li><b>A pipeline</b>: the row below is read from memory one clock ahead into a register, and each new row is written (and its live cells counted) one clock after it was made. The first version did the memory read, the rule, the count and the write in a single clock: the build tools reported only 61 MHz, too slow for the 100 MHz clock. Split over three clocks, each part has 10 ns to itself.</li></ul>
+<h2>Try it</h2>
+<p>Nothing to wire. <b>Upload and run</b>. The Monitor shows still lifes, oscillators and spaceships, then a race (100 generations in Python against the FPGA), then a Gosper glider gun, then random soup for ever.</p>
+<p>Draw your own pattern in <code>main.py</code>:</p>
+<pre><code>life.clear()
+life.place(['.##', '##.', '.#.'], row=30, col=30)    # the R-pentomino: 5 cells, 1103 generations of chaos
+life.steps(100)
+print(Life.text(life.read()))</code></pre>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, Life, LIFE_PATTERNS
+life = Life(Bus(), slot=1)
+life.clear()                    # or life.randomize(), life.randomize(sparse=True)
+life.place('glider', 5, 5)      # a name from LIFE_PATTERNS or rows of '#' and '.'
+life.steps(10)                  # 10 generations (waits)
+g = life.read()                 # 64 ints, bit c of row r = the cell
+life.run(per_second=10)         # runs on its own; life.run() = flat out; life.stop()
+print(life.generation(), life.population(), life.per_second())</code></pre>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>write: [0] clear [1] run [2] random fill [3] sparse fill</td></tr>
+<tr><td>1</td><td>STATUS</td><td>[0] busy [1] running</td></tr>
+<tr><td>2</td><td>STEPS</td><td>write n: do n generations</td></tr>
+<tr><td>3, 4</td><td>GENERATION, POPULATION</td><td>counters</td></tr>
+<tr><td>5</td><td>RATE</td><td>clocks between generations while running</td></tr>
+<tr><td>6</td><td>PER_SEC</td><td>generations in the last second</td></tr>
+<tr><td>64 + 2r, 65 + 2r</td><td>row r</td><td>bits 0 .. 31 and 32 .. 63</td></tr>
+<tr><td>1023</td><td>ID</td><td>"LIFE"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Spatial parallelism: one circuit per column</td><td><code>life.v</code>: the <code>for</code> loop that makes <code>next_row</code> (64 copies)</td></tr>
+<tr><td>Double buffering</td><td><code>bank0</code>, <code>bank1</code> and <code>cur</code></td></tr>
+<tr><td>A sliding window over memory</td><td><code>above</code>, <code>here</code>, <code>below</code></td></tr>
+<tr><td>A state machine that walks through memory</td><td><code>S_P0</code>, <code>S_P1</code>, <code>S_RUN</code>, <code>S_DONE</code></td></tr>
+<tr><td>Emergence: simple local rules, complex behaviour</td><td>run the R-pentomino or the acorn</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li><b>Still life or oscillator?</b> Place a <code>block</code>, a <code>beehive</code>, a <code>blinker</code> and a <code>toad</code>. Step 1, 2 and 3 generations and compare with <code>life.read()</code>. Which never change, which come back after 2?</li></ol>
+<details><summary>Answer</summary>
+Block and beehive are still lifes (period 1); blinker and toad are oscillators with period 2. The pulsar has period 3.
+</details>
+<ol><li><b>Count the clocks.</b> A generation takes 70 clocks at 100 MHz. How many generations per second? Check with <code>life.per_second()</code> after <code>life.run()</code>.</li></ol>
+<ol><li><b>The R-pentomino.</b> Place it in an empty grid and print the population every 100 generations. When does it settle? (On an infinite grid it takes 1103 generations; on this small torus the debris crashes into itself, so the answer differs.)</li></ol>
+<ol><li><b>A wider rule.</b> "HighLife" adds one birth rule: a dead cell with <b>6</b> neighbours is also born. In <code>life.v</code> change <code>(n == 4'd3)</code> to <code>(n == 4'd3) || (n == 4'd6 &amp;&amp; !here[i])</code>, build, and look for the "replicator" pattern <code>['..###', '.#..#', '#...#', '#..#.', '###..']</code>.</li></ol>
+<ol><li><b>Bigger grid.</b> What would a 128 x 128 grid cost? (Hint: 128 copies of the rule, banks of 128-bit rows.)</li></ol>
+<details><summary>Answer</summary>
+Twice the rule circuits (about 2000 LUTs instead of 1000) and four times the memory (2 x 16 384 bits); a generation would take 134 clocks. It fits the XC7Z010 easily; 512 x 512 would need block RAM instead of LUT RAM.
+</details>
+<h2>Ideas</h2>
+<ul><li>Show the grid on a VGA monitor with project 07's video block (one pixel block per cell).</li><li>Draw with an encoder knob (project 03) or from the app.</li><li>Find the longest-lived soup: run thousands of random grids flat out, keep the seed that lasts longest.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>The grid does not change</b>: was it empty, or a still life? Try <code>life.randomize()</code>.</li><li><b>Rows read as 0</b>: rows can only be read while no generation is running; <code>life.stop()</code> first.</li></ul><p><a href="#top">Back to the list</a></p></section></main></body></html>

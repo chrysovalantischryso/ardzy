@@ -1,0 +1,88 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Stepper motors (step / dir with acceleration)</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Motors and motion &middot; medium</div><h1>Stepper motors (step / dir with acceleration)</h1><p class="lead">Two stepper axes for driver boards like A4988, DRV8825 or TMC2208: smooth speed-up and slow-down computed in hardware every microsecond, exact stop at the target.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 8 of 8 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Stepper axes (16 registers per axis)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>step[0]</code></td><td>J8 pin 5</td><td>Y18</td></tr><tr><td><code>dir[0]</code></td><td>J8 pin 11</td><td>V16</td></tr><tr><td><code>step[1]</code></td><td>J8 pin 12</td><td>W16</td></tr><tr><td><code>dir[1]</code></td><td>J8 pin 15</td><td>Y19</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J8 pin 5 / pin 11</td><td>axis 0 driver STEP / DIR</td><td>the driver&#x27;s logic supply at 3.3 V (VDD of the A4988 / DRV8825 board)</td></tr><tr><td>J8 pin 12 / pin 15</td><td>axis 1 driver STEP / DIR</td><td></td></tr><tr><td>J8 pin 1 (GND)</td><td>driver GND</td><td>and the motor supply&#x27;s GND</td></tr><tr><td>driver EN</td><td>GND</td><td>enabled all the time (or a spare pin)</td></tr></table><h3>Parts</h3><ul><li>stepper driver board (A4988, DRV8825, TMC2208)</li><li>stepper motor (NEMA 17)</li><li>motor power supply (12 to 24 V)</li><li>100 uF capacitor at the driver&#x27;s motor supply</li></ul><h2>What it does</h2>
+<p>Two step/dir outputs for stepper motor drivers (A4988, DRV8825, TMC2208, TB6600) with smooth acceleration: tell an axis "go to position 12000" and the FPGA ramps the speed up, runs at the top speed, and slows down so it stops exactly there. The demo moves axis 0 back and forth and axis 1 at half the speed.</p>
+<h2>How it works</h2>
+<p>A stepper driver makes the motor take one (micro)step for every pulse on STEP, in the direction set by DIR. Fast moves need a <b>ramp</b>: a motor that starts at full speed just buzzes and loses steps.</p>
+<p>Every microsecond each axis adds its <b>speed</b> to a 40-bit phase; every time the phase overflows, one step pulse goes out. Every microsecond the speed also grows by ACCEL until VMAX. The FPGA counts the steps it took while speeding up; when the steps left to the target are that many, it slows down the same way. The result is a trapezoid speed profile with the stop exactly on the target.</p>
+<pre><code>speed
+  |     ______________
+  |    /              \
+  |   /                \
+  |__/                  \__  time
+     accelerate  cruise  slow down</code></pre>
+<p>Because it is hardware, the pulses keep a steady rhythm while Linux is busy, and two axes run at the same time. Each STEP pin is read back at the pad and its pulses are counted (PIN_STEPS): the self-test proves every step really left the board.</p>
+<h2>Try it</h2>
+<ol><li>Driver <b>STEP</b> to J8 pin 5, <b>DIR</b> to J8 pin 11 (axis 1: pins 12 and 15), driver logic <b>GND</b> to pin 1, driver <b>VDD</b> (logic) to 3.3 V.</li><li>The motor supply (12 to 24 V) goes to the driver only. Set the driver's current limit first.</li><li>Set the microsteps on the driver (the demo assumes 200 x 16 = 3200 steps per turn).</li><li><b>Upload and run</b>.</li></ol>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, Stepper
+ax = Stepper(Bus(), slot=1, axis=0)
+ax.setup(max_speed=8000, accel=20000, start_speed=200)   # steps/s, steps/s^2, steps/s
+ax.move_to(3200)          # one turn at 16 microsteps
+ax.wait()
+ax.move(-1600)            # half a turn back
+ax.stop()                 # slow down and stop (stop(now=True): at once)
+print(ax.position(), ax.pin_steps())</code></pre>
+<h3>Registers (slot 1, axis n at word 16n)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>+0</td><td>TARGET</td><td>where to go (writing it starts the move)</td></tr>
+<tr><td>+1</td><td>POSITION</td><td>where the axis is</td></tr>
+<tr><td>+2, +3</td><td>VMAX</td><td>top speed (40 bits)</td></tr>
+<tr><td>+4, +5</td><td>ACCEL, VSTART</td><td>speed change per us, start speed</td></tr>
+<tr><td>+6, +7</td><td>STATUS, SPEED</td><td>moving, direction, slowing down; the speed now</td></tr>
+<tr><td>+8</td><td>PULSE</td><td>step pulse length (2 us)</td></tr>
+<tr><td>+9</td><td>STOP</td><td>1 slow down and stop, 2 stop at once</td></tr>
+<tr><td>+10</td><td>PIN_STEPS</td><td>steps counted at the STEP pin</td></tr>
+<tr><td>+11</td><td>DIR_SETUP</td><td>time between a direction change and the next step</td></tr>
+<tr><td>64</td><td>ID</td><td>"STEP"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Phase accumulator for exact step rates</td><td>a 40-bit phase plus the speed every microsecond</td></tr>
+<tr><td>Acceleration ramps (trapezoid profile)</td><td>speed grows by ACCEL until VMAX, the same way down</td></tr>
+<tr><td>Planning the stop in hardware</td><td>the steps used to speed up = the steps needed to slow down</td></tr>
+<tr><td>Proving every pulse left the board</td><td>STEP pins read back at their pads (PIN_STEPS)</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>Why does a stepper motor that starts at full speed often just buzz?</li></ol>
+<details><summary>Answer</summary>
+The rotor cannot follow a sudden fast pulse train: its inertia needs a few milliseconds of rising speed. Without a ramp it misses steps and stalls.
+</details>
+<ol><li>The axis speeds up for 1200 steps and the move is 2000 steps. How many steps at full speed?</li></ol>
+<details><summary>Answer</summary>
+Slowing down takes as many steps as speeding up: 2000 - 2 x 1200 is negative, so it never reaches VMAX: it speeds up for 1000 steps and slows down for 1000 (a triangle profile).
+</details>
+<ol><li>A 200-step motor with 1/16 microstepping should turn 3 times per second. What step rate?</li></ol>
+<details><summary>Answer</summary>
+200 x 16 x 3 = 9600 steps per second.
+</details>
+<h2>Ideas</h2>
+<ul><li>A camera slider, a plotter with two axes, a turntable for 3D scanning.</li><li>Home switch: read a pin, stop, <code>position(0)</code>.</li><li>An encoder (project 03) on the motor shaft to check for lost steps.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>The motor buzzes but does not turn</b>: too fast a start: lower <code>start_speed</code> and <code>accel</code>, or raise the driver's current.</li><li><b>Wrong direction</b>: swap one coil pair, or use negative targets.</li><li><b>The driver gets very hot</b>: lower its current limit; TMC2208 drivers run cooler.</li></ul></main></body></html>

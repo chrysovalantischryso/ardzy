@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Board Reference Manual</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="top"><div class="wrap" style="max-width:1240px">
+  <nav class="back"><a href="index.html">&larr; All documents</a></nav>
+  <div class="kicker">Document 4 &middot; Board reference manual</div>
+  <h1>Antminer S9 control board: complete reference</h1>
+  <p>Every chip, connector, voltage, clock and pin of the board, from the official schematic (15 sheets) and from measurements on your running board.</p>
+</div></header>
+
+<div class="manual">
+<nav class="side"><b>Chapters</b><ol>
+  <li><a href="#id">Identity</a></li>
+  <li><a href="#block">Block diagram</a></li>
+  <li><a href="#bom">Main components</a></li>
+  <li><a href="#zynq">The Zynq XC7Z010</a></li>
+  <li><a href="#pl">FPGA resources</a></li>
+  <li><a href="#pspl">PS to PL links</a></li>
+  <li><a href="#map">Memory map</a></li>
+  <li><a href="#power">Power</a></li>
+  <li><a href="#clock">Clocks</a></li>
+  <li><a href="#boot">Reset and boot</a></li>
+  <li><a href="#ddr">DDR3 memory</a></li>
+  <li><a href="#nand">NAND flash</a></li>
+  <li><a href="#sd">microSD card</a></li>
+  <li><a href="#eth">Ethernet</a></li>
+  <li><a href="#uart">UART console</a></li>
+  <li><a href="#jtag">JTAG</a></li>
+  <li><a href="#mio">The 54 ARM pins (MIO)</a></li>
+  <li><a href="#fpgaio">FPGA pins</a></li>
+  <li><a href="#extras">LEDs, buzzer, buttons</a></li>
+  <li><a href="#linux">Linux view</a></li>
+  <li><a href="#measured">Measured values</a></li>
+  <li><a href="#limits">Limits and safety</a></li>
+  <li><a href="#unknown">Open questions</a></li>
+  <li><a href="#sources">Sources</a></li>
+</ol></nav>
+
+<main>
+
+<h2 id="id">1. Identity</h2>
+<table class="spec">
+<tr><td>Board</td><td><b>AntMiner ControlBoard XC7010 V1.01</b> (control board of the Bitmain Antminer S9, 2016)</td></tr>
+<tr><td>Schematic</td><td>AntMiner_ControlBoard_XC7010, Rev V1.0, dated 1 July 2016, 15 sheets (in <code>ZynqProjects\board\AntminerS9FPGA\</code>)</td></tr>
+<tr><td>Main chip</td><td>Xilinx Zynq-7000 <b>XC7Z010-1CLG400C</b> (IDCODE <code>0x03722093</code>, read from the running chip)</td></tr>
+<tr><td>Memory</td><td><b>512 MB</b> DDR3 (2 &times; 16-bit chips = 32-bit bus), DDR3-1066</td></tr>
+<tr><td>Storage</td><td>256 MB NAND flash (original Bitmain firmware), microSD slot (Ardzy)</td></tr>
+<tr><td>Network</td><td>Ethernet RJ45, Broadcom B50612 PHY (10/100/1000)</td></tr>
+<tr><td>Expansion</td><td>9 hash-board connectors (36 FPGA I/O + 2 I2C buses + 9 ARM GPIO), 6 fan headers (PWM + speed)</td></tr>
+<tr><td>Power</td><td>12 V in, 5 switch-mode regulators + DDR termination regulator</td></tr>
+<tr><td>Size of the schematic sheets</td><td>1 boot straps, 2 bank 0 (JTAG, config), 3 bank 500, 4 bank 501, 5 bank 502 (DDR), 6 PL banks 34/35, 7 core supplies, 8 ground/NC, 9 DDR3 chips, 10 NAND, 11 microSD + UART, 12 Ethernet, 13 hash-board connectors, 14 fans, 15 power</td></tr>
+</table>
+
+<h2 id="block">2. Block diagram</h2>
+<figure>
+<svg viewBox="0 0 900 600" role="img" aria-label="Board block diagram">
+  <rect x="300" y="170" width="300" height="260" rx="12" class="d-box"/>
+  <text x="318" y="196" class="d-title">Zynq XC7Z010 (U1)</text>
+  <rect x="316" y="208" width="268" height="100" rx="8" class="d-ps"/>
+  <text x="330" y="232" class="d-title">PS: 2 x Cortex-A9 666.7 MHz</text>
+  <text x="330" y="254" class="d-small">DDR ctrl, SMC (NAND), SDIO0, GEM0,</text>
+  <text x="330" y="272" class="d-small">UART1, GPIO, I2C, watchdog, XADC</text>
+  <text x="330" y="292" class="d-small">MIO 0-53 (banks 500 / 501)</text>
+  <rect x="316" y="318" width="268" height="96" rx="8" class="d-pl"/>
+  <text x="330" y="342" class="d-title">PL: Artix-7 class FPGA</text>
+  <text x="330" y="364" class="d-small">17,600 LUT, 80 DSP, 2.1 Mb BRAM</text>
+  <text x="330" y="382" class="d-small">banks 34 / 35 at 3.3 V</text>
+  <text x="330" y="400" class="d-small">clock from FCLK0 (100 MHz)</text>
+
+  <rect x="20" y="40" width="210" height="96" rx="8" class="d-warn"/>
+  <text x="34" y="64" class="d-title">Power (sheet 15)</text>
+  <text x="34" y="86" class="d-small">12 V in: J14 (6-pin), J15, J16</text>
+  <text x="34" y="104" class="d-small">1.0 / 1.8 / 1.5 / 2.5 / 3.3 V</text>
+  <text x="34" y="122" class="d-small">+ DDR VTT / VREF</text>
+
+  <rect x="20" y="190" width="210" height="80" rx="8" class="d-box"/>
+  <text x="34" y="214" class="d-title">DDR3 U3 + U4</text>
+  <text x="34" y="236" class="d-small">2 x 16 bit, 512 MB, 1.5 V</text>
+  <text x="34" y="254" class="d-small">DDR3-1066</text>
+  <path d="M230 230 H316" class="d-blue"/><text x="240" y="222" class="d-small">32-bit DDR</text>
+
+  <rect x="20" y="300" width="210" height="80" rx="8" class="d-box"/>
+  <text x="34" y="324" class="d-title">NAND U5</text>
+  <text x="34" y="346" class="d-small">MT29F2G08, 256 MB, 8 bit</text>
+  <text x="34" y="364" class="d-small">original Bitmain firmware</text>
+  <path d="M230 340 H300" class="d-blue"/><text x="236" y="332" class="d-small">MIO 0-14</text>
+
+  <rect x="20" y="410" width="210" height="80" rx="8" class="d-acc"/>
+  <text x="34" y="434" class="d-title">microSD J11</text>
+  <text x="34" y="456" class="d-small">via level shifter U6</text>
+  <text x="34" y="474" class="d-small">Ardzy runs from here</text>
+  <path d="M230 450 H270 V400 H300" class="d-blue"/><text x="236" y="442" class="d-small">MIO 40-46</text>
+
+  <rect x="20" y="520" width="210" height="64" rx="8" class="d-box"/>
+  <text x="34" y="544" class="d-title">Boot jumpers JP1-JP4</text>
+  <text x="34" y="564" class="d-small">straps on MIO 2-5</text>
+  <path d="M230 552 H285 V420 H300" class="d-dash"/>
+
+  <rect x="670" y="40" width="210" height="96" rx="8" class="d-box"/>
+  <text x="684" y="64" class="d-title">Ethernet U8 + J13</text>
+  <text x="684" y="86" class="d-small">B50612 PHY, addr 1, 25 MHz</text>
+  <text x="684" y="104" class="d-small">RGMII MIO 16-27,</text>
+  <text x="684" y="122" class="d-small">MDIO MIO 52/53</text>
+  <path d="M670 100 H630 V220 H600" class="d-blue"/>
+
+  <rect x="670" y="160" width="210" height="70" rx="8" class="d-box"/>
+  <text x="684" y="184" class="d-title">UART J12 + JTAG J10</text>
+  <text x="684" y="206" class="d-small">MIO 48/49 via U7; JTAG via bank 0</text>
+  <path d="M670 200 H600" class="d-blue"/>
+
+  <rect x="670" y="250" width="210" height="80" rx="8" class="d-box"/>
+  <text x="684" y="274" class="d-title">LEDs, buzzer, buttons</text>
+  <text x="684" y="296" class="d-small">MIO 15, 37-39, 47, 51 (ARM)</text>
+  <text x="684" y="314" class="d-small">+ 4 LEDs on the FPGA</text>
+  <path d="M670 290 H600" class="d-blue"/>
+
+  <rect x="670" y="350" width="210" height="96" rx="8" class="d-pl"/>
+  <text x="684" y="374" class="d-title">Hash connectors J1-J9</text>
+  <text x="684" y="396" class="d-small">4 FPGA I/O each (bank 34)</text>
+  <text x="684" y="414" class="d-small">I2C, 3.3 V, EN (MIO 28-36)</text>
+  <path d="M670 390 H600" class="d-arrow"/>
+
+  <rect x="670" y="466" width="210" height="80" rx="8" class="d-pl"/>
+  <text x="684" y="490" class="d-title">Fans FAN1-FAN6</text>
+  <text x="684" y="512" class="d-small">PWM J18, speed inputs</text>
+  <text x="684" y="530" class="d-small">(bank 35), 12 V</text>
+  <path d="M670 506 H630 V410 H600" class="d-arrow"/>
+
+  <path d="M125 136 V160 H450 V170" class="d-dash"/><text x="300" y="152" class="d-small">all supplies</text>
+</svg>
+<figcaption>Board block diagram. Blue lines: ARM side (PS); green: FPGA side (PL).</figcaption>
+</figure>
+
+<h2 id="bom">3. Main components</h2>
+<table>
+<tr><th>Ref</th><th>Part</th><th>Function</th><th>Sheet</th></tr>
+<tr><td>U1</td><td>Xilinx XC7Z010-1CLG400C</td><td>Zynq SoC: 2 ARM Cortex-A9 + FPGA</td><td>2-8</td></tr>
+<tr><td>U3, U4</td><td>DDR3L x16 (schematic: Micron MT41K256M16HA-125:E; this board: 2 Gbit parts)</td><td>512 MB main memory</td><td>9</td></tr>
+<tr><td>U5</td><td>Micron MT29F2G08AACWP</td><td>2 Gbit (256 MB) SLC NAND flash, 8 bit, TSOP-48</td><td>10</td></tr>
+<tr><td>U6</td><td>TI TXS02612RTWR</td><td>SD card level translator / switch (2.5 V MIO side, 3.3 V card side)</td><td>11</td></tr>
+<tr><td>U7</td><td>TI LSF0102DCTR</td><td>UART level translator (2.5 V to 3.3 V)</td><td>11</td></tr>
+<tr><td>U2</td><td>TI LSF0102DCTR</td><td>JTAG reset level translator (PS_SRST)</td><td>2</td></tr>
+<tr><td>U8</td><td>Broadcom B50612</td><td>Ethernet PHY 10/100/1000, RGMII</td><td>12</td></tr>
+<tr><td>T1</td><td>G2405CG</td><td>Ethernet magnetics (transformer)</td><td>12</td></tr>
+<tr><td>J13</td><td>RJ45 with 2 LEDs</td><td>Ethernet jack (activity / link)</td><td>12</td></tr>
+<tr><td>U9-U13</td><td>TI TLV62130RGT (x5)</td><td>3 A step-down regulators: 1.0, 2.5, 1.8, 3.3, 1.5 V</td><td>15</td></tr>
+<tr><td>U14</td><td>TI TPS51200</td><td>DDR3 termination: VTT (0.75 V) and VREF</td><td>15</td></tr>
+<tr><td>Y1</td><td>33.333 MHz oscillator</td><td>PS reference clock (PS_CLK)</td><td>3</td></tr>
+<tr><td>Y4</td><td>25 MHz crystal</td><td>Ethernet PHY clock</td><td>12</td></tr>
+<tr><td>Y2, Y3</td><td>100 MHz oscillators, <b>not fitted</b> (NC)</td><td>footprints for an FPGA clock on pins K17 and N18</td><td>6</td></tr>
+<tr><td>J1-J9</td><td>18-pin hash-board connectors</td><td>now general FPGA I/O</td><td>13</td></tr>
+<tr><td>FAN1-FAN6</td><td>4-pin fan headers</td><td>12 V, speed, PWM</td><td>14</td></tr>
+<tr><td>J10</td><td>2 x 7 header</td><td>JTAG</td><td>2</td></tr>
+<tr><td>J11</td><td>SCHA5B0200 microSD socket</td><td>boot / root file system</td><td>11</td></tr>
+<tr><td>J12</td><td>3-pin header (marked DEPOP: may be missing)</td><td>UART console</td><td>11</td></tr>
+<tr><td>J14 / J15 / J16</td><td>6-pin (PCIe style) / 4-pin / 4-pin</td><td>12 V power inputs</td><td>15</td></tr>
+<tr><td>JP1-JP4</td><td>3-pin jumpers</td><td>boot mode</td><td>1</td></tr>
+<tr><td>S1, S2</td><td>KMR231 push buttons</td><td>"Reset" key (MIO47), "IP" key (MIO51)</td><td>2, 4</td></tr>
+<tr><td>BZ1 + Q1</td><td>buzzer + MMBT3904</td><td>beeper (MIO39)</td><td>4</td></tr>
+<tr><td>D3 + Q2, Q3</td><td>F5G1 red/green LED + 2N7002</td><td>status LED (MIO37 red, MIO38 green)</td><td>4</td></tr>
+<tr><td>D1 + Q4</td><td>green LED + 2N7002</td><td>FPGA DONE (lights when the FPGA is configured)</td><td>2</td></tr>
+<tr><td>D2</td><td>green LED</td><td>MIO15, active low</td><td>3</td></tr>
+<tr><td>D5-D8</td><td>green LEDs</td><td>the 4 FPGA LEDs, active low</td><td>6</td></tr>
+<tr><td>D15</td><td>green LED</td><td>power good (on when all supplies are up)</td><td>15</td></tr>
+<tr><td>D16</td><td>SMBJ15CA</td><td>12 V input surge protection (TVS diode)</td><td>15</td></tr>
+</table>
+
+<h2 id="zynq">4. The Zynq XC7Z010</h2>
+<p>The Zynq-7000 is an <b>SoC</b>: a fixed ARM processor system (PS) and an FPGA (PL) on one die. The PS boots first and is in charge; the PL is configured afterwards (by the boot loader or, in Ardzy, by Linux).</p>
+<h3>Processing System (PS)</h3>
+<table class="spec">
+<tr><td>CPU</td><td>2 &times; ARM Cortex-A9 MPCore (ARMv7-A), NEON SIMD and VFPv3 floating point. On this board: <b>666.7 MHz</b> (ARM PLL 1333.3 MHz / 2), clock ratio 6:2:1</td></tr>
+<tr><td>Caches</td><td>32 KB instruction + 32 KB data L1 per core, 512 KB shared L2, Snoop Control Unit (cache coherency)</td></tr>
+<tr><td>On-chip memory</td><td>256 KB OCM (the first boot stage runs here; BootROM loads at most 192 KB)</td></tr>
+<tr><td>Memory controller</td><td>DDR3/DDR3L/DDR2/LPDDR2, 16 or 32 bit. Here: DDR3, 32 bit, 533.3 MHz (DDR3-1066)</td></tr>
+<tr><td>Static memory controller</td><td>NAND (used: 8-bit NAND on MIO 0-14) or parallel NOR/SRAM</td></tr>
+<tr><td>Peripherals (2 of each)</td><td>Gigabit Ethernet (GEM), USB 2.0 OTG, SD/SDIO, UART, SPI, I2C, CAN. Used here: GEM0, SDIO0, UART1, I2C1 (pins MIO28/29)</td></tr>
+<tr><td>GPIO</td><td>54 MIO pins + 64 EMIO lines to the FPGA (Linux: gpiochip0, 118 lines, line number = MIO number)</td></tr>
+<tr><td>Timers</td><td>2 triple timer counters (TTC), global timer, private timers, 1 system watchdog (SWDT, used by Ardzy with 30 s) + private watchdogs</td></tr>
+<tr><td>DMA</td><td>8-channel DMA controller (PL330)</td></tr>
+<tr><td>Interrupts</td><td>GIC (generic interrupt controller), 16 interrupt lines from the FPGA (IRQ_F2P)</td></tr>
+<tr><td>Security</td><td>AES-256 / HMAC secure boot, eFuses (not used here; battery input VCCBATT tied to ground)</td></tr>
+<tr><td>XADC</td><td>12-bit 1 MSPS ADC with temperature and supply sensors (Linux: iio:device0). The external analog inputs are not wired on this board.</td></tr>
+<tr><td>Config interface</td><td>PCAP / devcfg (200 MHz): how the PS loads FPGA designs (Linux FPGA manager)</td></tr>
+</table>
+
+<h2 id="pl">5. FPGA resources (PL)</h2>
+<table class="spec">
+<tr><td>Logic cells</td><td>28,000 (equivalent)</td></tr>
+<tr><td>LUTs (6-input)</td><td>17,600</td></tr>
+<tr><td>Flip-flops</td><td>35,200</td></tr>
+<tr><td>Block RAM</td><td>60 &times; 36 Kb = 2.1 Mbit (240 KB); each can be split into two 18 Kb blocks</td></tr>
+<tr><td>DSP slices</td><td>80 &times; DSP48E1 (25 &times; 18 multiplier + 48-bit accumulator), up to about 460 MHz at speed grade -1</td></tr>
+<tr><td>Clock management</td><td>2 CMTs (each 1 MMCM + 1 PLL): make other clock frequencies from FCLK0 (Clocking Wizard)</td></tr>
+<tr><td>I/O</td><td>100 PL I/O pins in the CLG400 package (banks 34 and 35, 50 each); on this board 56 are wired to something useful (see chapter 18)</td></tr>
+<tr><td>Speed grade</td><td>-1 (commercial, 0 to 85 &deg;C junction)</td></tr>
+<tr><td>Bitstream size</td><td>2,083,740 bytes (.bin), loads in about 0.07 to 0.11 s through PCAP (measured)</td></tr>
+</table>
+
+<h2 id="pspl">6. PS to PL links</h2>
+<table>
+<tr><th>Interface</th><th>Count</th><th>Width</th><th>Direction</th><th>Use</th></tr>
+<tr><td>M_AXI_GP</td><td>2</td><td>32 bit</td><td>ARM &rarr; FPGA</td><td>registers (GP0 at 0x4000_0000, GP1 at 0x8000_0000)</td></tr>
+<tr><td>S_AXI_GP</td><td>2</td><td>32 bit</td><td>FPGA &rarr; ARM</td><td>FPGA reads/writes PS peripherals and memory</td></tr>
+<tr><td>S_AXI_HP</td><td>4</td><td>32/64 bit</td><td>FPGA &rarr; DDR</td><td>fast DMA (streams of samples, video), up to about 1.2 GB/s each in theory</td></tr>
+<tr><td>S_AXI_ACP</td><td>1</td><td>64 bit</td><td>FPGA &rarr; cache</td><td>cache-coherent access</td></tr>
+<tr><td>FCLK_CLK0..3</td><td>4</td><td>-</td><td>ARM &rarr; FPGA</td><td>clocks. The boot loader sets <b>FCLK0 = 100 MHz</b>; FCLK1-3 keep their reset value <b>41.67 MHz</b>. All four can be changed while running (Ardzy app, Board view, Clocks card): IO PLL 1000 MHz / two dividers (1-63 each)</td></tr>
+<tr><td>FCLK_RESET0..3_N</td><td>4</td><td>-</td><td>ARM &rarr; FPGA</td><td>resets for FPGA logic</td></tr>
+<tr><td>IRQ_F2P</td><td>16</td><td>-</td><td>FPGA &rarr; ARM</td><td>interrupts (GIC IDs 61-68 and 84-91)</td></tr>
+<tr><td>EMIO</td><td>64 GPIO + peripherals</td><td>-</td><td>both</td><td>route ARM GPIO, UART, SPI, I2C, SDIO, Ethernet through FPGA pins</td></tr>
+<tr><td>Level shifters</td><td>-</td><td>-</td><td>-</td><td>must be enabled (SLCR LVL_SHFTR_EN) before PS and PL talk; the boot loader and the Linux FPGA manager do it</td></tr>
+</table>
+
+<h2 id="map">7. Memory map</h2>
+<table>
+<tr><th>Address range</th><th>Size</th><th>What</th></tr>
+<tr><td><code>0x0000_0000 - 0x1FFF_FFFF</code></td><td>512 MB</td><td>DDR3 (real memory). <code>0x2000_0000 - 0x3FFF_FFFF</code> mirrors it on this board</td></tr>
+<tr><td><code>0x4000_0000 - 0x7FFF_FFFF</code></td><td>1 GB</td><td>FPGA, through M_AXI_GP0 (your registers: AXI GPIO at <code>0x4120_0000</code>, custom IP often at <code>0x43C0_0000</code>)</td></tr>
+<tr><td><code>0x8000_0000 - 0xBFFF_FFFF</code></td><td>1 GB</td><td>FPGA, through M_AXI_GP1</td></tr>
+<tr><td><code>0xE000_0000 / 0xE000_1000</code></td><td>4 KB each</td><td>UART0 / <b>UART1</b> (console)</td></tr>
+<tr><td><code>0xE000_4000 / 0xE000_5000</code></td><td>4 KB each</td><td>I2C0 / I2C1</td></tr>
+<tr><td><code>0xE000_6000 / 0xE000_7000</code></td><td>4 KB each</td><td>SPI0 / SPI1</td></tr>
+<tr><td><code>0xE000_A000</code></td><td>4 KB</td><td>GPIO controller</td></tr>
+<tr><td><code>0xE000_B000 / 0xE000_C000</code></td><td>4 KB each</td><td><b>GEM0</b> (Ethernet) / GEM1</td></tr>
+<tr><td><code>0xE000_E000</code></td><td>4 KB</td><td>Static memory controller (NAND)</td></tr>
+<tr><td><code>0xE010_0000 / 0xE010_1000</code></td><td>4 KB each</td><td><b>SDIO0</b> (microSD) / SDIO1</td></tr>
+<tr><td><code>0xE100_0000</code></td><td>16 MB</td><td>NAND data window (SMC)</td></tr>
+<tr><td><code>0xF800_0000</code></td><td>4 KB</td><td>SLCR: system control (clocks, resets, pin mux, unlock key <code>0xDF0D</code> at +0x008)</td></tr>
+<tr><td><code>0xF800_5000</code></td><td>4 KB</td><td>System watchdog (SWDT)</td></tr>
+<tr><td><code>0xF800_6000</code></td><td>4 KB</td><td>DDR controller</td></tr>
+<tr><td><code>0xF800_7000 / 0xF800_7100</code></td><td>-</td><td>devcfg (FPGA loading) / XADC interface</td></tr>
+<tr><td><code>0xF8F0_0000</code></td><td>8 KB</td><td>CPU private: SCU, GIC, private timers</td></tr>
+<tr><td><code>0xFFFC_0000 - 0xFFFF_FFFF</code></td><td>256 KB</td><td>OCM (on-chip RAM, high address)</td></tr>
+</table>
+<p class="small">Useful SLCR registers: MIO_PIN_n at <code>0xF800_0700 + 4n</code> (pin mux), APER_CLK_CTRL <code>0xF800_012C</code> (peripheral clocks), FPGA_RST_CTRL <code>0xF800_0240</code>, LVL_SHFTR_EN <code>0xF800_0900</code>, PSS_IDCODE <code>0xF800_0530</code>. Linux keeps the SLCR unlocked; do not lock it.</p>
+
+<h2 id="power">8. Power</h2>
+<figure>
+<svg viewBox="0 0 900 440" role="img" aria-label="Power tree">
+  <rect x="20" y="180" width="140" height="80" rx="8" class="d-warn"/>
+  <text x="34" y="206" class="d-title">12 V input</text>
+  <text x="34" y="228" class="d-small">J14 / J15 / J16</text>
+  <text x="34" y="246" class="d-small">TVS D16 SMBJ15CA</text>
+  <g>
+    <rect x="230" y="20" width="200" height="62" rx="8" class="d-box"/><text x="244" y="44" class="d-title">U9 &rarr; 1.0 V, 3 A</text><text x="244" y="66" class="d-small">always on (EN pulled up)</text>
+    <rect x="230" y="104" width="200" height="62" rx="8" class="d-box"/><text x="244" y="128" class="d-title">U11 &rarr; 1.8 V, 1 A</text><text x="244" y="150" class="d-small">EN = 1.0 V good</text>
+    <rect x="230" y="188" width="200" height="62" rx="8" class="d-box"/><text x="244" y="212" class="d-title">U13 &rarr; 1.5 V, 1 A</text><text x="244" y="234" class="d-small">EN = 1.8 V good</text>
+    <rect x="230" y="272" width="200" height="62" rx="8" class="d-box"/><text x="244" y="296" class="d-title">U10 &rarr; 2.5 V, 1 A</text><text x="244" y="318" class="d-small">EN = 1.5 V good</text>
+    <rect x="230" y="356" width="200" height="62" rx="8" class="d-box"/><text x="244" y="380" class="d-title">U12 &rarr; 3.3 V, 2 A</text><text x="244" y="402" class="d-small">EN = 2.5 V good</text>
+  </g>
+  <g class="d-dash"><path d="M330 82 V104"/><path d="M330 166 V188"/><path d="M330 250 V272"/><path d="M330 334 V356"/></g>
+  <path d="M160 220 H195 V51 H230 M195 135 H230 M195 219 H230 M195 303 H230 M195 387 H230" class="d-line"/>
+  <g>
+    <text x="460" y="44" class="d-text">VCCINT, VCCPINT, VCCBRAM (FPGA and ARM core)</text>
+    <text x="460" y="128" class="d-text">VCCAUX, VCCPAUX, VCCPLL, VCCADC</text>
+    <text x="460" y="212" class="d-text">DDR3 chips + VCCO_DDR; TPS51200 &rarr; VTT 0.75 V, VREF</text>
+    <text x="460" y="296" class="d-text">MIO bank 501, Ethernet PHY I/O, level-shifter A side</text>
+    <text x="460" y="380" class="d-text">banks 0, 34, 35, 500, NAND, SD card, connectors pin 16</text>
+    <text x="460" y="402" class="d-small">PG of U12 = P_GOOD: releases PS_POR_B and the PHY reset, lights D15</text>
+  </g>
+  <g class="d-arrow"><path d="M430 40 H452"/><path d="M430 124 H452"/><path d="M430 208 H452"/><path d="M430 292 H452"/><path d="M430 376 H452"/></g>
+</svg>
+<figcaption>Power tree with the start-up order. Each regulator starts when the one above reports "power good" (dashed): core first, I/O last, as Xilinx recommends.</figcaption>
+</figure>
+<table>
+<tr><th>Rail</th><th>Regulator</th><th>Max current</th><th>Measured (XADC, your board)</th><th>Main users</th></tr>
+<tr><td>1.0 V</td><td>U9 TLV62130, 2.2 &micro;H</td><td>3 A</td><td>VCCINT 1.010 V, VCCPINT 1.008 V, VCCBRAM 1.009 V</td><td>FPGA logic, ARM cores, block RAM</td></tr>
+<tr><td>1.8 V</td><td>U11 TLV62130</td><td>1 A</td><td>VCCAUX 1.794 V, VCCPAUX 1.792 V</td><td>auxiliary, PLLs (via ferrite FB3), XADC (via FB2)</td></tr>
+<tr><td>1.5 V</td><td>U13 TLV62130</td><td>1 A</td><td>VCC_DDR 1.501 V</td><td>DDR3 memory and the Zynq DDR pins</td></tr>
+<tr><td>2.5 V</td><td>U10 TLV62130</td><td>1 A</td><td>(not measured by the XADC)</td><td>MIO 16-53, PHY RGMII I/O</td></tr>
+<tr><td>3.3 V</td><td>U12 TLV62130</td><td>2 A</td><td>(not measured by the XADC)</td><td>FPGA banks, MIO 0-15, NAND, SD card, oscillator, LEDs</td></tr>
+<tr><td>0.75 V VTT, VREF</td><td>U14 TPS51200</td><td>-</td><td>-</td><td>DDR3 address/command termination (40.2 &Omega; to VTT)</td></tr>
+</table>
+<p>Power consumption of the control board alone was not measured. The 12 V adapter mostly feeds the regulators above and the fans (fan headers get 12 V directly).</p>
+
+<h2 id="clock">9. Clocks</h2>
+<figure>
+<svg viewBox="0 0 900 380" role="img" aria-label="Clock tree">
+  <rect x="20" y="150" width="150" height="70" rx="8" class="d-box"/><text x="34" y="176" class="d-title">Y1 33.333 MHz</text><text x="34" y="198" class="d-small">PS_CLK (pin E7)</text>
+  <rect x="230" y="40" width="170" height="60" rx="8" class="d-ps"/><text x="244" y="64" class="d-title">ARM PLL x40</text><text x="244" y="86" class="d-small">1333.3 MHz</text>
+  <rect x="230" y="155" width="170" height="60" rx="8" class="d-ps"/><text x="244" y="179" class="d-title">DDR PLL x32</text><text x="244" y="201" class="d-small">1066.7 MHz</text>
+  <rect x="230" y="270" width="170" height="60" rx="8" class="d-ps"/><text x="244" y="294" class="d-title">IO PLL x30</text><text x="244" y="316" class="d-small">1000.0 MHz</text>
+  <path d="M170 185 H200 V70 H230 M200 185 H230 M200 185 V300 H230" class="d-line"/>
+  <g class="d-arrow"><path d="M400 70 H440"/><path d="M400 185 H440"/><path d="M400 300 H440"/></g>
+  <text x="448" y="66" class="d-text">/ 2 = CPU 666.7 MHz (6:2:1: 333 / 222 / 111 MHz buses)</text>
+  <text x="448" y="181" class="d-text">/ 2 = DDR3 533.3 MHz (1066 MT/s)</text>
+  <text x="448" y="262" class="d-text">/ 8 = GEM0 125 MHz (Ethernet)</text>
+  <text x="448" y="284" class="d-text">/ 10 = SDIO, UART, SMC 100 MHz</text>
+  <text x="448" y="306" class="d-text">/ 5 = PCAP 200 MHz (FPGA loading)</text>
+  <text x="448" y="328" class="d-text" style="font-weight:600">/ 5 / 2 = FCLK0 100 MHz &rarr; your FPGA design</text>
+  <rect x="20" y="300" width="150" height="56" rx="8" class="d-box"/><text x="34" y="324" class="d-title">Y4 25 MHz</text><text x="34" y="344" class="d-small">Ethernet PHY only</text>
+</svg>
+<figcaption>Clock tree, decoded from the boot loader's register tables. The FPGA has no clock of its own on this board (Y2/Y3 not fitted): designs use FCLK0.</figcaption>
+</figure>
+
+<h2 id="boot">10. Reset and boot</h2>
+<h3>Reset</h3>
+<ul>
+  <li><b>Power-on reset</b> (PS_POR_B, pin C7) is held until the 3.3 V regulator reports power good (P_GOOD). The same signal resets the Ethernet PHY.</li>
+  <li><b>PS_SRST_B</b> (pin B10) comes from JTAG J10 pin 14 through level shifter U2. Button S1 is <b>not</b> wired to it (its resistor R24 is not fitted): S1 is a normal input on MIO47.</li>
+  <li>Linux restarts the board through the SLCR (software reset). The watchdog (SWDT) can also reset it.</li>
+</ul>
+<h3>Boot straps (read at power-on)</h3>
+<table>
+<tr><th>Pin</th><th>Jumper / resistor</th><th>Meaning</th></tr>
+<tr><td>MIO2</td><td>JP1</td><td>JTAG chain: 0 = cascade (always 0 on this board)</td></tr>
+<tr><td>MIO3, MIO4, MIO5</td><td>JP3, JP2, JP4</td><td>boot device (bit 0, bit 1, bit 2)</td></tr>
+<tr><td>MIO6</td><td>20 k&Omega; to GND</td><td>PLLs enabled</td></tr>
+<tr><td>MIO7</td><td>20 k&Omega; to GND</td><td>bank 500 voltage: 2.5/3.3 V</td></tr>
+<tr><td>MIO8</td><td>20 k&Omega; to GND</td><td>bank 501 voltage: 2.5/3.3 V</td></tr>
+</table>
+<table>
+<tr><th>Boot mode</th><th>JP1</th><th>JP2</th><th>JP3</th><th>JP4</th><th>MIO[5:3]</th></tr>
+<tr><td>Cascade JTAG</td><td>0</td><td>0</td><td>0</td><td>0</td><td>000</td></tr>
+<tr><td><b>TF card (microSD): Ardzy</b></td><td>0</td><td>1</td><td>0</td><td>1</td><td>110</td></tr>
+<tr><td>QSPI flash (not fitted)</td><td>0</td><td>0</td><td>0</td><td>1</td><td>100</td></tr>
+<tr><td>NOR flash (not fitted)</td><td>0</td><td>0</td><td>1</td><td>0</td><td>001</td></tr>
+<tr><td>NAND flash (original firmware)</td><td>0</td><td>1</td><td>0</td><td>0</td><td>010</td></tr>
+</table>
+<h3>Boot sequence (SD card)</h3>
+<ol class="steps">
+  <li><b>BootROM</b> (inside the chip) reads the straps, starts the SD controller at a slow clock, and looks for <code>BOOT.bin</code> on the first FAT partition. MIO0 (NAND CE#) must read low during SD boot; a 20 k&Omega; pull-down takes care of it.</li>
+  <li>It checks the boot header (<code>XNLX</code> marker) and copies the first stage (max 192 KB) into on-chip RAM.</li>
+  <li><b>SPL / FSBL</b> writes the ps7_init tables: pin mux (MIO), PLLs and clocks, DDR3 timing, peripheral setup, then enables the PS-PL level shifters.</li>
+  <li>It loads <b>U-Boot</b> (<code>u-boot.img</code>) into DDR. U-Boot reads <code>uboot.env</code>, runs <code>boot.scr</code>, loads <code>zImage</code> and <code>system.dtb</code>, and starts Linux.</li>
+</ol>
+
+<h2 id="ddr">11. DDR3 memory</h2>
+<figure>
+<svg viewBox="0 0 900 250" role="img" aria-label="DDR3 topology">
+  <rect x="20" y="60" width="200" height="130" rx="10" class="d-ps"/><text x="36" y="88" class="d-title">Zynq DDR controller</text><text x="36" y="112" class="d-small">bank 502, 1.5 V</text><text x="36" y="132" class="d-small">32-bit, 533 MHz</text><text x="36" y="152" class="d-small">VRP/VRN 80.6 &Omega;</text>
+  <rect x="420" y="20" width="200" height="90" rx="10" class="d-box"/><text x="436" y="48" class="d-title">U3: DQ0-15</text><text x="436" y="70" class="d-small">byte lanes 0, 1</text><text x="436" y="90" class="d-small">ZQ 240 &Omega;</text>
+  <rect x="420" y="140" width="200" height="90" rx="10" class="d-box"/><text x="436" y="168" class="d-title">U4: DQ16-31</text><text x="436" y="190" class="d-small">byte lanes 2, 3</text><text x="436" y="210" class="d-small">ZQ 240 &Omega;</text>
+  <path d="M220 90 H420" class="d-blue"/><text x="240" y="82" class="d-small">DQ, DQS, DM (lanes 0-1)</text>
+  <path d="M220 170 H420" class="d-blue"/><text x="240" y="162" class="d-small">DQ, DQS, DM (lanes 2-3)</text>
+  <path d="M220 130 H330 V65 M330 130 V185" class="d-line"/><text x="240" y="124" class="d-small">A0-A14, BA, CK, CMD</text>
+  <rect x="680" y="70" width="200" height="110" rx="10" class="d-warn"/><text x="696" y="98" class="d-title">U14 TPS51200</text><text x="696" y="120" class="d-small">VTT 0.75 V: 40.2 &Omega; on</text><text x="696" y="138" class="d-small">address / command lines</text><text x="696" y="158" class="d-small">VREF for chips + Zynq</text>
+  <path d="M620 125 H680" class="d-dash"/>
+</svg>
+<figcaption>DDR3: two 16-bit chips side by side make the 32-bit bus; address and command lines are shared and terminated to VTT. The clock pair has an 80.6 &Omega; termination (R40).</figcaption>
+</figure>
+<table class="spec">
+<tr><td>Size</td><td><b>512 MB</b> (measured: upper 512 MB mirrors, U-Boot's memory test finds 512 MB, Linux MemTotal 506,904 kB)</td></tr>
+<tr><td>Chips</td><td>2 &times; 16 bit DDR3(L). The schematic lists MT41K256M16 (4 Gbit = 1 GB total); your board has 2 Gbit parts. Read the marking on U3/U4 to know the exact part.</td></tr>
+<tr><td>Speed</td><td>533.3 MHz clock, 1066 MT/s, 32 bit: about 4.3 GB/s peak</td></tr>
+<tr><td>Voltage</td><td>1.5 V (measured 1.501 V), VTT 0.75 V</td></tr>
+<tr><td>Controller setup</td><td>taken 1:1 from the proven boot loader: 15 row bits (fits up to 4 Gbit chips), tRFC 161 clocks (302 ns). Works on 2 Gbit and 4 Gbit chips</td></tr>
+<tr><td>Address lines</td><td>A0-A14, BA0-BA2 routed (A14 is only needed by 4 Gbit chips)</td></tr>
+<tr><td>Reset</td><td>DDR3_RESET# with 4.7 k&Omega; pull-down (R58)</td></tr>
+</table>
+
+<h2 id="nand">12. NAND flash</h2>
+<table class="spec">
+<tr><td>Part</td><td>Micron <b>MT29F2G08AACWP</b> (U5), TSOP-48, 3.3 V</td></tr>
+<tr><td>Size</td><td>2 Gbit = 256 MB, SLC, 8-bit bus; 2 KB pages + 64 B spare, 128 KB blocks, 2048 blocks</td></tr>
+<tr><td>Connection</td><td>PS static memory controller on MIO 0-14 (table in chapter 17). CE#, WP#, R/B# have 1 k&Omega; pull-ups</td></tr>
+<tr><td>Content</td><td>the original Bitmain firmware (boot loader, Linux, mining software). Untouched by Ardzy.</td></tr>
+<tr><td>In Ardzy</td><td>visible as <b>one read-only partition</b> "bitmain-nand" (<code>/dev/mtd0</code>, <code>/dev/mtd0ro</code>): it can be scanned and backed up, never written</td></tr>
+<tr><td>Write protection</td><td>three layers: (1) read-only partition in the device tree; (2) the full chip is not exposed (no master device); (3) <b>kernel patch</b>: the Zynq NAND driver normally forces an on-flash bad-block table and would <i>write</i> one to the chip if it does not find one. Ardzy's kernel builds the table in RAM by only reading the factory bad-block markers.</td></tr>
+<tr><td>Tools</td><td><code>mtdinfo</code>, <code>nanddump</code> (mtd-utils); Ardzy app &rarr; Board &rarr; NAND card: scan contents, backup "data" (256 MB, ECC corrected) or "exact raw copy" (with the 64 spare bytes of every page and bad blocks, 264 MB)</td></tr>
+<tr><td>Boot from it</td><td>jumpers: JP2 = 1, all others 0 (the board then starts the original firmware)</td></tr>
+</table>
+<div class="box info"><b>Back it up once</b> The NAND holds the only copy of the original Bitmain firmware. Make an "exact raw copy" backup with the Ardzy app and keep it with its <code>.sha256</code> file.</div>
+
+<h2 id="sd">13. microSD card</h2>
+<figure>
+<svg viewBox="0 0 900 200" role="img" aria-label="SD card path">
+  <rect x="20" y="50" width="220" height="100" rx="10" class="d-ps"/><text x="36" y="78" class="d-title">SDIO0 (MIO 40-45)</text><text x="36" y="100" class="d-small">2.5 V, 100 MHz reference</text><text x="36" y="120" class="d-small">CD = MIO46, WP = MIO50</text>
+  <rect x="340" y="50" width="220" height="100" rx="10" class="d-box"/><text x="356" y="78" class="d-title">U6 TXS02612</text><text x="356" y="100" class="d-small">level translator</text><text x="356" y="120" class="d-small">2.5 V &harr; 3.3 V</text>
+  <rect x="660" y="50" width="220" height="100" rx="10" class="d-acc"/><text x="676" y="78" class="d-title">J11 microSD</text><text x="676" y="100" class="d-small">3.3 V card supply</text><text x="676" y="120" class="d-small">card-detect switch</text>
+  <path d="M240 100 H340" class="d-blue"/><path d="M560 100 H660" class="d-blue"/>
+  <text x="250" y="92" class="d-small">CLK CMD D0-3</text>
+</svg>
+<figcaption>SD path. The card works at 3.3 V only (no 1.8 V UHS modes), so cards run in normal or high-speed mode (up to 50 MHz bus clock, about 20 MB/s).</figcaption>
+</figure>
+<table class="spec">
+<tr><td>Signals</td><td>CLK MIO40 (33 &Omega; series), CMD MIO41, DAT0-3 MIO42-45</td></tr>
+<tr><td>Card detect</td><td>MIO46, 4.7 k&Omega; pull-up to 2.5 V, switch in the socket pulls it low when a card is in (the card is not hot-plugged in normal use: it holds the system)</td></tr>
+<tr><td>Write protect</td><td>MIO50 (microSD has no lock switch; the device tree says <code>disable-wp</code>)</td></tr>
+<tr><td>Linux</td><td><code>/dev/mmcblk0</code>: p1 = FAT boot (256 MB, <code>/boot</code>), p2 = ext4 root (grows to the full card on first boot)</td></tr>
+<tr><td>Card sizes</td><td>any SDHC/SDXC card of 4 GB or more; for example a 32 GB card gives about 29 GB</td></tr>
+</table>
+
+<h2 id="eth">14. Ethernet</h2>
+<table class="spec">
+<tr><td>MAC</td><td>Zynq GEM0, a random address chosen at the first start, then kept in <code>uboot.env</code> (so it never changes)</td></tr>
+<tr><td>PHY</td><td>Broadcom <b>B50612</b> (U8), 10/100/1000BASE-T, RGMII. PHY address <b>1</b> (PHYA[0] pulled up to 2.5 V)</td></tr>
+<tr><td>RGMII</td><td>MIO 16-27 at 2.5 V: TX_CLK, TXD0-3, TX_CTL, RX_CLK, RXD0-3 (33 &Omega; series), RX_CTL. GEM clock 125 MHz (gigabit capable)</td></tr>
+<tr><td>Management</td><td>MDC MIO52, MDIO MIO53 (1 k&Omega; pull-ups)</td></tr>
+<tr><td>Clock / reset</td><td>25 MHz crystal Y4; reset from P_GOOD</td></tr>
+<tr><td>Jack</td><td>magnetics T1 (G2405CG), RJ45 J13 with activity and link LEDs driven by the PHY</td></tr>
+<tr><td>Measured link</td><td><b>100 Mbit/s full duplex</b> with your PC (Linux: <code>end0</code>)</td></tr>
+<tr><td>Addresses</td><td>DHCP if a router is there, link-local 169.254.x.x otherwise, IPv6 link-local (<code>fe80::...</code>) always; name <code>ardzy.local</code></td></tr>
+</table>
+
+<h2 id="uart">15. UART console</h2>
+<table class="spec">
+<tr><td>Controller</td><td>UART1 (MIO48 TX, MIO49 RX), Linux <code>/dev/ttyPS0</code>, 115200 baud 8N1</td></tr>
+<tr><td>Level shift</td><td>U7 LSF0102: 2.5 V MIO &harr; 3.3 V header</td></tr>
+<tr><td>Header J12</td><td>pin 1 = RXD (into the board), pin 2 = GND, pin 3 = TXD (out of the board). Marked <b>DEPOP</b>: the pins may not be soldered on your board</td></tr>
+<tr><td>Adapter</td><td>3.3 V USB-UART (CP2102, CH340, FTDI). Board TXD &rarr; adapter RX, board RXD &rarr; adapter TX, GND &rarr; GND. Never 5 V</td></tr>
+<tr><td>Shows</td><td>U-Boot messages, the Linux boot log, and a login prompt (Ardzy app: USB serial tab)</td></tr>
+</table>
+
+<h2 id="jtag">16. JTAG</h2>
+<table>
+<tr><th>J10 pin</th><th>Signal</th><th>J10 pin</th><th>Signal</th></tr>
+<tr><td>1, 3, 5, 7, 9, 11, 13</td><td>GND</td><td>2</td><td>VREF 3.3 V (via R18 0 &Omega;)</td></tr>
+<tr><td></td><td></td><td>4</td><td>TMS</td></tr>
+<tr><td></td><td></td><td>6</td><td>TCK</td></tr>
+<tr><td></td><td></td><td>8</td><td>TDO</td></tr>
+<tr><td></td><td></td><td>10</td><td>TDI</td></tr>
+<tr><td></td><td></td><td>12</td><td>not connected</td></tr>
+<tr><td></td><td></td><td>14</td><td>SRST (PS_SRST_B through U2)</td></tr>
+</table>
+<p>Standard Xilinx 14-pin layout (2 mm pitch on Xilinx cables: check your header). JTAG pins have 4.7 k&Omega; pull-ups. Use with Vivado Hardware Manager for ILA debug probes or to load designs directly.</p>
+
+<h2 id="mio">17. The 54 ARM pins (MIO)</h2>
+<div class="mio"><div class="m-nand" title="MIO0: NAND CE#">0</div><div class="m-nand" title="MIO1: NAND WP#">1</div><div class="m-nand" title="MIO2: NAND ALE">2</div><div class="m-nand" title="MIO3: NAND WE#">3</div><div class="m-nand" title="MIO4: NAND I/O2">4</div><div class="m-nand" title="MIO5: NAND I/O0">5</div><div class="m-nand" title="MIO6: NAND I/O1">6</div><div class="m-nand" title="MIO7: NAND CLE">7</div><div class="m-nand" title="MIO8: NAND RE#">8</div><div class="m-nand" title="MIO9: NAND I/O4">9</div><div class="m-nand" title="MIO10: NAND I/O5">10</div><div class="m-nand" title="MIO11: NAND I/O6">11</div><div class="m-nand" title="MIO12: NAND I/O7">12</div><div class="m-nand" title="MIO13: NAND I/O3">13</div><div class="m-nand" title="MIO14: NAND R/B#">14</div><div class="m-misc" title="MIO15: LED D2 (green)">15</div><div class="m-eth" title="MIO16: ETH TX_CLK">16</div><div class="m-eth" title="MIO17: ETH TXD0">17</div><div class="m-eth" title="MIO18: ETH TXD1">18</div><div class="m-eth" title="MIO19: ETH TXD2">19</div><div class="m-eth" title="MIO20: ETH TXD3">20</div><div class="m-eth" title="MIO21: ETH TX_CTL">21</div><div class="m-eth" title="MIO22: ETH RX_CLK">22</div><div class="m-eth" title="MIO23: ETH RXD0">23</div><div class="m-eth" title="MIO24: ETH RXD1">24</div><div class="m-eth" title="MIO25: ETH RXD2">25</div><div class="m-eth" title="MIO26: ETH RXD3">26</div><div class="m-eth" title="MIO27: ETH RX_CTL">27</div><div class="m-io" title="MIO28: EN1 (J1 pin 18)">28</div><div class="m-io" title="MIO29: EN2 (J2 pin 18)">29</div><div class="m-io" title="MIO30: EN3 (J3 pin 18)">30</div><div class="m-io" title="MIO31: EN4 (J4 pin 18)">31</div><div class="m-io" title="MIO32: EN5 (J5 pin 18)">32</div><div class="m-io" title="MIO33: EN6 (J6 pin 18)">33</div><div class="m-io" title="MIO34: EN7 (J7 pin 18)">34</div><div class="m-io" title="MIO35: EN8 (J8 pin 18)">35</div><div class="m-io" title="MIO36: EN9 (J9 pin 18)">36</div><div class="m-misc" title="MIO37: LED D3 red">37</div><div class="m-misc" title="MIO38: LED D3 green">38</div><div class="m-misc" title="MIO39: Buzzer BZ1">39</div><div class="m-sd" title="MIO40: SD CLK">40</div><div class="m-sd" title="MIO41: SD CMD">41</div><div class="m-sd" title="MIO42: SD DAT0">42</div><div class="m-sd" title="MIO43: SD DAT1">43</div><div class="m-sd" title="MIO44: SD DAT2">44</div><div class="m-sd" title="MIO45: SD DAT3">45</div><div class="m-sd" title="MIO46: SD card detect">46</div><div class="m-misc" title="MIO47: Button S1 "Reset"">47</div><div class="m-uart" title="MIO48: UART1 TX">48</div><div class="m-uart" title="MIO49: UART1 RX">49</div><div class="m-sd" title="MIO50: SD write protect">50</div><div class="m-misc" title="MIO51: Button S2 "IP"">51</div><div class="m-eth" title="MIO52: ETH MDC">52</div><div class="m-eth" title="MIO53: ETH MDIO">53</div></div><p class="legend"><span class="m-nand">NAND flash</span><span class="m-eth">Ethernet</span><span class="m-sd">SD card</span><span class="m-io">EN pins (hash connectors)</span><span class="m-uart">UART console</span><span class="m-misc">LEDs, buzzer, buttons</span></p>
+<table><tr><th>Pin</th><th>Function on this board</th><th>Group</th><th>Bank</th><th>Notes</th></tr><tr><td>MIO0</td><td>NAND CE#</td><td>NAND flash</td><td>500 (3.3 V)</td><td>20k pull-down: must be low for SD boot (schematic note), 1k pull-up on the net</td></tr><tr><td>MIO1</td><td>NAND WP#</td><td>NAND flash</td><td>500 (3.3 V)</td><td>1k pull-up</td></tr><tr><td>MIO2</td><td>NAND ALE</td><td>NAND flash</td><td>500 (3.3 V)</td><td>boot strap JP1 (JTAG chain mode, 0 = cascade)</td></tr><tr><td>MIO3</td><td>NAND WE#</td><td>NAND flash</td><td>500 (3.3 V)</td><td>boot strap JP3 (boot device bit 0)</td></tr><tr><td>MIO4</td><td>NAND I/O2</td><td>NAND flash</td><td>500 (3.3 V)</td><td>boot strap JP2 (boot device bit 1)</td></tr><tr><td>MIO5</td><td>NAND I/O0</td><td>NAND flash</td><td>500 (3.3 V)</td><td>boot strap JP4 (boot device bit 2)</td></tr><tr><td>MIO6</td><td>NAND I/O1</td><td>NAND flash</td><td>500 (3.3 V)</td><td>strap: 20k pull-down = PLLs enabled</td></tr><tr><td>MIO7</td><td>NAND CLE</td><td>NAND flash</td><td>500 (3.3 V)</td><td>strap: 20k pull-down = bank 500 at 2.5/3.3 V</td></tr><tr><td>MIO8</td><td>NAND RE#</td><td>NAND flash</td><td>500 (3.3 V)</td><td>strap: 20k pull-down = bank 501 at 2.5/3.3 V</td></tr><tr><td>MIO9</td><td>NAND I/O4</td><td>NAND flash</td><td>500 (3.3 V)</td><td></td></tr><tr><td>MIO10</td><td>NAND I/O5</td><td>NAND flash</td><td>500 (3.3 V)</td><td></td></tr><tr><td>MIO11</td><td>NAND I/O6</td><td>NAND flash</td><td>500 (3.3 V)</td><td></td></tr><tr><td>MIO12</td><td>NAND I/O7</td><td>NAND flash</td><td>500 (3.3 V)</td><td></td></tr><tr><td>MIO13</td><td>NAND I/O3</td><td>NAND flash</td><td>500 (3.3 V)</td><td></td></tr><tr><td>MIO14</td><td>NAND R/B#</td><td>NAND flash</td><td>500 (3.3 V)</td><td>1k pull-up</td></tr><tr><td>MIO15</td><td>LED D2 (green)</td><td>LEDs, buzzer, buttons</td><td>500 (3.3 V)</td><td>active low, 220 ohm to 3.3 V; ardzy.led("ps")</td></tr><tr><td>MIO16</td><td>ETH TX_CLK</td><td>Ethernet</td><td>501 (2.5 V)</td><td>RGMII to PHY U8</td></tr><tr><td>MIO17</td><td>ETH TXD0</td><td>Ethernet</td><td>501 (2.5 V)</td><td></td></tr><tr><td>MIO18</td><td>ETH TXD1</td><td>Ethernet</td><td>501 (2.5 V)</td><td></td></tr><tr><td>MIO19</td><td>ETH TXD2</td><td>Ethernet</td><td>501 (2.5 V)</td><td></td></tr><tr><td>MIO20</td><td>ETH TXD3</td><td>Ethernet</td><td>501 (2.5 V)</td><td></td></tr><tr><td>MIO21</td><td>ETH TX_CTL</td><td>Ethernet</td><td>501 (2.5 V)</td><td></td></tr><tr><td>MIO22</td><td>ETH RX_CLK</td><td>Ethernet</td><td>501 (2.5 V)</td><td></td></tr><tr><td>MIO23</td><td>ETH RXD0</td><td>Ethernet</td><td>501 (2.5 V)</td><td>33 ohm series</td></tr><tr><td>MIO24</td><td>ETH RXD1</td><td>Ethernet</td><td>501 (2.5 V)</td><td>33 ohm series</td></tr><tr><td>MIO25</td><td>ETH RXD2</td><td>Ethernet</td><td>501 (2.5 V)</td><td>33 ohm series</td></tr><tr><td>MIO26</td><td>ETH RXD3</td><td>Ethernet</td><td>501 (2.5 V)</td><td>33 ohm series</td></tr><tr><td>MIO27</td><td>ETH RX_CTL</td><td>Ethernet</td><td>501 (2.5 V)</td><td></td></tr><tr><td>MIO28</td><td>EN1 (J1 pin 18)</td><td>EN pins (hash connectors)</td><td>501 (2.5 V)</td><td>muxed to I2C1 by the boot loader</td></tr><tr><td>MIO29</td><td>EN2 (J2 pin 18)</td><td>EN pins (hash connectors)</td><td>501 (2.5 V)</td><td>muxed to I2C1 by the boot loader</td></tr><tr><td>MIO30</td><td>EN3 (J3 pin 18)</td><td>EN pins (hash connectors)</td><td>501 (2.5 V)</td><td>free ARM GPIO, 2.5 V</td></tr><tr><td>MIO31</td><td>EN4 (J4 pin 18)</td><td>EN pins (hash connectors)</td><td>501 (2.5 V)</td><td>free ARM GPIO, 2.5 V</td></tr><tr><td>MIO32</td><td>EN5 (J5 pin 18)</td><td>EN pins (hash connectors)</td><td>501 (2.5 V)</td><td>free ARM GPIO, 2.5 V</td></tr><tr><td>MIO33</td><td>EN6 (J6 pin 18)</td><td>EN pins (hash connectors)</td><td>501 (2.5 V)</td><td>free ARM GPIO, 2.5 V</td></tr><tr><td>MIO34</td><td>EN7 (J7 pin 18)</td><td>EN pins (hash connectors)</td><td>501 (2.5 V)</td><td>free ARM GPIO, 2.5 V</td></tr><tr><td>MIO35</td><td>EN8 (J8 pin 18)</td><td>EN pins (hash connectors)</td><td>501 (2.5 V)</td><td>free ARM GPIO, 2.5 V</td></tr><tr><td>MIO36</td><td>EN9 (J9 pin 18)</td><td>EN pins (hash connectors)</td><td>501 (2.5 V)</td><td>free ARM GPIO, 2.5 V</td></tr><tr><td>MIO37</td><td>LED D3 red</td><td>LEDs, buzzer, buttons</td><td>501 (2.5 V)</td><td>via transistor Q3, active high; ardzy.led("red")</td></tr><tr><td>MIO38</td><td>LED D3 green</td><td>LEDs, buzzer, buttons</td><td>501 (2.5 V)</td><td>via transistor Q2, active high; ardzy.led("green") = Ardzy ready</td></tr><tr><td>MIO39</td><td>Buzzer BZ1</td><td>LEDs, buzzer, buttons</td><td>501 (2.5 V)</td><td>via transistor Q1 (MMBT3904), active high; ardzy.beep()</td></tr><tr><td>MIO40</td><td>SD CLK</td><td>SD card</td><td>501 (2.5 V)</td><td>via level shifter U6, 33 ohm series</td></tr><tr><td>MIO41</td><td>SD CMD</td><td>SD card</td><td>501 (2.5 V)</td><td>via U6</td></tr><tr><td>MIO42</td><td>SD DAT0</td><td>SD card</td><td>501 (2.5 V)</td><td>via U6</td></tr><tr><td>MIO43</td><td>SD DAT1</td><td>SD card</td><td>501 (2.5 V)</td><td>via U6</td></tr><tr><td>MIO44</td><td>SD DAT2</td><td>SD card</td><td>501 (2.5 V)</td><td>via U6</td></tr><tr><td>MIO45</td><td>SD DAT3</td><td>SD card</td><td>501 (2.5 V)</td><td>via U6</td></tr><tr><td>MIO46</td><td>SD card detect</td><td>SD card</td><td>501 (2.5 V)</td><td>4.7k pull-up to 2.5 V, card switch to GND</td></tr><tr><td>MIO47</td><td>Button S1 "Reset"</td><td>LEDs, buzzer, buttons</td><td>501 (2.5 V)</td><td>4.7k pull-up, pressed = 0 (a GPIO, not a hardware reset)</td></tr><tr><td>MIO48</td><td>UART1 TX</td><td>UART console</td><td>501 (2.5 V)</td><td>console out, level shifter U7 to J12 pin 3</td></tr><tr><td>MIO49</td><td>UART1 RX</td><td>UART console</td><td>501 (2.5 V)</td><td>console in, from J12 pin 1 via U7</td></tr><tr><td>MIO50</td><td>SD write protect</td><td>SD card</td><td>501 (2.5 V)</td><td>4.7k pull-up (microSD has no WP: ignored)</td></tr><tr><td>MIO51</td><td>Button S2 "IP"</td><td>LEDs, buzzer, buttons</td><td>501 (2.5 V)</td><td>4.7k pull-up, pressed = 0</td></tr><tr><td>MIO52</td><td>ETH MDC</td><td>Ethernet</td><td>501 (2.5 V)</td><td>PHY management clock, 1k pull-up</td></tr><tr><td>MIO53</td><td>ETH MDIO</td><td>Ethernet</td><td>501 (2.5 V)</td><td>PHY management data, 1k pull-up</td></tr></table>
+
+<h2 id="fpgaio">18. FPGA pins</h2>
+<p>Both FPGA banks run at <b>3.3 V</b> (LVCMOS33). The full plan, the 18-pin connector drawing and the suggested standard wiring are in the <a href="03_Pins_Plan.html">Pins plan</a>; the ready Vivado file is <code>projects\ardzy_pins.xdc</code>.</p>
+<h3>Hash-board connectors J1-J9</h3>
+<table><tr><th>Conn</th><th>pin 5 (PLUG)</th><th>pin 11 (TXD)</th><th>pin 12 (RXD)</th><th>pin 15 (RST)</th><th>pin 18 EN</th><th>pins 3 / 4 SDA / SCL</th></tr><tr><td><b>J1</b></td><td><code>T11</code></td><td><code>T12</code></td><td><code>U12</code></td><td><code>T10</code></td><td>MIO28</td><td>I2C1: W19 / W18</td></tr><tr><td><b>J2</b></td><td><code>R19</code></td><td><code>V12</code></td><td><code>W13</code></td><td><code>V13</code></td><td>MIO29</td><td>I2C1: W19 / W18</td></tr><tr><td><b>J3</b></td><td><code>T14</code></td><td><code>P14</code></td><td><code>R14</code></td><td><code>T15</code></td><td>MIO30</td><td>I2C1: W19 / W18</td></tr><tr><td><b>J4</b></td><td><code>Y16</code></td><td><code>W14</code></td><td><code>Y14</code></td><td><code>Y17</code></td><td>MIO31</td><td>I2C1: W19 / W18</td></tr><tr><td><b>J5</b></td><td><code>T16</code></td><td><code>V15</code></td><td><code>W15</code></td><td><code>U17</code></td><td>MIO32</td><td>I2C1: W19 / W18</td></tr><tr><td><b>J6</b></td><td><code>U14</code></td><td><code>U18</code></td><td><code>U19</code></td><td><code>U15</code></td><td>MIO33</td><td>I2C1: W19 / W18</td></tr><tr><td><b>J7</b></td><td><code>T20</code></td><td><code>V20</code></td><td><code>W20</code></td><td><code>U20</code></td><td>MIO34</td><td>I2C1: W19 / W18</td></tr><tr><td><b>J8</b></td><td><code>Y18</code></td><td><code>V16</code></td><td><code>W16</code></td><td><code>Y19</code></td><td>MIO35</td><td>I2C1: W19 / W18</td></tr><tr><td><b>J9</b></td><td><code>R16</code></td><td><code>T17</code></td><td><code>R18</code></td><td><code>R17</code></td><td>MIO36</td><td>I2C2: P18 / N17</td></tr></table>
+<h3>Other FPGA pins</h3>
+<table><tr><th>What</th><th>FPGA pin</th><th>Ardzy port</th><th>Notes</th></tr><tr><td>LED</td><td><code>F16</code></td><td><code>leds[0]</code></td><td>on-board LED, ACTIVE LOW (0 = on)</td></tr><tr><td>LED</td><td><code>L19</code></td><td><code>leds[1]</code></td><td>on-board LED, ACTIVE LOW (0 = on)</td></tr><tr><td>LED</td><td><code>M19</code></td><td><code>leds[2]</code></td><td>on-board LED, ACTIVE LOW (0 = on)</td></tr><tr><td>LED</td><td><code>M17</code></td><td><code>leds[3]</code></td><td>on-board LED, ACTIVE LOW (0 = on)</td></tr><tr><td>Fan</td><td><code>J18</code></td><td><code>fan_pwm</code></td><td>PWM to pin 4 of all 6 fan headers (shared)</td></tr><tr><td>Fan</td><td><code>F19</code></td><td><code>fan_tach[0]</code></td><td>FAN1 speed (pin 3), 10k pull-up</td></tr><tr><td>Fan</td><td><code>G18</code></td><td><code>fan_tach[1]</code></td><td>FAN2 speed (pin 3), 10k pull-up</td></tr><tr><td>Fan</td><td><code>F20</code></td><td><code>fan_tach[2]</code></td><td>FAN3 speed (pin 3), 10k pull-up</td></tr><tr><td>Fan</td><td><code>J20</code></td><td><code>fan_tach[3]</code></td><td>FAN4 speed (pin 3), 10k pull-up</td></tr><tr><td>Fan</td><td><code>G17</code></td><td><code>fan_tach[4]</code></td><td>FAN5 speed (pin 3), 10k pull-up</td></tr><tr><td>Fan</td><td><code>H20</code></td><td><code>fan_tach[5]</code></td><td>FAN6 speed (pin 3), 10k pull-up</td></tr><tr><td>I2C</td><td><code>W18</code></td><td><code>i2c1_scl</code></td><td>SCL on J1..J8 pin 4, 1k pull-up</td></tr><tr><td>I2C</td><td><code>W19</code></td><td><code>i2c1_sda</code></td><td>SDA on J1..J8 pin 3, 1k pull-up</td></tr><tr><td>I2C</td><td><code>N17</code></td><td><code>i2c2_scl</code></td><td>SCL on J9 pin 4, 1k pull-up</td></tr><tr><td>I2C</td><td><code>P18</code></td><td><code>i2c2_sda</code></td><td>SDA on J9 pin 3, 1k pull-up</td></tr><tr><td>ID</td><td><code>M15</code></td><td><code>board_id[0]</code></td><td>board version strap (input)</td></tr><tr><td>ID</td><td><code>M14</code></td><td><code>board_id[1]</code></td><td>board version strap (input)</td></tr><tr><td>ID</td><td><code>L15</code></td><td><code>board_id[2]</code></td><td>board version strap (input)</td></tr><tr><td>ID</td><td><code>L14</code></td><td><code>board_id[3]</code></td><td>board version strap (input)</td></tr><tr><td>Test</td><td><code>K18</code></td><td><code>tp1</code></td><td>test point TP1 "CLOCK_OUT" (handy scope probe pin)</td></tr></table>
+<h3>Fan headers (each)</h3>
+<table>
+<tr><th>Pin</th><th>Signal</th></tr>
+<tr><td>1</td><td>GND</td></tr>
+<tr><td>2</td><td>+12 V (from the input directly, 330 &micro;F buffer)</td></tr>
+<tr><td>3</td><td>speed (tach) &rarr; FPGA, 10 k&Omega; pull-up to 3.3 V, 1N4148 clamp</td></tr>
+<tr><td>4</td><td>PWM from FPGA pin J18 (shared by all 6 fans), RC filter 4.7 k&Omega; / 0.1 &micro;F</td></tr>
+</table>
+<p>Not wired at all (free pads on the chip, no trace): most of bank 35 (the XADC analog pairs AD0-AD15 included), N20/P20, V17/V18, P15/P16, T19, P19. The pins K17 and N18 go to the unfitted 100 MHz oscillator footprints.</p>
+
+<h2 id="extras">19. LEDs, buzzer, buttons</h2>
+<table>
+<tr><th>Part</th><th>Driven by</th><th>Logic</th><th>Use</th></tr>
+<tr><td>D3 green</td><td>MIO38 via Q2</td><td>1 = on</td><td>Ardzy ready (set at boot)</td></tr>
+<tr><td>D3 red</td><td>MIO37 via Q3</td><td>1 = on</td><td>safe mode, or yours: <code>led('red')</code></td></tr>
+<tr><td>D2 green</td><td>MIO15</td><td>0 = on</td><td><code>led('ps')</code></td></tr>
+<tr><td>D5-D8 green</td><td>FPGA F16, L19, M19, M17</td><td>0 = on</td><td>your FPGA design</td></tr>
+<tr><td>D1 green</td><td>FPGA DONE via Q4</td><td>on = configured</td><td>lights when an FPGA design is loaded</td></tr>
+<tr><td>D15 green</td><td>3.3 V</td><td>on = power good</td><td>all supplies up</td></tr>
+<tr><td>BZ1 buzzer</td><td>MIO39 via Q1</td><td>1 = sound</td><td><code>beep(0.2)</code></td></tr>
+<tr><td>S2 "IP"</td><td>MIO51, 4.7 k&Omega; pull-up</td><td>0 = pressed</td><td><code>button('ip')</code></td></tr>
+<tr><td>S1 "Reset"</td><td>MIO47, 4.7 k&Omega; pull-up</td><td>0 = pressed</td><td><code>button('reset')</code> (a normal input, not a reset)</td></tr>
+</table>
+<p>The ARM-side pins come out of the boot loader in GPIO mode with the output switched off; the <code>ardzy-board</code> service sets them up at every boot.</p>
+
+<h2 id="linux">20. Linux view</h2>
+<table>
+<tr><th>Hardware</th><th>In Linux</th></tr>
+<tr><td>UART1 console</td><td><code>/dev/ttyPS0</code></td></tr>
+<tr><td>microSD</td><td><code>/dev/mmcblk0</code>, <code>/dev/mmcblk0p1</code> (<code>/boot</code>), <code>/dev/mmcblk0p2</code> (<code>/</code>)</td></tr>
+<tr><td>Ethernet</td><td><code>end0</code> (macb driver, generic PHY driver)</td></tr>
+<tr><td>GPIO</td><td><code>gpiochip0</code> "zynq_gpio", 118 lines; <code>/sys/class/gpio/gpioN</code> with N = MIO number (EMIO from 54)</td></tr>
+<tr><td>FPGA</td><td><code>/sys/class/fpga_manager/fpga0</code>, region <code>fpga-full</code>, overlays in <code>/sys/kernel/config/device-tree/overlays/</code></td></tr>
+<tr><td>Watchdog</td><td><code>/dev/watchdog0</code> (cdns_wdt, reset mode), fed by systemd every 15 s, timeout 30 s</td></tr>
+<tr><td>XADC</td><td><code>/sys/bus/iio/devices/iio:device0</code> (temperature, 6 supply voltages)</td></tr>
+<tr><td>I2C</td><td><code>/dev/i2c-0</code> (PS I2C0, not wired to useful pins: use FPGA pins for I2C)</td></tr>
+<tr><td>FPGA registers</td><td><code>/dev/mem</code> (Python <code>ardzy.MMIO</code>), UIO devices from <code>devices.dtsi</code></td></tr>
+<tr><td>NAND</td><td><code>/dev/mtd0</code> / <code>/dev/mtd0ro</code>, read-only partition "bitmain-nand"; <code>/sys/class/mtd/mtd0</code></td></tr>
+<tr><td>CPU speed</td><td>fixed at 666.7 MHz. Speed switching (cpufreq) is <b>off</b>: in testing the cpufreq-dt driver crashed the kernel at boot (the clock driver refused the change, -EBUSY, and the cpufreq core then stopped with BUG())</td></tr>
+<tr><td>Hardware API</td><td>board service <code>http://ardzy.local/api/hw</code>, <code>/api/sensors</code>, <code>/api/clocks</code>, <code>/api/mio</code>, <code>/api/nand</code>, <code>/api/io</code> (used by the app)</td></tr>
+</table>
+
+<h2 id="measured">21. Measured values (your board, 3 October 2026)</h2>
+<table>
+<tr><th>What</th><th>Value</th><th>How</th></tr>
+<tr><td>Chip temperature</td><td>47.7 to 49.8 &deg;C at idle (room temperature, no heatsink fan)</td><td>XADC</td></tr>
+<tr><td>VCCINT / VCCPINT / VCCBRAM</td><td>1.010 / 1.008 / 1.009 V (nominal 1.0 V)</td><td>XADC</td></tr>
+<tr><td>VCCAUX / VCCPAUX</td><td>1.794 / 1.792 V (nominal 1.8 V)</td><td>XADC</td></tr>
+<tr><td>VCC_DDR</td><td>1.501 V (nominal 1.5 V)</td><td>XADC</td></tr>
+<tr><td>Memory</td><td>512 MB physical, 495 MB for Linux</td><td>mirror test, /proc/meminfo</td></tr>
+<tr><td>CPU</td><td>2 cores, BogoMIPS 333.33 per core</td><td>/proc/cpuinfo</td></tr>
+<tr><td>Network</td><td>100 Mbit/s full duplex</td><td>/sys/class/net/end0</td></tr>
+<tr><td>FPGA load time</td><td>0.06 to 0.11 s for a 2 MB design</td><td>ardzy load</td></tr>
+<tr><td>Boot time</td><td>about 50 to 60 s from power to network (first boot longer)</td><td>stopwatch via the app</td></tr>
+<tr><td>Board ID straps</td><td>ID3..ID0 = 1000 (value 8)</td><td>pin-control design</td></tr>
+<tr><td>FCLK0</td><td>100.000 MHz; set to 50 MHz it measured 50.000 MHz</td><td>counted by the FPGA against Linux time</td></tr>
+<tr><td>Silicon version</td><td>3.1 (devcfg PS_VERSION); last reset: power-on</td><td>Board view</td></tr>
+<tr><td>SD card</td><td>"SC32G", 32 GB, made 06/2020</td><td>/sys/block/mmcblk0</td></tr>
+</table>
+
+<h2 id="limits">22. Limits and safety</h2>
+<ul>
+  <li><b>FPGA pins: 3.3 V maximum.</b> No 5 V signals (use a level shifter). Drive strength up to 16 mA per pin (default 12 mA); keep the total small.</li>
+  <li><b>EN pins (MIO28-36) are 2.5 V</b> outputs: fine for 3.3 V logic inputs, too weak for anything else.</li>
+  <li><b>Connector pin 16 (3.3 V)</b> shares the 2 A board regulator: small sensors only.</li>
+  <li><b>Board ID pins</b>: fixed straps, never drive them.</li>
+  <li><b>12 V input</b>: use a regulated 12 V supply. The regulators accept up to 17 V, but the 15 V protection diode (D16) starts conducting near 16.7 V, so stay at 12 V.</li>
+  <li><b>Temperature</b>: the chip is rated 0 to 85 &deg;C (junction). At about 48 &deg;C idle it has margin; big designs at high clock speed need airflow (a 12 V fan on FAN1 works).</li>
+  <li><b>Empty FPGA addresses</b>: reading or writing an address where your design has nothing freezes the bus; the watchdog then resets the board.</li>
+</ul>
+
+<h2 id="unknown">23. Open questions</h2>
+<ul>
+  <li>Exact DDR3 part number on U3/U4 (2 Gbit, but which one): read the chip marking.</li>
+  <li>Which LED number (D5-D8) is at which FPGA pin on the board, and the exact position of pin 1 on J1-J9: check visually.</li>
+  <li>TP1 "CLOCK_OUT" is on pin K18 according to the schematic text; confirm with a scope before relying on it.</li>
+  <li>The A0-A2 strap values of each hash connector (fixed per slot).</li>
+  <li>The NAND partition layout of the original firmware: use the app's NAND scan after the kernel update.</li>
+  <li>Power consumption of the board (not measured).</li>
+  <li>The watchdog reset on a real freeze (reset mode is active; the test is waiting for your OK).</li>
+</ul>
+
+<h2 id="sources">24. Sources</h2>
+<ul>
+  <li>AntMiner_ControlBoard_XC7010 schematic V1.0 (15 sheets), board pin map images (<code>ZynqProjects\board\AntminerS9FPGA</code>), proven constraints <code>systemGPIO.xdc</code></li>
+  <li>Xilinx: DS187 (Zynq-7000 data sheet, DC/AC), DS190 (product overview), UG585 (Technical Reference Manual: PS, boot, MIO, SLCR, DDRC), UG471 (SelectIO), UG480 (XADC)</li>
+  <li>Micron: MT41K DDR3L data sheet, MT29F2G08 NAND data sheet</li>
+  <li>TI: TLV62130, TPS51200, TXS02612, LSF0102 data sheets; Broadcom B50612 product brief</li>
+  <li>Values measured on your board with Ardzy: XADC, /proc, the memory mirror test, FPGA load times; clock values decoded from <code>2_Ardzy\uboot\ps7_init_gpl.c</code></li>
+</ul>
+</main>
+</div>
+</body>
+</html>

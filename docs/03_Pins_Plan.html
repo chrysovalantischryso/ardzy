@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pins Plan</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <nav class="back"><a href="index.html">&larr; All documents</a></nav>
+  <div class="kicker">Document 3 &middot; Pins plan</div>
+  <h1>Every usable pin of the board</h1>
+  <p>56 FPGA pins, plus the ARM-side buttons, LEDs and buzzer. From the official schematic, checked against the proven constraints file.</p>
+</div></header>
+<main class="wrap">
+<div class="toc"><b>Contents</b><ol>
+  <li><a href="#rules">Rules first</a></li>
+  <li><a href="#map">Where everything is</a></li>
+  <li><a href="#conn">The 9 connectors</a></li>
+  <li><a href="#plan">Suggested standard plan</a></li>
+  <li><a href="#other">Other FPGA pins</a></li>
+  <li><a href="#ps">ARM-side extras</a></li>
+  <li><a href="#use">Using the pins</a></li>
+  <li><a href="#banks">Voltages (I/O banks)</a></li>
+</ol></div>
+
+<h2 id="rules">1. Rules first</h2>
+<div class="box bad"><b>Protect the chip</b>
+All FPGA pins are <b>3.3 V</b>. Never connect 5 V signals directly (use a level shifter, or a resistor divider for inputs).
+Keep the current small (an LED with a 330 &Omega; resistor is fine; motors and relays need a transistor or a driver board).
+Switch the board off before you change wires.</div>
+<div class="box info"><b>Names</b>
+Bitmain called the four signal lines of each connector PLUG, TXD, RXD and RST. For the FPGA they are <b>ordinary I/O pins</b>:
+you decide in your design if each one is an input or an output. In Ardzy they are called <code>jN[0]</code> to <code>jN[3]</code>
+(for example <code>j3[1]</code> = connector J3, pin 11).</div>
+
+<h2 id="map">2. Where everything is</h2>
+
+<h2 id="conn">3. The 9 connectors</h2>
+<figure><svg viewBox="0 0 900 470" role="img" aria-label="18-pin connector">
+<rect x="330" y="20" width="240" height="430" rx="10" class="d-box"/>
+<text x="450" y="14" class="d-small" text-anchor="middle">each of J1..J9 (2 x 9 pins)</text>
+<circle cx="390" cy="45" r="15" class="d-box"/>
+<text x="390" y="50" class="d-title" text-anchor="middle">2</text>
+<path d="M373 45 H300" class="d-line"/>
+<text x="292" y="50" class="d-text" text-anchor="end">GND</text>
+<circle cx="510" cy="45" r="15" class="d-box"/>
+<text x="510" y="50" class="d-title" text-anchor="middle">1</text>
+<path d="M527 45 H600" class="d-line"/>
+<text x="608" y="50" class="d-text">GND</text>
+<circle cx="390" cy="91" r="15" class="d-ps"/>
+<text x="390" y="96" class="d-title" text-anchor="middle">4</text>
+<path d="M373 91 H300" class="d-line"/>
+<text x="292" y="96" class="d-text" text-anchor="end">SCL (I2C)</text>
+<circle cx="510" cy="91" r="15" class="d-ps"/>
+<text x="510" y="96" class="d-title" text-anchor="middle">3</text>
+<path d="M527 91 H600" class="d-line"/>
+<text x="608" y="96" class="d-text">SDA (I2C)</text>
+<circle cx="390" cy="137" r="15" class="d-box"/>
+<text x="390" y="142" class="d-title" text-anchor="middle">6</text>
+<path d="M373 137 H300" class="d-line"/>
+<text x="292" y="142" class="d-text" text-anchor="end">A2 address strap</text>
+<circle cx="510" cy="137" r="15" class="d-pl"/>
+<text x="510" y="142" class="d-title" text-anchor="middle">5</text>
+<path d="M527 137 H600" class="d-line"/>
+<text x="608" y="142" class="d-text">IO0  PLUG</text>
+<circle cx="390" cy="183" r="15" class="d-box"/>
+<text x="390" y="188" class="d-title" text-anchor="middle">8</text>
+<path d="M373 183 H300" class="d-line"/>
+<text x="292" y="188" class="d-text" text-anchor="end">A0 address strap</text>
+<circle cx="510" cy="183" r="15" class="d-box"/>
+<text x="510" y="188" class="d-title" text-anchor="middle">7</text>
+<path d="M527 183 H600" class="d-line"/>
+<text x="608" y="188" class="d-text">A1 address strap</text>
+<circle cx="390" cy="229" r="15" class="d-box"/>
+<text x="390" y="234" class="d-title" text-anchor="middle">10</text>
+<path d="M373 229 H300" class="d-line"/>
+<text x="292" y="234" class="d-text" text-anchor="end">GND</text>
+<circle cx="510" cy="229" r="15" class="d-box"/>
+<text x="510" y="234" class="d-title" text-anchor="middle">9</text>
+<path d="M527 229 H600" class="d-line"/>
+<text x="608" y="234" class="d-text">GND</text>
+<circle cx="390" cy="275" r="15" class="d-pl"/>
+<text x="390" y="280" class="d-title" text-anchor="middle">12</text>
+<path d="M373 275 H300" class="d-line"/>
+<text x="292" y="280" class="d-text" text-anchor="end">IO2  RXD</text>
+<circle cx="510" cy="275" r="15" class="d-pl"/>
+<text x="510" y="280" class="d-title" text-anchor="middle">11</text>
+<path d="M527 275 H600" class="d-line"/>
+<text x="608" y="280" class="d-text">IO1  TXD</text>
+<circle cx="390" cy="321" r="15" class="d-box"/>
+<text x="390" y="326" class="d-title" text-anchor="middle">14</text>
+<path d="M373 321 H300" class="d-line"/>
+<text x="292" y="326" class="d-text" text-anchor="end">GND</text>
+<circle cx="510" cy="321" r="15" class="d-box"/>
+<text x="510" y="326" class="d-title" text-anchor="middle">13</text>
+<path d="M527 321 H600" class="d-line"/>
+<text x="608" y="326" class="d-text">GND</text>
+<circle cx="390" cy="367" r="15" class="d-warn"/>
+<text x="390" y="372" class="d-title" text-anchor="middle">16</text>
+<path d="M373 367 H300" class="d-line"/>
+<text x="292" y="372" class="d-text" text-anchor="end">3.3 V out</text>
+<circle cx="510" cy="367" r="15" class="d-pl"/>
+<text x="510" y="372" class="d-title" text-anchor="middle">15</text>
+<path d="M527 367 H600" class="d-line"/>
+<text x="608" y="372" class="d-text">IO3  RST</text>
+<circle cx="390" cy="413" r="15" class="d-ps"/>
+<text x="390" y="418" class="d-title" text-anchor="middle">18</text>
+<path d="M373 413 H300" class="d-line"/>
+<text x="292" y="418" class="d-text" text-anchor="end">EN (ARM GPIO, 2.5 V)</text>
+<circle cx="510" cy="413" r="15" class="d-box"/>
+<text x="510" y="418" class="d-title" text-anchor="middle">17</text>
+<path d="M527 413 H600" class="d-line"/>
+<text x="608" y="418" class="d-text">not connected</text>
+</svg>
+<figcaption>All 9 connectors have the same layout. Blue = I2C (shared bus) and ARM EN pin, green = the 4 free FPGA I/O, amber = 3.3 V supply.
+Pins 6, 7, 8 are fixed address straps (resistors on the board): do not use them.</figcaption></figure>
+<table><tr><th>Connector</th><th>pin 5 = jN[0]</th><th>pin 11 = jN[1]</th><th>pin 12 = jN[2]</th><th>pin 15 = jN[3]</th><th>pin 18 EN (ARM)</th><th>Vivado port</th><th>old name</th></tr><tr><td><b>J1</b></td><td><code>T11</code></td><td><code>T12</code></td><td><code>U12</code></td><td><code>T10</code></td><td>MIO28</td><td><code>j1[3:0]</code></td><td>plMiner0</td></tr><tr><td><b>J2</b></td><td><code>R19</code></td><td><code>V12</code></td><td><code>W13</code></td><td><code>V13</code></td><td>MIO29</td><td><code>j2[3:0]</code></td><td>plMiner1</td></tr><tr><td><b>J3</b></td><td><code>T14</code></td><td><code>P14</code></td><td><code>R14</code></td><td><code>T15</code></td><td>MIO30</td><td><code>j3[3:0]</code></td><td>plMiner2</td></tr><tr><td><b>J4</b></td><td><code>Y16</code></td><td><code>W14</code></td><td><code>Y14</code></td><td><code>Y17</code></td><td>MIO31</td><td><code>j4[3:0]</code></td><td>plMiner3</td></tr><tr><td><b>J5</b></td><td><code>T16</code></td><td><code>V15</code></td><td><code>W15</code></td><td><code>U17</code></td><td>MIO32</td><td><code>j5[3:0]</code></td><td>plMiner4</td></tr><tr><td><b>J6</b></td><td><code>U14</code></td><td><code>U18</code></td><td><code>U19</code></td><td><code>U15</code></td><td>MIO33</td><td><code>j6[3:0]</code></td><td>plMiner5</td></tr><tr><td><b>J7</b></td><td><code>T20</code></td><td><code>V20</code></td><td><code>W20</code></td><td><code>U20</code></td><td>MIO34</td><td><code>j7[3:0]</code></td><td>plMiner6</td></tr><tr><td><b>J8</b></td><td><code>Y18</code></td><td><code>V16</code></td><td><code>W16</code></td><td><code>Y19</code></td><td>MIO35</td><td><code>j8[3:0]</code></td><td>plMiner7</td></tr><tr><td><b>J9</b></td><td><code>R16</code></td><td><code>T17</code></td><td><code>R18</code></td><td><code>R17</code></td><td>MIO36</td><td><code>j9[3:0]</code></td><td>plMiner8</td></tr></table>
+<p>The I2C pins (3 = SDA, 4 = SCL) of J1..J8 are <b>one shared bus</b> (FPGA pins W19/W18); J9 has its own bus (P18/N17). Both have 1 k&Omega; pull-ups on the board.
+Pin 16 gives 3.3 V for small sensors.</p>
+
+<h2 id="plan">4. Suggested standard plan</h2>
+<p>A fixed plan means every project uses the same wiring, and old designs keep working with the same cables. This is only a suggestion: any pin can do any job.</p>
+<table><tr><th>Conn</th><th>Use</th><th>pin 5</th><th>pin 11</th><th>pin 12</th><th>pin 15</th><th>Good for</th></tr><tr><td><b>J1</b></td><td>UART (serial)</td><td>spare</td><td>TX out</td><td>RX in</td><td>spare</td><td>AXI UART Lite or UART16550; talk to GPS, ESP32, Arduino</td></tr><tr><td><b>J2</b></td><td>SPI</td><td>CS</td><td>MOSI</td><td>MISO</td><td>SCLK</td><td>AXI Quad SPI; displays, ADCs, DACs, SD cards</td></tr><tr><td><b>J3</b></td><td>I2S audio</td><td>MCLK</td><td>BCLK</td><td>DATA</td><td>LRCLK</td><td>audio codec / DAC / microphone</td></tr><tr><td><b>J4</b></td><td>4 x PWM</td><td>PWM0</td><td>PWM1</td><td>PWM2</td><td>PWM3</td><td>servos, motor drivers, LED dimming</td></tr><tr><td><b>J5</b></td><td>Counters</td><td>IN0</td><td>IN1</td><td>IN2</td><td>IN3</td><td>quadrature encoder, frequency counter, pulse inputs</td></tr><tr><td><b>J6</b></td><td>Fast digital</td><td>D0</td><td>D1</td><td>D2</td><td>D3</td><td>logic analyzer inputs, parallel bus</td></tr><tr><td><b>J7</b></td><td>LED strip</td><td>WS2812 data</td><td>spare</td><td>spare</td><td>spare</td><td>addressable RGB LEDs (5 V strips need a level shifter)</td></tr><tr><td><b>J8</b></td><td>General GPIO</td><td>GPIO0</td><td>GPIO1</td><td>GPIO2</td><td>GPIO3</td><td>buttons, relays (via a transistor), sensors</td></tr><tr><td><b>J9</b></td><td>RF out</td><td>spare</td><td>RF (T17)</td><td>spare</td><td>spare</td><td>the pin used by the FM/AM transmitter projects ("TXD9" pad)</td></tr></table>
+
+<h2 id="other">5. Other FPGA pins</h2>
+<table><tr><th>What</th><th>FPGA pin</th><th>Vivado port</th><th>Notes</th></tr><tr><td>LED</td><td><code>F16</code></td><td><code>leds[0]</code></td><td>on-board LED, ACTIVE LOW (0 = on)</td></tr><tr><td>LED</td><td><code>L19</code></td><td><code>leds[1]</code></td><td>on-board LED, ACTIVE LOW (0 = on)</td></tr><tr><td>LED</td><td><code>M19</code></td><td><code>leds[2]</code></td><td>on-board LED, ACTIVE LOW (0 = on)</td></tr><tr><td>LED</td><td><code>M17</code></td><td><code>leds[3]</code></td><td>on-board LED, ACTIVE LOW (0 = on)</td></tr><tr><td>Fan</td><td><code>J18</code></td><td><code>fan_pwm</code></td><td>PWM to pin 4 of all 6 fan headers (shared)</td></tr><tr><td>Fan</td><td><code>F19</code></td><td><code>fan_tach[0]</code></td><td>FAN1 speed (pin 3), 10k pull-up</td></tr><tr><td>Fan</td><td><code>G18</code></td><td><code>fan_tach[1]</code></td><td>FAN2 speed (pin 3), 10k pull-up</td></tr><tr><td>Fan</td><td><code>F20</code></td><td><code>fan_tach[2]</code></td><td>FAN3 speed (pin 3), 10k pull-up</td></tr><tr><td>Fan</td><td><code>J20</code></td><td><code>fan_tach[3]</code></td><td>FAN4 speed (pin 3), 10k pull-up</td></tr><tr><td>Fan</td><td><code>G17</code></td><td><code>fan_tach[4]</code></td><td>FAN5 speed (pin 3), 10k pull-up</td></tr><tr><td>Fan</td><td><code>H20</code></td><td><code>fan_tach[5]</code></td><td>FAN6 speed (pin 3), 10k pull-up</td></tr><tr><td>I2C</td><td><code>W18</code></td><td><code>i2c1_scl</code></td><td>SCL on J1..J8 pin 4, 1k pull-up</td></tr><tr><td>I2C</td><td><code>W19</code></td><td><code>i2c1_sda</code></td><td>SDA on J1..J8 pin 3, 1k pull-up</td></tr><tr><td>I2C</td><td><code>N17</code></td><td><code>i2c2_scl</code></td><td>SCL on J9 pin 4, 1k pull-up</td></tr><tr><td>I2C</td><td><code>P18</code></td><td><code>i2c2_sda</code></td><td>SDA on J9 pin 3, 1k pull-up</td></tr><tr><td>ID</td><td><code>M15</code></td><td><code>board_id[0]</code></td><td>board version strap (input)</td></tr><tr><td>ID</td><td><code>M14</code></td><td><code>board_id[1]</code></td><td>board version strap (input)</td></tr><tr><td>ID</td><td><code>L15</code></td><td><code>board_id[2]</code></td><td>board version strap (input)</td></tr><tr><td>ID</td><td><code>L14</code></td><td><code>board_id[3]</code></td><td>board version strap (input)</td></tr><tr><td>Test</td><td><code>K18</code></td><td><code>tp1</code></td><td>test point TP1 "CLOCK_OUT" (handy scope probe pin)</td></tr></table>
+<div class="box warn"><b>LEDs are active low</b> The LEDs are wired from 3.3 V through 220 &Omega; to the FPGA pin, so a <b>0</b> lights them.
+Write <code>assign leds = ~pattern;</code> in Verilog, or <code>~pattern &amp; 0xF</code> in Python.</div>
+<p>The fan speed pins are normal 3.3 V inputs with 10 k&Omega; pull-ups, also usable for other signals (the FM transmitter project used them for I2S audio input).
+The board-ID pins are fixed straps: read them, never drive them.</p>
+
+<h2 id="ps">6. ARM-side extras</h2>
+<p>These belong to the ARM processor (PS), not to the FPGA. Linux sets them up at boot (<code>ardzy-board</code> service): green status LED on = Ardzy ready, red = safe mode.</p>
+<table><tr><th>What</th><th>Pin</th><th>Voltage</th><th>Use from Linux / Python</th></tr><tr><td>Status LED red (D3)</td><td>MIO37</td><td>2.5 V bank</td><td><code>ardzy.led('red')</code></td></tr><tr><td>Status LED green (D3), "Ardzy ready"</td><td>MIO38</td><td>2.5 V bank</td><td><code>ardzy.led('green')</code></td></tr><tr><td>Small green LED D2</td><td>MIO15</td><td>3.3 V bank, active low</td><td><code>ardzy.led('ps')</code></td></tr><tr><td>Buzzer BZ1</td><td>MIO39</td><td>2.5 V bank</td><td><code>ardzy.beep(0.2)</code></td></tr><tr><td>Button S2 "IP"</td><td>MIO51</td><td>4.7k pull-up, pressed = 0</td><td><code>ardzy.button('ip')</code></td></tr><tr><td>Button S1 "Reset"</td><td>MIO47</td><td>4.7k pull-up, pressed = 0</td><td><code>ardzy.button('reset')</code></td></tr><tr><td>Connector J1 pin 18 (EN1)</td><td>MIO28</td><td>2.5 V output</td><td><code>I2C1 SCL/SDA (set by the boot loader)</code></td></tr><tr><td>Connector J2 pin 18 (EN2)</td><td>MIO29</td><td>2.5 V output</td><td><code>I2C1 SCL/SDA (set by the boot loader)</code></td></tr><tr><td>Connector J3 pin 18 (EN3)</td><td>MIO30</td><td>2.5 V output</td><td><code>/sys/class/gpio/gpio30</code></td></tr><tr><td>Connector J4 pin 18 (EN4)</td><td>MIO31</td><td>2.5 V output</td><td><code>/sys/class/gpio/gpio31</code></td></tr><tr><td>Connector J5 pin 18 (EN5)</td><td>MIO32</td><td>2.5 V output</td><td><code>/sys/class/gpio/gpio32</code></td></tr><tr><td>Connector J6 pin 18 (EN6)</td><td>MIO33</td><td>2.5 V output</td><td><code>/sys/class/gpio/gpio33</code></td></tr><tr><td>Connector J7 pin 18 (EN7)</td><td>MIO34</td><td>2.5 V output</td><td><code>/sys/class/gpio/gpio34</code></td></tr><tr><td>Connector J8 pin 18 (EN8)</td><td>MIO35</td><td>2.5 V output</td><td><code>/sys/class/gpio/gpio35</code></td></tr><tr><td>Connector J9 pin 18 (EN9)</td><td>MIO36</td><td>2.5 V output</td><td><code>/sys/class/gpio/gpio36</code></td></tr><tr><td>UART console TX (J12 pin 3)</td><td>MIO48</td><td>3.3 V via level shifter</td><td><code>Linux ttyPS0, 115200</code></td></tr><tr><td>UART console RX (J12 pin 1)</td><td>MIO49</td><td>3.3 V via level shifter</td><td><code>Linux ttyPS0, 115200</code></td></tr></table>
+<pre><code>from ardzy import led, beep, button
+led('green')            # status LED green on   (led('red'), led('ps'), led('green', False))
+beep(0.2)               # buzzer for 0.2 s
+if button('ip'):        # True while the IP button (S2) is pressed
+    print('pressed')</code></pre>
+<p>On the board command line: <code>ardzy beep</code>, <code>ardzy led red on</code>, <code>ardzy buttons -w</code>. Example project: <b>board_hello</b>.</p>
+
+<h2 id="use">7. Using the pins</h2>
+<ol class="steps">
+  <li>In Vivado, add <code>projects\ardzy_pins.xdc</code> to your constraints (it is also in every new FPGA project made with the Ardzy app).</li>
+  <li>Remove the <code>#</code> in front of the lines you use, and give your top-level ports the same names (for example <code>output [3:0] j4</code>).</li>
+  <li>In the Ardzy app, the <b>Pins</b> tab shows all of this; click a row to copy its Vivado line.</li>
+</ol>
+<pre><code># example: J1 as a UART
+set_property -dict {PACKAGE_PIN T12 IOSTANDARD LVCMOS33} [get_ports {j1[1]}] ;# TX out, J1 pin 11
+set_property -dict {PACKAGE_PIN U12 IOSTANDARD LVCMOS33} [get_ports {j1[2]}] ;# RX in,  J1 pin 12</code></pre>
+
+<h2 id="banks">8. Voltages (I/O banks)</h2>
+<table><tr><th>Bank</th><th>Voltage</th><th>Side</th><th>Used for</th></tr><tr><td>34</td><td>3.3 V</td><td>PL</td><td>J1..J9 signals, I2C buses</td></tr><tr><td>35</td><td>3.3 V</td><td>PL</td><td>LEDs, fans, board ID, TP1</td></tr><tr><td>500 (MIO 0-15)</td><td>3.3 V</td><td>PS</td><td>NAND flash, LED D2, boot straps</td></tr><tr><td>501 (MIO 16-53)</td><td>2.5 V</td><td>PS</td><td>Ethernet, SD card, UART, buttons, buzzer, status LED, EN pins</td></tr></table>
+<p>Total: 36 connector I/O + 20 more FPGA pins. Source: AntMiner_ControlBoard_XC7010 V1.0 schematic (sheets 6, 13, 14 for the FPGA side; 2, 3, 4, 11 for the ARM side).</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "id": "SHA2",
+  "title": "SHA-256 miner (what the Antminer was built for)",
+  "category": "Computing",
+  "level": "intermediate",
+  "summary": "SHA-256 in hardware, three units side by side: hash any message, then mine like Bitcoin (double SHA-256 over a block header, searching the nonce) and race the ARM. Finds the real nonce of Bitcoin block 125552.",
+  "slots": {
+    "0": "Info",
+    "1": "SHA-256 core and miner"
+  },
+  "pins": {
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [],
+  "parts": [
+    "nothing: everything happens inside the FPGA"
+  ],
+  "extra_files": ["sha256_model.py"],
+  "tested": "8/8 on the board 2026-10-05, 1 127 820 double hashes per second, 127.5 MHz"
+}

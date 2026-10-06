@@ -1,0 +1,96 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Antminer S9 control board: Zynq XC7Z010-CLG400, 512 MB DDR3.
+ * Clean base device tree: only the ARM side (PS). Nothing in the FPGA (PL);
+ * FPGA designs add their own devices at runtime with device-tree overlays
+ * applied to the fpga_full region.
+ * Based on U-Boot's bitmain-antminer-s9.dts (Michal Simek) + the working board's tree.
+ */
+/dts-v1/;
+#include "zynq-7000.dtsi"
+
+/ {
+	model = "Antminer S9 control board (Zynq-7010, 512 MB)";
+	compatible = "bitmain,antminer-s9", "xlnx,zynq-7000";
+
+	aliases {
+		ethernet0 = &gem0;
+		serial0 = &uart1;
+		mmc0 = &sdhci0;
+		i2c0 = &i2c0;
+		gpio0 = &gpio0;
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x20000000>;
+	};
+
+	chosen {
+		bootargs = "console=ttyPS0,115200 root=/dev/mmcblk0p2 rw rootwait earlycon";
+		stdout-path = "serial0:115200n8";
+	};
+};
+
+&clkc {
+	ps-clk-frequency = <33333333>;
+	/* keep FCLK0..3 running for FPGA designs loaded at runtime */
+	fclk-enable = <0xf>;
+};
+
+&gem0 {
+	status = "okay";
+	phy-mode = "rgmii-id";
+	/* no fixed PHY address: the driver scans the MDIO bus (the board's PHY answers
+	 * at address 1). Same as the proven Kuiper image, and it also works in QEMU. */
+};
+
+&sdhci0 {
+	status = "okay";
+	disable-wp;
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&i2c0 {
+	status = "okay";
+	clock-frequency = <400000>;
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&watchdog0 {
+	status = "okay";
+	/* without this the watchdog only raises an interrupt: it must RESET the board */
+	reset-on-timeout;
+	timeout-sec = <60>;
+};
+
+/* On-board NAND (Micron MT29F2G08, 256 MB) with the original Bitmain firmware.
+ * Visible to Linux as ONE READ-ONLY partition, so it can be inspected and backed up,
+ * but nothing can be written to it by mistake. No on-flash bad block table (the kernel
+ * only reads the factory bad-block markers and never writes a table to the chip). */
+&smcc {
+	status = "okay";
+};
+
+&nfc0 {
+	status = "okay";
+	nand@0 {
+		reg = <0>;
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			partition@0 {
+				label = "bitmain-nand";
+				reg = <0x0 0x10000000>;
+				read-only;
+			};
+		};
+	};
+};

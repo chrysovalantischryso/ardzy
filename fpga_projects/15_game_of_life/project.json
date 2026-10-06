@@ -1,0 +1,22 @@
+{
+  "id": "LIFE",
+  "title": "Game of Life (64 x 64 cells, 1.4 million generations per second)",
+  "category": "Computing",
+  "level": "beginner",
+  "summary": "Conway's Game of Life in hardware: 64 copies of the rule work side by side, a whole row per clock, so the FPGA runs about 1.4 million generations per second, thousands of times faster than Python. Draw patterns, watch gliders fly in the Monitor, find out what a still life, an oscillator and a spaceship are.",
+  "slots": {
+    "0": "Info",
+    "1": "Life engine (two banks of 64 x 64 cells)"
+  },
+  "pins": {
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [],
+  "parts": [
+    "nothing: everything happens inside the FPGA"
+  ],
+  "tested": "the self-test passed 11 of 11 checks on the real board (October 2026), with nothing connected: the rules against Python, a glider around the torus, 1 428 572 generations per second."
+}

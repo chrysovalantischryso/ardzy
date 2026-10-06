@@ -1,0 +1,97 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>SPI and I2C in hardware</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Communication &middot; medium</div><h1>SPI and I2C in hardware</h1><p class="lead">Fast, exact SPI (up to 50 MHz, all 4 modes, 1 to 32 bits) on J2 and an I2C controller (100 kHz to 1 MHz, clock stretching) on the board&#x27;s I2C bus: displays, sensors, ADCs, memories.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 18 of 18 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>SPI controller</td></tr><tr><td>2</td><td><code>0x43C02000</code></td><td>I2C controller</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>spi_cs</code></td><td>J2 pin 5</td><td>R19</td></tr><tr><td><code>spi_mosi</code></td><td>J2 pin 11</td><td>V12</td></tr><tr><td><code>spi_miso</code></td><td>J2 pin 12</td><td>W13</td></tr><tr><td><code>spi_sclk</code></td><td>J2 pin 15</td><td>V13</td></tr><tr><td><code>i2c_scl</code></td><td>SCL, J1..J8 pin 4</td><td>W18</td></tr><tr><td><code>i2c_sda</code></td><td>SDA, J1..J8 pin 3</td><td>W19</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J2 pin 5 / 11 / 12 / 15</td><td>SPI device CS / MOSI (DIN) / MISO (DOUT) / SCLK</td><td>3.3 V devices</td></tr><tr><td>pin 3 / pin 4 of any of J1..J8</td><td>I2C device SDA / SCL</td><td>the board has 1 kohm pull-ups to 3.3 V</td></tr><tr><td>pin 16 (3.3 V), pin 1 (GND)</td><td>device VCC and GND</td><td>small modules only (under 100 mA)</td></tr></table><h3>Parts</h3><ul><li>any SPI module (MAX7219 display, MCP3008 ADC, W25Q flash...)</li><li>any I2C module (BME280, SSD1306 OLED, DS3231 clock...)</li><li>nothing for the self-test</li></ul><h2>What it does</h2>
+<p>Hardware SPI and I2C controllers for sensors, displays, memories and clocks: exact bus timing from the FPGA, buffers so the ARM writes a whole message at once, and up to 50 MHz SPI. The demo scans the I2C bus, names what it finds (BME280 / BMP280, DS3231 clock, SSD1306 display ...) and reads the ID of an SPI flash chip.</p>
+<h2>How it works</h2>
+<h3>SPI</h3>
+<p>SPI has 4 wires: <b>SCLK</b> (clock from the master), <b>MOSI</b> (master out), <b>MISO</b> (master in) and <b>CS</b> (chip select, low = talking). Every clock both sides shift one bit: sending and receiving happen together. The 4 SPI <b>modes</b> say on which clock edge the data changes (CPOL = clock level when idle, CPHA = which edge reads).</p>
+<p>The FPGA block has a 64-word send buffer and a 64-word receive buffer, words of 1 to 32 bits, MSB or LSB first, all 4 modes, and SCLK = 100 MHz / (2 x (DIV + 1)): 50 MHz, 25 MHz ... down to slow. With automatic chip select, CS stays low while the words go back to back.</p>
+<h3>I2C</h3>
+<p>I2C has 2 wires shared by many devices, each with a 7-bit address: <b>SDA</b> (data) and <b>SCL</b> (clock). Both are <b>open drain</b>: devices only pull the lines low; resistors pull them high (the board has 1 kohm pull-ups on its I2C pins). A message: START, the address and a read / write bit, bytes each answered with an ACK, STOP.</p>
+<p>The ARM queues <b>commands</b> (START, WRITE byte, READ with ACK, READ with NACK, STOP); the FPGA runs them with exact timing (100 kHz, 400 kHz, 1 MHz) and queues the results. It also waits when a slow device holds SCL low (clock stretching), with a timeout.</p>
+<h2>Try it</h2>
+<table>
+<tr><th>Device</th><th>Wiring</th></tr>
+<tr><td>SPI flash (W25Q32, W25Q64)</td><td>CS to J2 pin 5, DI to J2 pin 11, DO to J2 pin 12, CLK to J2 pin 15, VCC 3.3 V, GND</td></tr>
+<tr><td>I2C sensor / display</td><td>SDA to pin 3, SCL to pin 4 of any of J1..J8, VCC 3.3 V, GND</td></tr>
+</table>
+<p><b>Upload and run</b>: the Monitor lists the I2C devices found and the flash chip's ID (for example EF 40 17 = Winbond W25Q64).</p>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, SPI, I2C
+spi = SPI(Bus(), slot=1)
+spi.setup(hz=10_000_000, mode=0, bits=8)
+print(spi.transfer([0x9F, 0, 0, 0]))          # JEDEC ID: [x, maker, type, size]
+
+i2c = I2C(Bus(), slot=2, hz=400_000)
+print([hex(a) for a in i2c.scan()])           # e.g. ['0x3c', '0x68', '0x76']
+i2c.write(0x76, bytes([0xF4, 0x27]))          # BME280: start measuring
+print(i2c.read(0x76, 6, reg=0xF7))            # 6 bytes from register 0xF7</code></pre>
+<h3>SPI registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] CPHA [1] CPOL [2] LSB first [3] loopback [4] automatic CS</td></tr>
+<tr><td>1</td><td>DIV</td><td>SCLK = 100 MHz / (2 x (DIV + 1))</td></tr>
+<tr><td>2</td><td>WIDTH</td><td>bits per word, 1..32</td></tr>
+<tr><td>3, 4</td><td>TX, RX</td><td>send a word / take a received word</td></tr>
+<tr><td>5</td><td>STATUS</td><td>words waiting, received words, busy, overflow</td></tr>
+<tr><td>6</td><td>CS</td><td>chip select level (manual mode)</td></tr>
+<tr><td>7</td><td>ID</td><td>"SPIM"</td></tr>
+</table>
+<h3>I2C registers (slot 2)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CMD</td><td>queue: [10:8] 1 START, 2 STOP, 3 WRITE, 4 READ+ACK, 5 READ+NACK; [7:0] data</td></tr>
+<tr><td>1</td><td>RESULT</td><td>[31] valid, [9] from a READ, [8] ACK, [7:0] byte</td></tr>
+<tr><td>2</td><td>STATUS</td><td>commands / results waiting, busy, SCL and SDA levels, timeout</td></tr>
+<tr><td>3, 4</td><td>DIV, TIMEOUT</td><td>speed, clock stretching limit</td></tr>
+<tr><td>5</td><td>ID</td><td>"I2CM"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Shift registers: send and receive at the same time</td><td>SPI: every SCLK edge shifts a bit out and a bit in</td></tr>
+<tr><td>Clock polarity and phase (modes 0..3)</td><td>CPOL, CPHA in the control register</td></tr>
+<tr><td>Open-drain buses shared by many devices</td><td>I2C: devices only pull low, resistors pull high</td></tr>
+<tr><td>A command queue between software and exact timing</td><td>the ARM queues START, WRITE, READ, STOP; the FPGA runs them</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>SPI at DIV = 4: what clock frequency, and how long for a 16-bit word?</li></ol>
+<details><summary>Answer</summary>
+100 MHz / (2 x 5) = 10 MHz; 16 bits take 1.6 us.
+</details>
+<ol><li>Why must I2C lines be open drain with pull-up resistors?</li></ol>
+<details><summary>Answer</summary>
+Several devices share one wire. If any could drive it high while another drives it low, they would short. With open drain they can only pull low; the resistor makes high. Clock stretching and acknowledges work because anyone may hold a line low.
+</details>
+<ol><li>An I2C device does not answer its address. What does the master see?</li></ol>
+<details><summary>Answer</summary>
+No ACK: SDA stays high (the pull-up) in the ninth clock. The FPGA reports a NACK; usually a wrong address, a missing pull-up or a device without power.
+</details>
+<h2>Ideas</h2>
+<ul><li>An SSD1306 OLED showing the board's temperature; a BME280 weather station with the plotter.</li><li>Read and write a whole SPI flash (save data, or reprogram another board's flash).</li><li>An SPI display (ST7789) at 50 MHz: fast enough for animation.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>I2C scan finds nothing</b>: check SDA / SCL are not swapped and the device has power. Very long wires: lower the speed.</li><li><b>SPI reads 0xFF</b>: MISO not connected (the pull-up reads high) or wrong mode; most chips use mode 0.</li><li><b>Garbage at high SPI speed</b>: long wires; keep them short or go down to 10 MHz.</li></ul></main></body></html>

@@ -1,0 +1,6 @@
+[Unit]
+Description=S9 boot finished OK
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ardzy boot-ok

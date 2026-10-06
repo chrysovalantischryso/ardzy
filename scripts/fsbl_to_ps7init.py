@@ -1,0 +1,156 @@
+#!/usr/bin/env python3
+"""Extract the ps7_init register tables (silicon 3.x) from the FSBL inside a
+working Zynq BOOT.bin and write a U-Boot SPL ps7_init_gpl.c with identical
+register writes. Optionally diff against a Vivado-exported ps7_init_gpl.c.
+
+usage: fsbl_to_ps7init.py BOOT.bin out_ps7_init_gpl.c [vivado_ps7_init_gpl.c]
+"""
+import re, struct, sys
+
+# Xilinx FSBL ps7_init encoding: (opcode << 4) | number_of_args
+OPS = {0x33: ('MASKWRITE', 3), 0x22: ('WRITE', 2), 0x42: ('MASKPOLL', 2),
+       0x52: ('MASKDELAY', 2), 0x10: ('CLEAR', 1)}
+NAMES = ['pll_init_data', 'clock_init_data', 'ddr_init_data', 'mio_init_data',
+         'peripherals_init_data', 'post_config', 'debug']
+
+def boot_partitions(d):
+    w = lambda o: struct.unpack_from('<I', d, o)[0]
+    pt, parts, i = w(0x9C), [], 0
+    while True:
+        o = pt + i * 64
+        tot, off = w(o + 8), w(o + 20)
+        if tot == 0 and off == 0:
+            return parts
+        parts.append((off * 4, tot * 4))
+        i += 1
+
+def parse_table(fsbl, o):
+    """Parse one opcode table starting at byte offset o; return (entries, end)."""
+    ent = []
+    while o + 4 <= len(fsbl):
+        op = struct.unpack_from('<I', fsbl, o)[0]
+        if op == 0:
+            return ent, o + 4
+        if op not in OPS:
+            return None, o
+        name, n = OPS[op]
+        args = struct.unpack_from('<%dI' % n, fsbl, o + 4)
+        if name != 'CLEAR' and not (0xE0000000 <= args[0] <= 0xFFFFFFFF):
+            return None, o
+        ent.append((name, args))
+        o += 4 + 4 * n
+    return None, o
+
+def all_tables(fsbl):
+    """Every opcode table in the FSBL (each starts with the SLCR unlock write)."""
+    found = []
+    unlock = struct.pack('<III', 0x22, 0xF8000008, 0xDF0D)
+    o = fsbl.find(unlock)
+    while o >= 0:
+        ent, _ = parse_table(fsbl, o)
+        if ent:
+            found.append((o, ent))
+        o = fsbl.find(unlock, o + 4)
+    # the DDR table has no unlock write: it starts with MASKWRITE 0xF8006000 (DDRC reset)
+    # and also ends with one (DDRC enable), so keep only parses that hold the full table
+    ddr = struct.pack('<II', 0x33, 0xF8006000)
+    o = fsbl.find(ddr)
+    while o >= 0:
+        ent, _ = parse_table(fsbl, o)
+        if ent and any(a[0] == 0xF8006004 for _, a in ent):
+            found.append((o, ent))
+        o = fsbl.find(ddr, o + 4)
+    return found
+
+def kind_of(ent):
+    addrs = {a[0] for _, a in ent}
+    if 0xF8006000 in addrs: return 'ddr_init_data'
+    if 0xF8000110 in addrs: return 'pll_init_data'
+    if 0xF8000700 in addrs: return 'mio_init_data'
+    if 0xF8000128 in addrs or 0xF8000140 in addrs: return 'clock_init_data'
+    if 0xF8000900 in addrs and len(ent) <= 6: return 'post_config'
+    return 'peripherals_init_data'
+
+def score(a, b):
+    """number of differing entries (simple aligned compare + length difference)"""
+    return sum(x != y for x, y in zip(a, b)) + abs(len(a) - len(b))
+
+def find_tables(fsbl, viv):
+    """Pick the silicon-3.x copy of each table: the candidate closest to Vivado's 3_0 table
+    (the FSBL holds 3 copies: silicon 1.0, 2.0, 3.x). Without a Vivado file: first copy."""
+    cands = {}
+    for o, ent in all_tables(fsbl):
+        cands.setdefault(kind_of(ent), []).append((o, ent))
+    out = []
+    for nm in NAMES:
+        if nm == 'debug':
+            out.append([]); continue
+        c = cands.get(nm)
+        if not c:
+            sys.exit('table %s not found in FSBL' % nm)
+        if viv and nm in viv:
+            o, ent = min(c, key=lambda t: score(t[1], viv[nm]))
+        else:
+            o, ent = c[0]
+        print('%-22s %d copies in FSBL, using one at 0x%x' % (nm, len(c), o))
+        out.append(ent)
+    return out
+
+def fmt(name, a):
+    if name == 'MASKWRITE':
+        return '\tEMIT_MASKWRITE(0x%08x, 0x%08x, 0x%08x),' % a
+    if name == 'WRITE':
+        return '\tEMIT_WRITE(0x%08x, 0x%08x),' % a
+    if name == 'MASKPOLL':
+        return '\tEMIT_MASKPOLL(0x%08x, 0x%08x),' % a
+    if name == 'MASKDELAY':
+        return '\tEMIT_MASKDELAY(0x%08x, %d),' % a
+    raise ValueError(name)
+
+def vivado_tables(path):
+    src = open(path).read()
+    out = {}
+    for nm, body in re.findall(r'unsigned long ps7_(\w+)_3_0\[\] = \{(.*?)\};', src, re.S):
+        ent = []
+        for kind, args in re.findall(r'EMIT_(MASKWRITE|WRITE|MASKPOLL|MASKDELAY)\(([^)]*)\)', body):
+            ent.append((kind, tuple(int(x.strip().rstrip('uU'), 0) for x in args.split(','))))
+        out[nm] = ent
+    return out
+
+def main():
+    d = open(sys.argv[1], 'rb').read()
+    off, size = boot_partitions(d)[0]
+    viv = vivado_tables(sys.argv[3]) if len(sys.argv) > 3 else None
+    tables = find_tables(d[off:off + size], viv)
+    lines = ['// SPDX-License-Identifier: GPL-2.0',
+             '/*',
+             ' * Antminer S9 control board, 512 MB DDR3.',
+             ' * Register tables extracted 1:1 from the FSBL of a BOOT.bin proven to boot',
+             ' * this board (generated by fsbl_to_ps7init.py, do not edit by hand).',
+             ' */', '', '#include <asm/arch/ps7_init_gpl.h>', '']
+    for nm, ent in zip(NAMES, tables):
+        if nm == 'debug':
+            continue
+        lines.append('static unsigned long ps7_%s_3_0[] = {' % nm)
+        lines += [fmt(k, a) for k, a in ent]
+        lines += ['\tEMIT_EXIT(),', '};', '']
+        print('%-22s %3d entries' % (nm, len(ent)))
+    lines += ['int ps7_init(void)', '{', '\tint ret;', '']
+    for nm in ['mio_init_data', 'pll_init_data', 'clock_init_data', 'ddr_init_data', 'peripherals_init_data']:
+        lines += ['\tret = ps7_config(ps7_%s_3_0);' % nm, '\tif (ret != PS7_INIT_SUCCESS)', '\t\treturn ret;']
+    lines += ['', '\treturn PS7_INIT_SUCCESS;', '}', '', 'int ps7_post_config(void)', '{',
+              '\treturn ps7_config(ps7_post_config_3_0);', '}', '']
+    open(sys.argv[2], 'w', newline='\n').write('\n'.join(lines))
+    print('wrote', sys.argv[2])
+
+    if viv:
+        for nm, ent in zip(NAMES, tables):
+            if nm == 'debug':
+                continue
+            v = viv.get(nm, [])
+            diffs = [(i, a, b) for i, (a, b) in enumerate(zip(ent, v)) if a != b]
+            print('diff vs vivado %-22s fsbl %3d / vivado %3d entries, %d differ' % (nm, len(ent), len(v), len(diffs)))
+            for i, a, b in diffs:
+                print('   #%d fsbl %s %s   vivado %s %s' % (i, a[0], [hex(x) for x in a[1]], b[0], [hex(x) for x in b[1]]))
+
+main()

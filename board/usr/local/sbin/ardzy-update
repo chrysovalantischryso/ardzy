@@ -1,0 +1,185 @@
+#!/usr/bin/env python3
+"""ardzy-update: install an Ardzy system update bundle (made by scripts/06_release.sh).
+
+    ardzy-update <bundle.tar.gz> [--check] [--no-web-restart]
+
+--no-web-restart: the web service restarts itself after it has answered (it prints RESTART_WEB=1).
+
+Bundle: manifest.json, sha256sums.txt, and any of
+    boot/            zImage, system.dtb, boot.scr       (the kernel: tried once, see below)
+    modules.tgz      kernel modules (lib/modules/<version>)
+    debs/*.deb       Debian packages
+    rootfs/...       files copied over the system (Ardzy tools, Arduino core, web service)
+
+Safe kernel update: the running kernel stays on the card as zImage.old / system.dtb.old and the
+U-Boot setting ardzy_try=1 makes the next start a trial. When Linux comes up fine, "ardzy boot-ok"
+keeps the new kernel; if the board does not get there (crash, panic, watchdog), U-Boot starts
+the old kernel at the next power-on and Ardzy puts it back.
+"""
+import hashlib, json, os, shutil, subprocess, sys, tarfile, time
+
+sys.path.insert(0, '/usr/lib/python3/dist-packages')
+import ardzy_env  # noqa: E402
+
+WORK = '/var/tmp/ardzy-update'
+TEXT_EXT = ('.py', '.sh', '.service', '.timer', '.conf', '.json', '.html', '.css', '.js', '.txt', '.h', '.hpp',
+            '.c', '.cpp', '.ino', '.properties', '.network', '.rules')
+EXEC_DIRS = ('usr/local/bin/', 'usr/local/sbin/')
+
+
+def log(msg):
+    try:
+        print(msg, flush=True)
+    except OSError:          # whoever started us is gone (web service restarted): keep installing
+        pass
+
+
+def die(msg):
+    log('ardzy-update: ' + msg)
+    sys.exit(1)
+
+
+def sha256(path):
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(1 << 20), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def unpack(bundle):
+    shutil.rmtree(WORK, ignore_errors=True)
+    os.makedirs(WORK)
+    with tarfile.open(bundle) as t:
+        for m in t.getmembers():
+            if m.name.startswith(('/', '..')) or '/../' in m.name or m.issym() or m.islnk():
+                die('unsafe path in the bundle: ' + m.name)
+        t.extractall(WORK, filter='data')
+    man = json.load(open(os.path.join(WORK, 'manifest.json')))
+    sums = os.path.join(WORK, 'sha256sums.txt')
+    if os.path.exists(sums):
+        bad = []
+        for line in open(sums):
+            want, _, name = line.strip().partition('  ')
+            if name and sha256(os.path.join(WORK, name)) != want:
+                bad.append(name)
+        if bad:
+            die('damaged files in the bundle: ' + ', '.join(bad[:5]))
+        log('bundle checked: %d files OK' % len(open(sums).read().splitlines()))
+    return man
+
+
+def install_boot():
+    src = os.path.join(WORK, 'boot')
+    if not os.path.isdir(src):
+        return False
+    new_k = os.path.join(src, 'zImage')
+    changed = False
+    if os.path.exists(new_k) and (not os.path.exists('/boot/zImage') or sha256(new_k) != sha256('/boot/zImage')):
+        for f in ('zImage', 'system.dtb'):
+            if os.path.exists('/boot/' + f):
+                shutil.copy2('/boot/' + f, '/boot/%s.old' % f)
+        for f in ('zImage', 'system.dtb'):
+            if os.path.exists(os.path.join(src, f)):
+                shutil.copy2(os.path.join(src, f), '/boot/' + f)
+        changed = True
+        log('kernel: new zImage + system.dtb (the old ones kept as .old)')
+    if os.path.exists(os.path.join(src, 'boot.scr')):
+        if os.path.exists('/boot/boot.scr'):
+            shutil.copy2('/boot/boot.scr', '/boot/boot.scr.old')
+        shutil.copy2(os.path.join(src, 'boot.scr'), '/boot/boot.scr')
+        log('boot script updated')
+    os.sync()
+    if changed:
+        ardzy_env.set(ardzy_try='1', ardzy_tried='0', ardzy_rollback=None)
+        log('the next start is a trial of the new kernel (automatic return to the old one if it fails)')
+    return changed
+
+
+def install_modules():
+    p = os.path.join(WORK, 'modules.tgz')
+    if not os.path.exists(p):
+        return
+    with tarfile.open(p) as t:
+        names = {m.name.split('/')[0] for m in t.getmembers() if m.name}
+        t.extractall('/usr/lib/modules', filter='tar')
+    for v in names:
+        subprocess.run(['depmod', v])
+    log('kernel modules: ' + ', '.join(sorted(names)))
+
+
+def install_debs():
+    debs = sorted(p for p in os.listdir(os.path.join(WORK, 'debs')) if p.endswith('.deb')) \
+        if os.path.isdir(os.path.join(WORK, 'debs')) else []
+    if not debs:
+        return
+    r = subprocess.run(['dpkg', '-i', '--force-confold'] + [os.path.join(WORK, 'debs', d) for d in debs],
+                       capture_output=True, text=True, env=dict(os.environ, DEBIAN_FRONTEND='noninteractive'))
+    log('packages: %d installed%s' % (len(debs), '' if r.returncode == 0 else ' (with problems: %s)' % r.stderr.strip()[-300:]))
+
+
+def install_rootfs():
+    src = os.path.join(WORK, 'rootfs')
+    if not os.path.isdir(src):
+        return 0
+    n = 0
+    for root, _, files in os.walk(src):
+        rel_root = os.path.relpath(root, src)
+        for f in files:
+            rel = os.path.normpath(os.path.join(rel_root, f)).replace('\\', '/')
+            dst = '/' + rel
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            tmp = dst + '.ardzy-new'
+            shutil.copyfile(os.path.join(root, f), tmp)
+            if f.endswith(TEXT_EXT) or rel.startswith(EXEC_DIRS):
+                with open(tmp, 'rb') as fh:
+                    data = fh.read()
+                if b'\0' not in data[:4096]:
+                    with open(tmp, 'wb') as fh:
+                        fh.write(data.replace(b'\r\n', b'\n'))
+            os.chmod(tmp, 0o755 if rel.startswith(EXEC_DIRS) or f in ('ardzyweb.py', 'build.py') else 0o644)
+            os.replace(tmp, dst)
+            n += 1
+    log('system files: %d updated' % n)
+    return n
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(__doc__)
+        sys.exit(2)
+    if os.geteuid() != 0:
+        die('run as root')
+    t0 = time.time()
+    man = unpack(sys.argv[1])
+    log('Ardzy update %s (%s)' % (man.get('version', '?'), man.get('date', '')))
+    if man.get('notes'):
+        log(man['notes'])
+    if '--check' in sys.argv:
+        return
+    reboot = install_boot()
+    install_modules()
+    install_debs()
+    install_rootfs()
+    subprocess.run(['systemctl', 'daemon-reload'])
+    for svc in man.get('enable', []):
+        subprocess.run(['systemctl', 'enable', svc], capture_output=True)
+    if man.get('release'):
+        with open('/etc/ardzy-release', 'w') as f:
+            f.write(''.join('%s=%s\n' % kv for kv in man['release'].items()))
+    shutil.rmtree(WORK, ignore_errors=True)
+    os.sync()
+    reboot = reboot or man.get('reboot', False)
+    log('update done in %.0f s.%s' % (time.time() - t0, ' RESTART the board to finish (the app can do it).' if reboot
+                                       else ' No restart needed.'))
+    if man.get('restart_web', True):
+        if '--no-web-restart' in sys.argv:
+            log('RESTART_WEB=1')
+        else:
+            subprocess.Popen(['systemd-run', '--quiet', '--on-active=2', 'systemctl', 'restart', 'ardzy-web'],
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    log('REBOOT_NEEDED=%d' % (1 if reboot else 0))
+
+
+if __name__ == '__main__':
+    main()

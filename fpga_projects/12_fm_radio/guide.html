@@ -1,0 +1,212 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Radio transmitter (FM stereo + RDS, NFM, AM, SSB, CW, digital, pictures, AES67)</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Radio &middot; advanced</div><h1>Radio transmitter (FM stereo + RDS, NFM, AM, SSB, CW, digital, pictures, AES67)</h1><p class="lead">A radio station on one pin, made inside the FPGA: FM stereo with your station name and text on the radio&#x27;s display (RDS), NFM, AM, USB, LSB and DSB, Morse code, RTTY and PSK31, pictures (SSTV), songs from WAV files and live sound from the network (AES67).</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 36 of 36 checks on the real board (October 2026), with nothing connected; the radio service test 23 of 23.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Radio registers</td></tr><tr><td>2</td><td><code>0x43C02000</code></td><td>RDS blocks (2 banks of 256)</td></tr><tr><td>3</td><td><code>0x43C03000</code></td><td>MPX capture, samples 0..1023</td></tr><tr><td>4</td><td><code>0x43C04000</code></td><td>MPX capture, samples 1024..2047</td></tr><tr><td>5</td><td><code>0x43C05000</code></td><td>MPX capture, samples 2048..3071</td></tr><tr><td>6</td><td><code>0x43C06000</code></td><td>MPX capture, samples 3072..4095</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>rf</code></td><td>J9 pin 11</td><td>T17</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J9 pin 11 (RF)</td><td>a short wire, 10 to 20 cm, as the antenna</td><td>a few meters of range in a room; the self-test needs nothing</td></tr><tr><td>J9 pin 11 through a 1 kohm resistor</td><td>an SDR input (RTL-SDR) through a 30 to 40 dB attenuator</td><td>never the pin straight into an SDR: the resistor and the attenuator protect it and keep the signal off the air</td></tr><tr><td>pin 1 (GND)</td><td>the ground (outer conductor) of the SDR cable</td><td></td></tr></table><h3>Parts</h3><ul><li>an FM radio with RDS (a car radio, a kitchen radio, a phone with an FM chip)</li><li>optional: an RTL-SDR stick to see the spectrum, the RDS and the digital modes</li><li>nothing for the self-test</li></ul><div class="box warn"><b>Radio rules first.</b> Sending radio signals is regulated everywhere. Without a licence you may only use very weak transmitters: in the EU and the UK, small FM transmitters (the kind for a car stereo) may send up to 50 nW e.r.p. in 87.5 to 108 MHz; in the USA, Part 15 allows 250 uV/m at 3 m. Choose a frequency nobody uses where you live, keep the power setting low and the antenna short (10 to 20 cm), and never send on aviation, emergency or other services' frequencies. The Ardzy pin sends a square wave: it also has harmonics (3 and 5 times the frequency). For anything more than a bench test use a filter, or connect an SDR through an attenuator instead of an antenna. You are responsible for what you send.</div>
+<h2>What it does</h2>
+<p>This project turns one FPGA pin (J9 pin 11) into a complete radio station:</p>
+<ul><li><b>FM stereo</b> (WFM) with the 19 kHz pilot, so receivers light their "stereo" lamp</li><li><b>RDS</b>: your station name (8 characters), a radio text of up to 64 characters (it can show the song that is playing), the programme type (Pop, Rock, News ...), the clock time (car radios set their clock from it), traffic flags and other frequencies</li><li><b>NFM</b> (narrow FM, like walkie-talkies), <b>AM</b>, <b>USB</b>, <b>LSB</b> and <b>DSB</b> for scanners, short-wave receivers and SDRs</li><li><b>sound</b> from four sources: test tones, songs (WAV files on the board, in a playlist), <b>pictures</b> (SSTV) and live <b>network sound</b> (AES67)</li><li><b>digital modes</b>: Morse code (CW), radio teletype (RTTY), PSK31, a melody beacon and frequency sweeps</li></ul>
+<table>
+<tr><th>Mode</th><th>What a receiver needs</th><th>How it is made</th></tr>
+<tr><td>WFM</td><td>any FM radio</td><td>the stereo multiplex moves the carrier frequency, up to 75 kHz</td></tr>
+<tr><td>NFM</td><td>a scanner or an SDR in NFM</td><td>the voice band (300 to 2700 Hz) moves the frequency, 2.5 or 5 kHz</td></tr>
+<tr><td>AM</td><td>an AM radio, SDR in AM</td><td>the sound changes the carrier's strength</td></tr>
+<tr><td>USB, LSB</td><td>a short-wave receiver, SDR in USB / LSB</td><td>only one side band, no carrier: strength and phase from I and Q</td></tr>
+<tr><td>DSB</td><td>SDR in DSB (or USB / LSB)</td><td>both side bands, no carrier</td></tr>
+<tr><td>CW, RTTY, PSK31</td><td>SDR in CW / USB, fldigi for RTTY and PSK31</td><td>the symbol player</td></tr>
+</table>
+<p>(Your SDR also offers <b>RAW</b>: that only shows the raw I / Q of what it receives; there is nothing to send for it.)</p>
+<p>Everything is made inside the FPGA. The ARM only writes settings, sound samples and RDS data. In the Ardzy app open <b>Ready projects</b> and press <b>Open</b> on the FM radio card: that is the station's control page. This guide explains how it all works.</p>
+<h2>How the signal is made</h2>
+<h3>1. A carrier from a counter</h3>
+<p>A 32-bit number, the <b>phase</b>, grows by a step every sample. When it passes 2^32 it starts again from 0: one turn of the carrier. The pin is high while the phase is in the first half of the turn. A bigger step gives a higher frequency:</p>
+<pre><code>frequency = step * 500 MHz / 2^32        (steps of 0.116 Hz)
+96.0 MHz  -&gt;  step = 824 633 721</code></pre>
+<p>The FPGA cannot toggle a pin 500 million times per second with ordinary logic, so it uses two tricks: a 250 MHz clock made by the MMCM (the clock multiplier: 100 MHz x 10 / 4), and an <b>ODDR</b>, a flip-flop in the pin itself that sends one value on the rising edge of the clock and another on the falling edge. Two samples per clock: 500 million per second. Carriers up to about 200 MHz are possible; the counter that measures the pin reaches 125 MHz.</p>
+<p>The adders run at 250 MHz, so they are split: each 32-bit sum is made of two 16-bit halves, with the carry passed on one clock later. The result is exactly the same number, just a few clocks later.</p>
+<h3>2. FM: the stereo multiplex (MPX)</h3>
+<p>FM moves the carrier frequency with the sound. For stereo, the sound is first packed into one signal, the <b>multiplex</b> (MPX), 390625 samples per second:</p>
+<table>
+<tr><th>Part</th><th>Where</th><th>What it is</th></tr>
+<tr><td>L+R</td><td>30 Hz to 15 kHz</td><td>left plus right: what a mono radio plays</td></tr>
+<tr><td>pilot</td><td>19 kHz</td><td>a quiet tone that says "this is stereo" (9 %)</td></tr>
+<tr><td>L-R</td><td>23 to 53 kHz</td><td>left minus right, on a 38 kHz carrier that is then removed (DSB-SC)</td></tr>
+<tr><td>RDS</td><td>54.6 to 59.4 kHz</td><td>the data, on 57 kHz (3 x 19)</td></tr>
+</table>
+<p>A stereo radio locks to the 19 kHz pilot, doubles it to 38 kHz, gets L-R back, and makes L = (L+R) + (L-R) and R = (L+R) - (L-R). All the parts use one phase counter, so 19, 38 and 57 kHz stay exactly in step.</p>
+<p>The sound path in the FPGA, one stage after the other:</p>
+<ol><li><b>resampler</b>: songs come at any rate (44.1 kHz, 48 kHz ...); the FPGA takes them at that rate and turns them into 48828 samples per second (linear interpolation)</li><li><b>volume</b>, then <b>pre-emphasis</b>: the highs are made louder (50 us in Europe, 75 us in the Americas); the radio makes them quieter again and the hiss goes down with them</li><li><b>15 kHz low-pass</b>, 63 taps: nothing may reach the 19 kHz pilot (19.5 kHz is blocked by more than 80 dB)</li><li><b>M and S</b>: M = (L+R)/2, S = (L-R)/2</li><li><b>x8 interpolation</b>, 96 taps: from 48828 to 390625 samples per second without mirror images</li><li><b>the sum</b>: 87 % sound, 9 % pilot, 4 % RDS, then the deviation: 75 kHz at full MPX</li></ol>
+<h3>3. RDS</h3>
+<p>RDS sends 1187.5 bits per second (19 kHz / 16). The data comes in <b>groups</b> of 4 blocks; each block has 16 data bits and a 10-bit check word that also marks which block it is, so a receiver finds the start and corrects errors.</p>
+<table>
+<tr><th>Group</th><th>Carries</th></tr>
+<tr><td>0A</td><td>2 characters of the station name (PS) per group, the PTY, TP, TA and music / speech flags, other frequencies</td></tr>
+<tr><td>2A</td><td>4 characters of the radio text (RT) per group, and the A/B flag that flips for a new text</td></tr>
+<tr><td>1A</td><td>the extended country code (ECC): with the first digit of the PI it names the country</td></tr>
+<tr><td>3A + 11A</td><td>RT+ (RadioText Plus): which part of the text is the title and which the artist, so car radios can show them apart</td></tr>
+<tr><td>10A</td><td>the programme type name (PTYN): 8 characters of your own, for example "House"</td></tr>
+<tr><td>4A</td><td>the date and the time (UTC and the local offset), once a minute; only when the board's clock is known to be right (network time, or the Ardzy app set it), because the board has no battery clock</td></tr>
+</table>
+<p>The ARM (rds.py) builds the groups and writes them into one of two <b>banks</b> in the FPGA. The FPGA sends a bank round after round; when the ARM has filled the other bank and asks for it, the change happens at the end of a round, so a receiver never sees half a group. Both banks share one length register, so rds.py always keeps them the same length: a shorter round is padded with its own groups and the bank on air is extended with its own groups before a longer one is asked for. That way a round is never cut short and no old block from an earlier round can slip on air. Each bit is sent differentially coded (a 1 flips the level) and as one smooth sine period (biphase), which keeps the RDS signal narrow and leaves no carrier at 57 kHz.</p>
+<h3>4. NFM, AM, SSB and DSB</h3>
+<p><b>NFM</b> is FM with a small deviation (5 kHz) and only the voice band. The FPGA's voice filter is the same 256-tap filter the side band modes use; it passes 300 to 2700 Hz and is mono.</p>
+<p><b>AM</b> and the <b>power</b> setting change the strength, see below.</p>
+<p><b>USB / LSB</b> (single side band) sends only one half of what AM sends, without the carrier: half the width and all the power in the sound. The classic way to make it is the phasing method: from the sound make two copies 90 degrees apart, <b>I</b> and <b>Q</b> (Q is the Hilbert transform of I), and then</p>
+<pre><code>USB = I x cos(carrier) - Q x sin(carrier)       LSB: Q with the other sign</code></pre>
+<p>The FPGA makes I and Q with one complex filter of 256 taps (a 1200 Hz low-pass moved up to 1500 Hz): 32 taps in each of the 8 MPX samples of an audio sample, so it fits in the time. The other side band is about 70 dB down (computed from the stored coefficients) and measured more than 40 dB down in the self-test. A pin can only be high or low, so the signal is made in <b>polar</b> form: a small CORDIC (14 shift-and-add steps) turns I and Q into a <b>strength</b> (the pulse width, through the same table as AM) and a <b>phase</b> (added to the carrier's phase), 390625 times a second. <b>DSB</b> is the same with Q = 0: the strength follows the size of the sound and the phase turns by half a turn when the sound changes sign.</p>
+<p>The strength is made from pulses of whole 2 ns samples, so these modes are cleanest on medium and short wave (below about 30 MHz), where a period has many samples.</p>
+<h3>5. The strength (AM, power) and the digital modes</h3>
+<p>The strength of the pin's square wave depends on how long it is high in each turn: half a turn gives the strongest carrier, shorter pulses a weaker one (the strength is sin(pi x width)). <b>AM</b> changes the width with the sound (through a small table, so the strength follows the sound in a straight line). The <b>power</b> setting uses the same idea.</p>
+<p>A pulse cannot be shorter than one sample (2 ns). At 96 MHz a period is only about 5 samples, so the weakest clean setting there is about 57 %: the service never goes lower (the page shows it) because shorter pulses would come and go irregularly and make spurious signals. For less power at FM frequencies use a resistor in series with the antenna, or a shorter antenna. On short wave (a few MHz) the power can go almost to zero.</p>
+<p>The FPGA measures this at the pin: it counts the time the pin is high (RF_HIGH). The self-test checks the power setting and AM against the formula at 6.78 MHz, after it has measured the pad's own edge timing (its rise and fall differ by about 2 ns).</p>
+<p>The <b>symbol player</b> takes a list of steps, each one: a frequency offset, a time in microseconds, a strength and a phase. That is enough for:</p>
+<ul><li><b>CW</b>: carrier on and off, with soft edges (4 ms) so the signal stays narrow</li><li><b>RTTY</b>: two tones 170 Hz apart, 45.45 bits per second, the 5-bit Baudot code</li><li><b>PSK31</b>: 31.25 bits per second; a 0 turns the phase by half a turn, the strength goes through zero while it does</li><li><b>beacon</b>: a melody: each note is a carrier offset, so an SSB receiver plays it as a tone</li><li><b>sweep</b>: the carrier steps across a range (to measure a filter or an antenna)</li></ul>
+<h2>Try it</h2>
+<ol><li>Choose a free frequency. In the FM band, listen with a radio first: between two stations is not enough, the place must be silent.</li><li>Wire a 10 to 20 cm wire to J9 pin 11 (or nothing at all for the first test: the pin and its track radiate a little).</li><li>In the Ardzy app open <b>Ready projects</b>, the FM radio card, <b>Open</b> (press <b>Start the radio on the board</b> if it is not running yet).</li><li>Set the frequency, keep the power low, press <b>OFF AIR</b> so it says <b>ON AIR</b>. The test tones play: 1000 Hz on the left, 400 Hz on the right.</li><li>Tune your radio to the frequency. The station name appears after a second or two, the radio text a few seconds later.</li><li><b>Songs</b>: press <b>Send a WAV file</b>. When it has arrived it joins the playlist. The radio text can show the song: write <code>{title}</code> in it.</li><li><b>Pictures</b>: choose <b>Picture</b>, pick any image (it is fitted to 320 x 256; you can write a call sign on it), choose the SSTV mode and press <b>Send this picture</b>.</li><li><b>Network sound</b>: choose <b>Network</b>; streams announced on the network appear in the list, or type an address and port.</li></ol>
+<h2>The studio console (in the app)</h2>
+<p>The radio page is laid out like a broadcast desk (always dark, like a studio):</p>
+<ul><li><b>ON AIR lamp</b> (press it to go on or off air), the frequency in LED digits (red on air), the tuning buttons, the mode and the power.</li><li><b>Status lamps</b>: ON AIR, CARRIER (seen at the pin), PLL (the 250 MHz clock locked), STEREO, RDS (decoded on the board), TA, AUDIO, CLIP, NET (network sound arriving), DELAY (blue when set, amber while it fills), GAPS (red for 5 s after a gap in the sound).</li><li><b>Studio clock</b>: the PC's time with a ring of 60 seconds.</li><li><b>Timers</b>: how long the station has been on air; the song's elapsed and remaining time (amber in the last 20 s, red and blinking in the last 10 s; LIVE for network sound and test tones); the next song; the time to the top of the hour; when the RDS name and text change next; a stopwatch; a countdown you set (minutes:seconds).</li><li><b>Meter bridge</b>: LED peak meters with a 2 s peak hold for the sound coming in, going out of the processing and on air in the FPGA (after pre-emphasis), the MPX in % of the deviation (100 % = full deviation) and GR, how much the limiter turns the sound down.</li><li><b>Stereo image</b>: a goniometer (a vertical line is mono, a wide cloud is wide stereo, a horizontal line is left and right in opposite phase, which would cancel on a mono radio) and the correlation meter (+1 mono, 0 unrelated, below 0 a phase problem).</li><li><b>Real-time analyzer</b>: the sound after the processing in 31 third-octave bands (20 Hz to 20 kHz) with peak markers; the blue line is the sound before the processing.</li><li><b>MPX spectrum and waterfall</b>: the signal that moves the carrier, 0 to 80 kHz: L+R, the 19 kHz pilot (its level is shown), L-R around 38 kHz and RDS at 57 kHz, with an amber peak trace and a waterfall of the last minute. Live, it asks the board for a capture about once a second; that never touches the settings or the sound.</li></ul>
+<h2>Sound in and out (buffer, processing, delay)</h2>
+<p>Every sound that is not a test tone (songs, pictures, network sound) passes the same chain on the board before the FPGA gets it:</p>
+<p><b>source</b> -&gt; resampled to 48 kHz -&gt; <b>gain, balance, mono, swap</b> -&gt; <b>AGC</b> (an automatic level) -&gt; <b>limiter</b> (never above the ceiling) -&gt; <b>delay</b> -&gt; the FPGA's buffer -&gt; pre-emphasis -&gt; FM -&gt; the pin.</p>
+<p>The <b>Sound in and out</b> card in the app shows this flow with live meters: the level before and after the processing (peak and average, with a peak hold), a 20 ms waveform of each, the levels on air in the FPGA, the last 30 s as a graph, how much the limiter works, the delay right now and a <b>click counter</b>.</p>
+<ul><li><b>Buffer</b> (network sound, 20 to 2000 ms, 150 ms by default): the sound kept in hand against late packets. Clicks come from a buffer that runs dry, so if you hear any, make it bigger: 300 ms rides out almost any network hiccup. A change takes effect at once (a moment of silence or a short skip). The board then follows the sender's clock by nudging its own rate by a few hundred ppm, so the buffer stays where you set it for hours.</li><li><b>Clicks</b>: counts gaps in the sound while a source is really playing (not between songs, before a stream or while the delay fills). It should stay at "none".</li><li><b>Gain / Balance / Mono / Swap</b>: the usual. <b>AGC</b> brings quiet sound up and loud sound down, slowly, towards its target. <b>Limiter</b>: nothing goes above the ceiling, so the station never over-modulates. <b>Bypass</b> sends the sound as it comes.</li><li><b>Delay</b> (0 to 10 s): the whole programme is heard later, for example to match a video stream. The radio text follows: a new song shows up in RDS when it is heard, not when it starts in the delay line. When the sound stops, what is still in the delay plays out to its end.</li></ul>
+<p>An MPX capture (the spectrum in the app) runs beside the sound and does not disturb it.</p>
+<h2>Pictures (SSTV)</h2>
+<p>Slow-scan television sends a picture as sound: the pitch is the brightness, from 1500 Hz (black) to 2300 Hz (white); a 1200 Hz pulse starts every line, and before the picture the <b>VIS code</b> (0.9 s of tones) tells the receiver the mode.</p>
+<table>
+<tr><th>Mode</th><th>Picture</th><th>Time</th><th>Colours</th></tr>
+<tr><td>Martin 1</td><td>320 x 256</td><td>114 s</td><td>green, blue, red per line</td></tr>
+<tr><td>Scottie 1</td><td>320 x 256</td><td>110 s</td><td>green, blue, then the sync, then red</td></tr>
+<tr><td>Robot 36</td><td>320 x 240</td><td>36 s</td><td>brightness, and every other line one colour difference</td></tr>
+</table>
+<p>The board makes the sound (with numpy, in about a second) and plays it like a song, so a picture works in <b>every sound mode</b>: FM for a phone next to a radio (the free app <b>Robot36</b> decodes it from the speaker), USB / LSB on short wave for MMSSTV or QSSTV. A test checks the sound itself: the VIS codes and the pixels measured from the pitch come back within 1 of 255.</p>
+<h2>Network sound (AES67)</h2>
+<p><b>AES67</b> is the standard for uncompressed sound over a network: studio consoles and RAVENNA devices, Dante devices in AES67 mode, PipeWire on Linux and ffmpeg all speak it. The sound goes in RTP packets over UDP, usually to a multicast address (239.x.x.x, port 5004): 48 kHz, 24 bit (L24) or 16 bit (L16), 1 ms per packet. Senders announce their streams with <b>SAP</b> (a short SDP text with the name, address and format).</p>
+<p>The radio service listens to SAP and lists the streams it hears; choose one, or type the address, port and format. It collects the buffer (150 ms unless you choose another size), then plays, and keeps the buffer at that size by nudging the FPGA's resampler by up to 0.4 %: the level is smoothed over a second, a proportional part pulls it back within about 10 s and a slow integral part learns the real difference between the two clocks, so the buffer settles without swinging and never runs dry or over. (AES67 devices also share a PTP clock; a receiver like this one just follows the stream's own pace, which is all a radio needs.) The stream is also received with the transmitter off, so the meters show it before you go on air.</p>
+<h3>The easy way: from the Ardzy app</h3>
+<p>On the radio's page choose <b>Network</b>, then under <b>From this PC</b>:</p>
+<ul><li><b>Send this PC's sound</b>: pick "Everything this PC plays on: ..." (your speakers, or VB-CABLE if Windows plays into it) or an input (a microphone). The app takes the sound with Windows' own audio interface (WASAPI) and sends it as AES67 (L24, 1 ms packets) <b>straight to the board</b>, over the same cable the app already talks to it on.</li><li><b>AES67 streams this PC hears</b>: any AES67 program on this PC, or a device on another network this PC is on, that announces itself (SAP) appears in this list; <b>pass on to the radio</b> relays it to the board the same way.</li></ul>
+<p>Why this matters: an AES67 program sends multicast out of <b>one</b> network card. With two cards (the internet one with the default route, and the cable to the board), Windows usually picks the internet card, and the board never sees the stream. Sending straight to the board, or relaying, makes the choice of card irrelevant. A new sender (another program, a restart) is followed at once: the board watches the sender's id (SSRC) and starts counting its packets anew.</p>
+<h3>Other senders</h3>
+<p>From this PC, without the app:</p>
+<pre><code>python aes67_send.py song.wav                  (in the project folder: a WAV file, over and over)
+python aes67_send.py --tone 1000 --name "Test"</code></pre>
+<p>Live sound from the PC (a microphone, or everything the PC plays through a virtual cable such as VB-CABLE) with ffmpeg; then type 239.69.83.67, port 5004, L24, 48000, 2 on the page:</p>
+<pre><code>ffmpeg -f dshow -i audio="CABLE Output (VB-Audio Virtual Cable)" -ac 2 -ar 48000 -c:a pcm_s24be -payload_type 96 -f rtp "rtp://239.69.83.67:5004?localaddr=192.168.137.1&amp;pkt_size=300"</code></pre>
+<p>(<code>localaddr</code> is this PC's address on the cable to the board.) With PipeWire on Linux, load the AES67 module; Dante devices need AES67 mode switched on in Dante Controller.</p>
+<p>The <b>What radios show</b> box is decoded on the board from the bits the FPGA really sent, the way a car radio does it. The <b>MPX signal</b> card captures 4096 samples inside the FPGA and draws their spectrum: you can see the sound, the pilot, the stereo part and RDS.</p>
+<h3>Listening with an SDR</h3>
+<p>An RTL-SDR stick with SDR# or SDR++ shows everything: the FM signal and its RDS (WFM mode, RDS on), NFM, the AM carrier and its side bands, USB / LSB / DSB voice, the CW and RTTY tones (USB mode). Connect the pin through a 1 kohm resistor and a 30 to 40 dB attenuator to the SDR input, never directly. For RTTY and PSK31 run <b>fldigi</b>: set the SDR to USB about 1 kHz below the frequency and send its sound to fldigi (a virtual audio cable).</p>
+<h2>Program it</h2>
+<p>The radio's control page writes <code>radio.json</code> on the board; the radio service (main.py) does the rest. You can also use the block directly from Python:</p>
+<pre><code>from blocks import Bus, Radio
+import rds, modes
+
+r = Radio(Bus(), slot=1)
+r.frequency(96.0e6)
+r.power(0.2)                         # 20 % strength
+r.setup(tx=True, stereo=True, rds=True, preemph=50, tones=True)
+r.tones(1000, 400)
+r.mode('fm')
+
+st = rds.Station(pi=0x1A2D, ps='MY RADIO', rt='Hello from the FPGA', pty=10)
+r.rds_load(st.cycle(), bank=1)       # the FPGA changes to bank 1 at the end of the round
+
+r.mode('symbols')                    # Morse code at 20 words per minute
+r.send(modes.cw('CQ CQ DE ARDZY', wpm=20))</code></pre>
+<p>Other helpers: <code>r.mode('usb')</code> (or <code>'lsb'</code>, <code>'dsb'</code>), <code>r.setup(narrow=True)</code> (the voice filter: NFM, narrow AM), <code>r.input_rate(44100)</code> and <code>r.push(words)</code> for your own sound (8192 places), <code>r.capture()</code> for 4096 MPX samples, <code>r.capture_iq()</code> for 2048 I / Q pairs, <code>r.peaks()</code>, <code>r.rf_hz()</code> (the carrier counted at the pin), <code>r.rf_duty()</code> (the time the pin is high), <code>rds.decode(r.rds_log())</code> to read back what was sent, <code>modes.rtty()</code>, <code>modes.psk31()</code>, <code>modes.beacon()</code>, <code>modes.sweep()</code>, <code>sstv.audio_words(rgb, 'martin1')</code>, <code>aes67.Receiver(r, '239.69.83.67', 5004)</code>.</p>
+<h3>The radio service (radio.json)</h3>
+<table>
+<tr><th>Key</th><th>Meaning</th></tr>
+<tr><td><code>on</code>, <code>mode</code>, <code>freq_mhz</code>, <code>power</code></td><td>the transmitter: mode fm, nfm, am, usb, lsb, dsb, carrier, cw, rtty, psk31, beacon or sweep</td></tr>
+<tr><td><code>audio.source</code></td><td>tones, playlist, sstv, network or silence; <code>audio.playlist</code>, <code>loop</code>, <code>shuffle</code>, <code>volume</code>, <code>tone_l</code>, <code>tone_r</code></td></tr>
+<tr><td><code>nfm</code>, <code>am</code></td><td><code>nfm.deviation_khz</code>; <code>am.depth</code>, <code>am.voice</code> (the voice filter)</td></tr>
+<tr><td><code>sstv</code></td><td><code>mode</code> (martin1, scottie1, robot36), <code>image</code> (320 x 256 RGB bytes), <code>repeat_s</code>, <code>id</code> (change it to send again)</td></tr>
+<tr><td><code>network</code></td><td><code>stream</code> (address:port of an announced stream) or <code>address</code>, <code>port</code>, <code>encoding</code> (L24, L16), <code>rate</code>, <code>channels</code>, <code>buffer_ms</code>, <code>label</code></td></tr>
+<tr><td><code>process</code></td><td><code>gain_db</code>, <code>balance</code> (-1..1), <code>mono</code>, <code>swap</code>, <code>agc</code>, <code>agc_target_db</code>, <code>limiter</code>, <code>ceiling_db</code>, <code>bypass</code></td></tr>
+<tr><td><code>delay_s</code></td><td>the delay of the programme, 0 to 10 s</td></tr>
+<tr><td><code>rds</code></td><td><code>ps</code>, <code>rt</code>, <code>pi</code>, <code>pty</code>, <code>tp</code>, <code>ta</code>, <code>music</code>, <code>ct</code>, <code>af</code>, <code>ptyn</code>, <code>ecc</code> (2 hex digits), <code>rtplus</code></td></tr>
+<tr><td><code>rds.ps_mode</code></td><td><code>fixed</code> (<code>ps</code>), <code>list</code> (<code>ps_list</code>: names with their seconds), <code>scroll</code> or <code>words</code> (<code>scroll</code> text, <code>scroll_s</code> per step)</td></tr>
+<tr><td><code>rds.rt_list</code></td><td>a loop of texts, each with its seconds; empty: the one text <code>rt</code></td></tr>
+<tr><td><code>fm</code></td><td><code>stereo</code>, <code>preemph</code> (50, 75, 0), <code>deviation_khz</code>, <code>audio</code>, <code>pilot</code>, <code>rds_level</code> (shares, 0..1)</td></tr>
+<tr><td><code>digital</code></td><td><code>text</code>, <code>wpm</code>, <code>baud</code>, <code>shift</code>, <code>offset_hz</code>, <code>melody</code>, <code>tempo</code>, <code>sweep_...</code>, <code>repeat_s</code>, <code>id</code> (change it to send again)</td></tr>
+</table>
+<p>The service writes <code>status.json</code> twice a second: the carrier counted at the pin, the time it is high, the power used, the level meters, the song or picture and its position, what RDS receivers decode, the network streams and the receiver (packets, losses, buffer, clock follow), gaps in the sound. A thread of its own keeps the sound and the symbols flowing every 5 ms.</p>
+<h4>RDS texts: lists, loops and variables</h4>
+<p>The station name can be fixed, a <b>list</b> of names (each shown for its own seconds), a <b>scrolling</b> text or a text shown <b>word by word</b>. The radio text can be one text or a <b>loop</b> of texts. Both can use variables, filled in on the board and updated when they change: <code>{title}</code>, <code>{artist}</code>, <code>{song}</code> (artist - title), <code>{time}</code>, <code>{date}</code>, <code>{freq}</code>, <code>{station}</code>. The app shows a preview of what goes on air and what receivers decode. Note that many car radios ignore a station name that changes quickly; a list with 4 s or more per name is the friendly way.</p>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] transmit [1] stereo [2] RDS [3] pilot [5:4] pre-emphasis [6] mute [7] test tones [8] voice filter</td></tr>
+<tr><td>1</td><td>MODE</td><td>0 off, 1 carrier, 2 FM, 3 AM, 4 symbols, 5 USB, 6 LSB, 7 DSB</td></tr>
+<tr><td>2</td><td>FREQ</td><td>carrier = FREQ x 500 MHz / 2^32</td></tr>
+<tr><td>3</td><td>DEV</td><td>deviation at full MPX, 1288530 = 75 kHz</td></tr>
+<tr><td>4..6</td><td>G_AUDIO, G_PILOT, G_RDS</td><td>shares of the MPX, Q15</td></tr>
+<tr><td>7</td><td>VOLUME</td><td>256 = 1.0</td></tr>
+<tr><td>8</td><td>RATIO</td><td>input rate / 48828.125, Q16.16</td></tr>
+<tr><td>9, 10</td><td>AUDIO, AUDIO_LEVEL</td><td>one stereo sample: R x 65536 + L (8192 places); write 10 to empty the FIFO</td></tr>
+<tr><td>11, 12</td><td>TONE_L, TONE_R</td><td>test tones</td></tr>
+<tr><td>13</td><td>AM_DEPTH</td><td>Q15</td></tr>
+<tr><td>14</td><td>LEVEL</td><td>carrier width (512 = full), [16] key for the carrier mode</td></tr>
+<tr><td>15</td><td>RDS_N</td><td>blocks per bank, [16] bank asked for, [17] bank on air</td></tr>
+<tr><td>16, 17</td><td>SYM_LO, SYM_HI</td><td>one symbol: offset, phase / width, time in us (17 queues it)</td></tr>
+<tr><td>18</td><td>SYM_LEVEL</td><td>symbols waiting; write to empty the queue</td></tr>
+<tr><td>19</td><td>CAPTURE</td><td>write 1: record 4096 MPX samples, 3: 2048 I / Q pairs (slots 3 to 6)</td></tr>
+<tr><td>20, 21</td><td>RDS_LOG, RDS_LOG_LEVEL</td><td>the RDS bits sent, 32 per word</td></tr>
+<tr><td>22..24</td><td>PEAK_L, PEAK_R, PEAK_MPX</td><td>largest level since the last read</td></tr>
+<tr><td>25</td><td>RF_HZ</td><td>rising edges counted at the pin per second</td></tr>
+<tr><td>26, 27</td><td>UNDERRUNS, SYM_UNDER</td><td>gaps in the sound / in the symbols</td></tr>
+<tr><td>28, 29</td><td>STATUS, ID</td><td>[0] 250 MHz clock locked; "FMTX"</td></tr>
+<tr><td>30</td><td>RF_HIGH</td><td>250 MHz samples with the pin high in the last 0.1 s (25 000 000 = always)</td></tr>
+</table>
+<h2>The self-test</h2>
+<p><b>Self-test</b> on the project card measures 36 things on your board, with nothing connected: the MPX levels (1 kHz, the pilot, the stereo side bands), the stereo signal decoded back (more than 90 dB between left and right), the 15 kHz filter, the pre-emphasis, the RDS waveform demodulated bit by bit, the RDS data decoded back to the station name, the carrier counted at the pin at 27.12 and 40.68 MHz (ISM frequencies, for a few seconds), the FM deviation as a shift of the carrier, the power setting and AM as the time the pin is high (at 6.78 MHz, ISM), USB (the other side band captured inside the FPGA, the 1 kHz tone at +1000 Hz at the pin), LSB (-1000 Hz), DSB, the NFM voice filter, the PSK phase path, the symbol player, the sound resampler and the FIFOs.</p>
+<p>On the PC, <code>pc_app/tests</code> also decodes CW, RTTY and PSK31 back to text, decodes the SSTV sound back to pixels, and drives the whole service on the board (songs, RDS, pictures, an AES67 stream from the PC).</p>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>A numerically controlled oscillator</td><td>the 32-bit RF phase at 500 million samples per second</td></tr>
+<tr><td>Frequency modulation</td><td>the MPX signal adds to the phase step</td></tr>
+<tr><td>Stereo multiplex</td><td>L+R, a 19 kHz pilot, L-R on 38 kHz, RDS on 57 kHz</td></tr>
+<tr><td>Digital data on a radio signal</td><td>RDS: groups, check words, biphase symbols</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>FM broadcast deviates +-75 kHz. With a 32-bit phase at 500 MHz, how big is the phase step change for 75 kHz?</li></ol>
+<details><summary>Answer</summary>
+75 000 x 2^32 / 500 000 000 = 644 245 steps: the MPX value is scaled to that at full level.
+</details>
+<ol><li>Why is the stereo pilot exactly 19 kHz, half of the 38 kHz subcarrier?</li></ol>
+<details><summary>Answer</summary>
+The receiver doubles the pilot to rebuild the 38 kHz carrier in exact phase, and demodulates L-R with it. RDS at 57 kHz is the third harmonic, locked too.
+</details>
+<ol><li>RDS sends 1187.5 bits per second. How long does a station name (4 groups of 104 bits) take?</li></ol>
+<details><summary>Answer</summary>
+416 bits / 1187.5 = 0.35 s; in practice the name is sent between other groups, so receivers show it within a second or two.
+</details>
+<h2>Ideas</h2>
+<ul><li>A <b>band-pass filter</b> (or a 110 MHz low-pass) between the pin and the antenna removes the harmonics; a small amplifier is only allowed with a licence.</li><li><b>Time signal</b>: the board's clock goes out in RDS every minute; send a beep every hour with the test tones.</li><li>Use the <b>I2S audio</b> project's microphone or line input as a live source (copy both blocks into one design).</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>No station name</b>: RDS needs a good signal. Move closer, check that RDS is on and the RDS share is 3 to 5 %.</li><li><b>No stereo lamp</b>: stereo on, the pilot share 8 to 10 %, and a strong enough signal (radios switch to mono when it is weak).</li><li><b>Hiss or distortion</b>: lower the volume until the MPX meter stays below 0 dB; the sound share plus pilot plus RDS should stay at or below 100 %.</li><li><b>Gaps in the songs</b>: the status shows gaps per second; very large WAV files at 96 kHz need more of the ARM's time. Use 44.1 or 48 kHz.</li><li><b>No network streams listed / nothing received</b>: use <b>From this PC</b> in the app (it does not depend on the network card); for a program that announces itself, use <b>pass on to the radio</b>. A sender on another device must send to the board's network: in its settings choose the network card that leads to the board, or send unicast to the board's address. RAVENNA devices that announce only with mDNS / RTSP (not SAP): type their stream's address and port.</li><li><b>The picture is slanted or the colours are off</b>: choose the same SSTV mode in the decoder, or let it detect the VIS code; a weak signal blurs it.</li><li><b>Power shows "lowest clean power"</b>: at FM frequencies the pin cannot make weaker clean pulses; use a resistor or a shorter antenna.</li><li><b>The pin counter shows 0</b>: the transmitter is off, the power is 0, or the frequency is above 125 MHz (the counter cannot follow; the carrier is still there).</li></ul></main></body></html>

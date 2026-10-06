@@ -1,0 +1,82 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Rotary encoders (quadrature counters)</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Motors and motion &middot; easy</div><h1>Rotary encoders (quadrature counters)</h1><p class="lead">Count two quadrature encoders (knobs, motor encoders, linear scales) in hardware: never a missed step, position, speed and error counts, with a glitch filter.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 8 of 8 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Encoder counters</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>enc[0]</code></td><td>J5 pin 5</td><td>T16</td></tr><tr><td><code>enc[1]</code></td><td>J5 pin 11</td><td>V15</td></tr><tr><td><code>enc[2]</code></td><td>J5 pin 12</td><td>W15</td></tr><tr><td><code>enc[3]</code></td><td>J5 pin 15</td><td>U17</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J5 pin 5 / pin 11</td><td>encoder 0 A / B</td><td>3.3 V signals; a 5 V encoder needs a divider or a level shifter</td></tr><tr><td>J5 pin 12 / pin 15</td><td>encoder 1 A / B</td><td></td></tr><tr><td>J5 pin 16 (3.3 V) and pin 1 (GND)</td><td>encoder + and GND</td><td>a plain knob encoder: common pin to GND, A and B to the pins (the pull-ups are on)</td></tr></table><h3>Parts</h3><ul><li>rotary encoder knob (for example KY-040) or a motor with encoder</li><li>nothing for the self-test</li></ul><h2>What it does</h2>
+<p>Counts rotary encoders (the knobs with clicks, KY-040) and motor encoders: two channels on J5, position and speed, never missing a step, even at millions of counts per second. The demo shows both positions and speeds and puts encoder 0 on the 4 LEDs.</p>
+<h2>How it works</h2>
+<p>An encoder has two outputs, <b>A</b> and <b>B</b>, square waves a quarter period apart. The order of their edges gives the direction: A rises before B one way, B before A the other way. Every edge of A or B is one count, so an encoder with 20 lines gives 80 counts per turn.</p>
+<pre><code>     ___     ___
+A __|   |___|   |___      one direction: A leads B
+       ___     ___
+B ____|   |___|   |___</code></pre>
+<p>Software on Linux would miss edges when the knob turns fast; the FPGA looks at both pins every 10 ns. A <b>glitch filter</b> takes a level only after it was steady for 0.2 us (bouncing contacts of cheap knobs make short spikes). If A and B change in the same clock, the step is impossible to tell: that is counted in ERRORS (too fast, or noise).</p>
+<p>The speed is the number of counts in a gate time (0.1 s by default).</p>
+<p>For the self-test there is a <b>generator</b> inside: it makes A/B signals at a set speed, either straight into the counters or out on encoder 0's real pins, so the whole path through the pads is checked.</p>
+<h2>Try it</h2>
+<ol><li>A KY-040 board: <b>CLK</b> to J5 pin 5 (A), <b>DT</b> to J5 pin 11 (B), <b>+</b> to 3.3 V (pin 16), <b>GND</b> to pin 1. The second encoder: J5 pins 12 and 15.</li><li>Bare knobs without a board need pull-ups: the FPGA pins have them, and the common pin goes to GND.</li><li><b>Upload and run</b>, turn the knob.</li></ol>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, Encoders
+enc = Encoders(Bus(), slot=1)
+enc.config(0, reverse=False, filter_ns=500)   # longer filter for cheap knobs
+enc.count(0, 0)                                # set position 0
+while True:
+    print(enc.count(0), enc.speed(0), 'counts per gate', enc.errors(0))</code></pre>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>8c + 0</td><td>COUNT</td><td>position of channel c (signed), write sets it</td></tr>
+<tr><td>8c + 1</td><td>SPEED</td><td>counts in the last gate</td></tr>
+<tr><td>8c + 2</td><td>ERRORS</td><td>impossible steps</td></tr>
+<tr><td>8c + 3</td><td>CFG</td><td>[0] reverse, [15:8] filter clocks</td></tr>
+<tr><td>64</td><td>GATE</td><td>speed gate in clocks</td></tr>
+<tr><td>65..68</td><td>TEST, GEN_PERIOD, GEN_RUN, GEN_DONE</td><td>the test generator</td></tr>
+<tr><td>69</td><td>ID</td><td>"QUAD"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Quadrature decoding: direction from edge order</td><td>A leads B one way, B leads A the other</td></tr>
+<tr><td>Glitch filtering</td><td>a level is taken only after 0.2 us without change</td></tr>
+<tr><td>Counting in hardware never misses</td><td>every edge seen at 100 MHz</td></tr>
+<tr><td>A test generator inside the design</td><td>A/B signals made by the FPGA to test its own counters</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>An encoder with 24 lines turns once per second. How many counts per second?</li></ol>
+<details><summary>Answer</summary>
+Every edge of A and B counts: 4 x 24 = 96 counts per second.
+</details>
+<ol><li>Why does a change of A and B in the same clock count as an error?</li></ol>
+<details><summary>Answer</summary>
+In correct quadrature only one of the two changes at a time. Both at once means the step was too fast to see or there was noise: the direction cannot be known.
+</details>
+<ol><li>How fast may the encoder go before the 0.2 us filter swallows real edges?</li></ol>
+<details><summary>Answer</summary>
+Edges must be at least 0.2 us apart: up to 5 million edges per second, far beyond any knob or most motor encoders.
+</details>
+<h2>Ideas</h2>
+<ul><li>A menu knob for the VGA project, a volume knob for the radio.</li><li>Motor position control together with project 04 (steppers) or a DC motor with a PWM from the Tools page.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>Counts jump by 2 or go back</b>: a bouncing knob: raise the filter (<code>filter_ns=1000</code>).</li><li><b>Wrong direction</b>: <code>reverse=True</code>, or swap A and B.</li><li><b>ERRORS rise</b>: the signals are too fast for the filter, or a wire picks up noise.</li></ul></main></body></html>

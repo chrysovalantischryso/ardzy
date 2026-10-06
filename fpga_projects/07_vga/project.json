@@ -1,0 +1,67 @@
+{
+  "id": "VGA6",
+  "title": "VGA picture (640 x 480)",
+  "category": "Lights and display",
+  "level": "medium",
+  "summary": "Connect any VGA monitor with 8 resistors: a 320 x 240 picture with 16 colours (out of 64), text, lines, graphs, all drawn from Python.",
+  "slots": {
+    "0": "Info",
+    "1": "VGA registers (palette at 16..31)",
+    "2-11": "Frame buffer (9600 words, 8 pixels each)"
+  },
+  "extra_files": [
+    "font8x8.py"
+  ],
+  "pins": {
+    "red[1]": "j6[0]",
+    "red[0]": "j6[1]",
+    "green[1]": "j6[2]",
+    "green[0]": "j6[3]",
+    "blue[1]": "j8[0]",
+    "blue[0]": "j8[1]",
+    "hsync": "j8[2]",
+    "vsync": "j8[3]",
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [
+    [
+      "J6 pin 5 (red 1) + J6 pin 11 (red 0)",
+      "VGA pin 1 (red) through 470 ohm and 1 kohm",
+      "the two resistors join at the VGA pin: a 2-bit DAC"
+    ],
+    [
+      "J6 pin 12 (green 1) + J6 pin 15 (green 0)",
+      "VGA pin 2 (green) through 470 ohm and 1 kohm",
+      ""
+    ],
+    [
+      "J8 pin 5 (blue 1) + J8 pin 11 (blue 0)",
+      "VGA pin 3 (blue) through 470 ohm and 1 kohm",
+      ""
+    ],
+    [
+      "J8 pin 12 (HSYNC)",
+      "VGA pin 13 through 100 ohm",
+      ""
+    ],
+    [
+      "J8 pin 15 (VSYNC)",
+      "VGA pin 14 through 100 ohm",
+      ""
+    ],
+    [
+      "J6 / J8 pin 1 (GND)",
+      "VGA pins 5, 6, 7, 8, 10 (GND)",
+      ""
+    ]
+  ],
+  "parts": [
+    "VGA connector (DB15 female) or a cut VGA cable",
+    "3 x 470 ohm, 3 x 1 kohm, 2 x 100 ohm resistors",
+    "a VGA monitor (or an HDMI monitor with a VGA adapter)"
+  ],
+  "tested": "the self-test passed 7 of 7 checks on the real board (October 2026), with nothing connected."
+}

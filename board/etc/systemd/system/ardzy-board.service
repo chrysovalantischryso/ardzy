@@ -1,0 +1,11 @@
+[Unit]
+Description=Ardzy board extras (status LED, buzzer, buttons)
+After=ardzy-autoload.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ardzy-board-init
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

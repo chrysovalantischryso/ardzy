@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ardzy Guide</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <nav class="back"><a href="index.html">&larr; All documents</a></nav>
+  <div class="kicker">Project 2 &middot; folder ANTMINER S9\2_Ardzy</div>
+  <h1><img src="img/ardzy_icon.png" alt="" style="width:40px;height:40px;vertical-align:-8px;margin-right:8px">Ardzy: the Zynq, used like an Arduino</h1>
+  <p>A fully clean Linux built from source, an empty FPGA at power-on, and a one-click way to send your designs and programs to the board.</p>
+</div></header>
+
+<main class="wrap">
+<div class="toc"><b>Contents</b><ol>
+  <li><a href="#idea">The idea</a></li>
+  <li><a href="#parts">The parts of Ardzy</a></li>
+  <li><a href="#card">What is on the SD card</a></li>
+  <li><a href="#build">How it was built</a></li>
+  <li><a href="#upload">What happens when you press Upload</a></li>
+  <li><a href="#app">The Ardzy app</a></li>
+  <li><a href="#project">A project, file by file</a></li>
+  <li><a href="#vivado">Making your own FPGA design</a></li>
+  <li><a href="#code">Programs: Python and C</a></li>
+  <li><a href="#board">On the board: commands and web page</a></li>
+  <li><a href="#safety">Safety features</a></li>
+  <li><a href="#status">Test status</a></li>
+  <li><a href="#start">First start, step by step</a></li>
+  <li><a href="#trouble">Troubleshooting</a></li>
+  <li><a href="#rebuild">Rebuilding everything</a></li>
+  <li><a href="#files">Folder map</a></li>
+</ol></div>
+
+<h2 id="idea">1. The idea</h2>
+<p>With an Arduino you write a sketch, press <b>Upload</b>, and it runs. Ardzy gives the Zynq board the same feeling, but you can send
+<b>two kinds of things</b> at once: a program for the ARM processors <i>and</i> a hardware design for the FPGA.</p>
+<table>
+<tr><th>Arduino</th><th>Ardzy</th></tr>
+<tr><td>Arduino IDE</td><td><b>Ardzy app</b> (<code>Ardzy.exe</code>) on Windows</td></tr>
+<tr><td>Sketch (.ino)</td><td><b>Project folder</b>: <code>.bit</code> FPGA design + <code>main.py</code> or <code>main.c</code></td></tr>
+<tr><td>Upload over USB</td><td><b>Upload over Ethernet</b> (USB-UART console also available)</td></tr>
+<tr><td>Serial Monitor</td><td><b>Monitor</b> tab: everything your program prints, live</td></tr>
+<tr><td>Bootloader</td><td>U-Boot + Linux (Debian 13) on the SD card</td></tr>
+<tr><td>Sketch stays after power-off</td><td>Tick <b>at boot</b>: the project loads at every power-on</td></tr>
+<tr><td>Fixed chip</td><td>The FPGA is <b>rebuilt</b> for every project: your own hardware</td></tr>
+</table>
+
+<h2 id="parts">2. The parts of Ardzy</h2>
+<figure>
+<svg viewBox="0 0 900 360" role="img" aria-label="Ardzy system overview">
+  <rect x="10" y="20" width="330" height="320" rx="12" class="d-box"/>
+  <text x="28" y="48" class="d-title">Your PC (Windows)</text>
+  <rect x="30" y="64" width="290" height="110" rx="8" class="d-acc"/>
+  <text x="44" y="90" class="d-title">Ardzy app</text>
+  <text x="44" y="112" class="d-small">editor, Check, Upload, Build FPGA,</text>
+  <text x="44" y="131" class="d-small">Monitor, Board info, Registers,</text>
+  <text x="44" y="150" class="d-small">USB serial console</text>
+  <rect x="30" y="190" width="135" height="64" rx="8" class="d-box"/><text x="42" y="216" class="d-text">Vivado 2021.1</text><text x="42" y="236" class="d-small">makes .bit files</text>
+  <rect x="185" y="190" width="135" height="64" rx="8" class="d-box"/><text x="197" y="216" class="d-text">projects\</text><text x="197" y="236" class="d-small">your project folders</text>
+  <rect x="30" y="270" width="290" height="52" rx="8" class="d-box"/><text x="42" y="294" class="d-text">WSL Ubuntu: build scripts</text><text x="42" y="312" class="d-small">makes the SD card image (once)</text>
+
+  <rect x="560" y="20" width="330" height="320" rx="12" class="d-box"/>
+  <text x="578" y="48" class="d-title">The board (Debian 13)</text>
+  <rect x="580" y="64" width="290" height="70" rx="8" class="d-acc"/><text x="594" y="90" class="d-title">ardzyweb (service)</text><text x="594" y="112" class="d-small">HTTP API + web page :80, discovery UDP 41414</text>
+  <rect x="580" y="146" width="290" height="58" rx="8" class="d-acc"/><text x="594" y="170" class="d-title">ardzy (command)</text><text x="594" y="190" class="d-small">load, stop, log, default, peek, poke</text>
+  <rect x="580" y="216" width="138" height="58" rx="8" class="d-ps"/><text x="592" y="240" class="d-text">your program</text><text x="592" y="260" class="d-small">ardzy-app service</text>
+  <rect x="732" y="216" width="138" height="58" rx="8" class="d-pl"/><text x="744" y="240" class="d-text">your FPGA</text><text x="744" y="260" class="d-small">design (overlay)</text>
+  <rect x="580" y="286" width="290" height="40" rx="8" class="d-box"/><text x="594" y="311" class="d-small">kernel 6.18 + FPGA manager + watchdog</text>
+
+  <path d="M320 110 H560" class="d-arrow"/><path d="M550 104 l10 6 -10 6" class="d-arrow"/>
+  <text x="372" y="100" class="d-small">Ethernet: HTTP (upload, control)</text>
+  <path d="M560 125 H320" class="d-dash"/><text x="372" y="146" class="d-small">"here I am" answer (discovery)</text>
+  <path d="M320 160 C440 230, 440 300, 560 306" class="d-dash"/><text x="392" y="250" class="d-small">USB-UART (console, optional)</text>
+</svg>
+<figcaption>The app talks to a small service on the board. No passwords or PuTTY are needed for normal work.</figcaption>
+</figure>
+
+<h2 id="card">3. What is on the SD card</h2>
+<p>Everything here was built from source code in this project (except the one fallback file, which is clearly marked):</p>
+<table>
+<tr><th>File (FAT partition)</th><th>What it is</th><th>Source</th></tr>
+<tr><td><code>BOOT.bin</code></td><td><b>U-Boot SPL</b>: the first stage. Sets clocks, pins and the 512 MB DDR3. Replaces the Xilinx FSBL. 60 KB.</td><td>U-Boot 2026.07, board <code>bitmain_antminer_s9</code>, DDR tables from the proven loader</td></tr>
+<tr><td><code>u-boot.img</code></td><td><b>U-Boot</b>: reads the SD card and starts Linux</td><td>U-Boot 2026.07</td></tr>
+<tr><td><code>uboot.env</code></td><td>U-Boot settings: the boot command, the board's MAC address</td><td>made by the build script</td></tr>
+<tr><td><code>boot.scr</code></td><td>The boot recipe: load <code>zImage</code> + <code>system.dtb</code>, start Linux</td><td>made by the build script</td></tr>
+<tr><td><code>zImage</code></td><td><b>Linux kernel 6.18</b> (Xilinx tree, tag xilinx-v2026.1)</td><td>built with ARM GCC 14</td></tr>
+<tr><td><code>system.dtb</code></td><td><b>Device tree</b>: tells Linux what hardware the board has (ARM side only, no FPGA leftovers)</td><td>our own <code>zynq-antminer-s9.dts</code></td></tr>
+<tr><td><code>BOOT_fallback.bin</code></td><td>Backup only: the proven old loader. Used only if you rename it (see Troubleshooting)</td><td>old card</td></tr>
+</table>
+<p>The second partition holds <b>Debian 13 (trixie)</b>, 624 MB, with the Ardzy tools and the two example projects.</p>
+
+<h2 id="build">4. How it was built</h2>
+<figure>
+<svg viewBox="0 0 900 330" role="img" aria-label="Build pipeline">
+  <g>
+    <rect x="10" y="20" width="200" height="54" rx="7" class="d-box"/><text x="22" y="44" class="d-text">U-Boot v2026.07 source</text><text x="22" y="63" class="d-small">github.com/u-boot</text>
+    <rect x="10" y="88" width="200" height="54" rx="7" class="d-warn"/><text x="22" y="112" class="d-text">ps7_init_gpl.c</text><text x="22" y="131" class="d-small">tables copied from old FSBL</text>
+    <rect x="10" y="156" width="200" height="54" rx="7" class="d-box"/><text x="22" y="180" class="d-text">linux-xlnx 6.18 source</text><text x="22" y="199" class="d-small">github.com/Xilinx</text>
+    <rect x="10" y="224" width="200" height="54" rx="7" class="d-box"/><text x="22" y="248" class="d-text">zynq-antminer-s9.dts</text><text x="22" y="267" class="d-small">our board description</text>
+    <rect x="320" y="40" width="210" height="80" rx="7" class="d-acc"/><text x="332" y="68" class="d-title">02_build_uboot.sh</text><text x="332" y="90" class="d-small">ARM GCC 14</text><text x="332" y="108" class="d-small">&rarr; BOOT.bin, u-boot.img</text>
+    <rect x="320" y="170" width="210" height="80" rx="7" class="d-acc"/><text x="332" y="198" class="d-title">03_build_kernel.sh</text><text x="332" y="220" class="d-small">+ s9.config options</text><text x="332" y="238" class="d-small">&rarr; zImage, system.dtb</text>
+    <rect x="620" y="20" width="270" height="70" rx="7" class="d-acc"/><text x="632" y="48" class="d-title">04_build_rootfs.sh</text><text x="632" y="70" class="d-small">debootstrap Debian 13 + ardzy tools</text>
+    <rect x="620" y="130" width="270" height="70" rx="7" class="d-acc"/><text x="632" y="158" class="d-title">05_make_image.sh</text><text x="632" y="180" class="d-small">boot.scr, uboot.env, 2 partitions</text>
+    <rect x="620" y="240" width="270" height="70" rx="7" class="d-pl"/><text x="632" y="268" class="d-title">out\ardzy_debian13.img</text><text x="632" y="290" class="d-small">2.5 GB, flash with balenaEtcher</text>
+  </g>
+  <g class="d-line"><path d="M210 47 H320"/><path d="M210 115 C270 115, 270 95, 320 95"/><path d="M210 183 H320"/><path d="M210 251 C270 251, 270 225, 320 225"/>
+    <path d="M530 80 C580 80, 580 165, 620 165"/><path d="M530 210 C580 210, 580 175, 620 175"/><path d="M755 90 V130"/><path d="M755 200 V240"/></g>
+</svg>
+<figcaption>Build steps (scripts in 2_Ardzy\scripts, run in WSL). Steps 00 and 01 prepare the compilers and download the sources.</figcaption>
+</figure>
+
+<h3>Problems found and solved on the way</h3>
+<table>
+<tr><th>Problem</th><th>Solution</th></tr>
+<tr><td>Which DDR settings are right for <b>this</b> board?</td><td>A script (<code>fsbl_to_ps7init.py</code>) reads all 194 register writes out of the FSBL that boots the board today, and writes them 1:1 into U-Boot's file. Compared with the Vivado file: only 2 differ (see the <a href="00_Hardware_Antminer_S9.html#ddr">hardware guide</a>).</td></tr>
+<tr><td>Official U-Boot has <b>no boot command</b> for this board</td><td>Found by testing in the emulator. Fixed twice: built into U-Boot, and in <code>uboot.env</code> (also used by the fallback loader).</td></tr>
+<tr><td>U-Boot 2026 needs GCC 10 or newer, Ubuntu 20.04 has 9</td><td>ARM's official GCC 14 toolchain (<code>00_toolchain.sh</code>)</td></tr>
+<tr><td>Debian 13's systemd fails to install under Ubuntu 20.04's old ARM emulator</td><td>A newer static emulator (QEMU 10) from Debian (<code>00_qemu.sh</code>)</td></tr>
+<tr><td>Vivado and a kernel tool break on the space in "ANTMINER S9"</td><td>The scripts copy files to folders without spaces first</td></tr>
+<tr><td>Linux switches off "unused" clocks, which would stop the FPGA's clock</td><td>Device tree keeps FCLK0..3 always on (<code>fclk-enable = &lt;0xf&gt;</code>)</td></tr>
+<tr><td>Fixed Ethernet PHY address did not work in the emulator</td><td>Let the driver scan for the PHY, same as the proven old system</td></tr>
+<tr><td>DNS setting copied from the build PC (a WSL-only address): no internet names on the board, so no <code>apt</code> and no clock sync</td><td><b>systemd-resolved</b> takes the DNS server from the router (DHCP), public DNS as backup. Tested: names resolve, <code>apt update</code> works, clock syncs</td></tr>
+<tr><td>Vivado started from the packaged app loaded the app's private copy of the C runtime</td><td>The app resets its private DLL folder before it starts Vivado or opens folders</td></tr>
+<tr><td>Watchdog only raised an interrupt, it did not reset the board</td><td>Device tree now has <code>reset-on-timeout</code> (found on the real board)</td></tr>
+<tr><td>Board-extras setup locked the system registers (SLCR); Linux needs them unlocked (clock switching, reboot)</td><td>The setup leaves them unlocked, as Linux expects (found on the real board: the reboot did not restart)</td></tr>
+<tr><td>The 4 FPGA LEDs light on 0, not on 1 (schematic: 3.3 V, 220 &Omega;, LED, FPGA pin)</td><td>Examples and templates invert the value</td></tr>
+</table>
+
+<h2 id="upload">5. What happens when you press Upload</h2>
+<figure>
+<svg viewBox="0 0 900 470" role="img" aria-label="Upload sequence">
+  <g>
+    <rect x="20" y="10" width="170" height="40" rx="6" class="d-acc"/><text x="40" y="36" class="d-title">Ardzy app (PC)</text>
+    <rect x="260" y="10" width="170" height="40" rx="6" class="d-acc"/><text x="282" y="36" class="d-title">ardzyweb (board)</text>
+    <rect x="500" y="10" width="170" height="40" rx="6" class="d-acc"/><text x="522" y="36" class="d-title">ardzy load</text>
+    <rect x="720" y="10" width="170" height="40" rx="6" class="d-pl"/><text x="742" y="36" class="d-title">Kernel / FPGA</text>
+  </g>
+  <g class="d-dash"><path d="M105 50 V460"/><path d="M345 50 V460"/><path d="M585 50 V460"/><path d="M805 50 V460"/></g>
+  <g>
+    <rect x="30" y="64" width="150" height="46" rx="5" class="d-box"/><text x="40" y="84" class="d-small">1. save files, Check:</text><text x="40" y="101" class="d-small">chip ID, Python syntax</text>
+    <path d="M105 128 H345" class="d-arrow"/><text x="120" y="122" class="d-small">2. clear project folder</text>
+    <path d="M105 156 H345" class="d-arrow"/><text x="120" y="150" class="d-small">3. send each file (.bit, main.py ...)</text>
+    <path d="M105 184 H345" class="d-arrow"/><text x="120" y="178" class="d-small">4. "load project"</text>
+    <path d="M345 202 H585" class="d-arrow"/><text x="360" y="196" class="d-small">runs: ardzy load name</text>
+    <rect x="510" y="214" width="150" height="62" rx="5" class="d-box"/><text x="518" y="234" class="d-small">5. stop old program,</text><text x="518" y="251" class="d-small">check chip ID, .bit &rarr;</text><text x="518" y="268" class="d-small">.bin (byte order)</text>
+    <path d="M585 296 H805" class="d-arrow"/><text x="598" y="290" class="d-small">6. overlay: firmware-name</text>
+    <rect x="730" y="306" width="150" height="62" rx="5" class="d-pl"/><text x="738" y="326" class="d-small">7. FPGA manager</text><text x="738" y="343" class="d-small">programs the PL,</text><text x="738" y="360" class="d-small">adds your devices</text>
+    <path d="M585 386 H805" class="d-arrow"/><text x="598" y="380" class="d-small">8. start ardzy-app (your program)</text>
+    <path d="M345 420 H105" class="d-blue"/><text x="120" y="414" class="d-small">9. program output, live (Monitor tab)</text>
+    <path d="M805 440 H345" class="d-blue"/><text x="470" y="452" class="d-small">print() goes to the system journal</text>
+  </g>
+</svg>
+<figcaption>One Upload, from the PC to running hardware. Typical time: 2 to 5 seconds for a 2 MB design.</figcaption>
+</figure>
+<p>Details worth knowing:</p>
+<ul>
+  <li><b>Device-tree overlay</b>: a small add-on to the hardware description. Ardzy makes one per project. It says "program the FPGA with this file" and, if you have a <code>devices.dtsi</code>, adds Linux devices for your FPGA blocks. Removing it removes those devices.</li>
+  <li><b>.bit to .bin</b>: Vivado's <code>.bit</code> has a text header and the wrong byte order for the Zynq loader. Ardzy converts it. The result was checked byte by byte against Xilinx's own <code>bootgen</code> tool: identical (bootgen only adds one extra "no operation" word at the end).</li>
+  <li><b>Chip check</b>: every bitstream carries the chip ID it was made for. Ardzy refuses files made for another chip (for example a 7Z020 file), which earlier caused confusion.</li>
+</ul>
+
+<h2 id="app">6. The Ardzy app</h2>
+<p>Start it with <b>Ardzy.lnk</b> in the ANTMINER S9 folder (the program is <code>2_Ardzy\pc_app\dist\Ardzy\Ardzy.exe</code>).
+At start it reconnects to the last board, or finds the board by itself.</p>
+<figure>
+<svg viewBox="0 0 900 520" role="img" aria-label="Ardzy app layout">
+  <rect x="10" y="10" width="880" height="500" rx="10" class="d-box"/>
+  <rect x="10" y="10" width="880" height="48" rx="10" class="d-acc"/>
+  <text x="26" y="40" class="d-title">Ardzy</text>
+  <g class="d-box"><rect x="100" y="20" width="70" height="28" rx="5"/><rect x="232" y="20" width="96" height="28" rx="5"/><rect x="338" y="20" width="62" height="28" rx="5"/><rect x="408" y="20" width="76" height="28" rx="5"/></g>
+  <rect x="176" y="20" width="50" height="28" rx="5" class="d-pl"/>
+  <text x="112" y="39" class="d-small">Check</text><text x="180" y="39" class="d-small">Upload</text><text x="240" y="39" class="d-small">Build FPGA</text><text x="348" y="39" class="d-small">Stop</text><text x="416" y="39" class="d-small">Restart</text>
+  <text x="494" y="39" class="d-small">[ ] at boot</text>
+  <rect x="640" y="20" width="160" height="28" rx="14" class="d-box"/><text x="652" y="39" class="d-small">&#9679; ardzy (169.254.x.x)</text>
+  <text x="812" y="39" class="d-small">Scan  &#9881;</text>
+  <rect x="10" y="58" width="190" height="420" class="d-box"/>
+  <text x="22" y="82" class="d-small">PROJECTS        + New</text>
+  <rect x="18" y="92" width="174" height="26" rx="4" class="d-acc"/><text x="28" y="110" class="d-small">blink           FPGA</text>
+  <text x="28" y="138" class="d-small">leds_python     FPGA</text>
+  <text x="22" y="300" class="d-small">FILES           + file</text>
+  <text x="28" y="324" class="d-small">blink.bit</text><text x="28" y="344" class="d-small">blink.v</text><text x="28" y="364" class="d-small">build.tcl</text><text x="28" y="384" class="d-small">main.py</text>
+  <text x="28" y="412" class="d-small">[Open folder] [Vivado]</text>
+  <rect x="200" y="58" width="690" height="30" class="d-box"/><text x="212" y="78" class="d-small">main.py   x     blink.v   x</text>
+  <rect x="200" y="88" width="690" height="220" class="d-box"/>
+  <text x="214" y="114" class="d-small">1  # blink: the FPGA does all the work</text><text x="214" y="134" class="d-small">2  from ardzy import fpga_state</text><text x="214" y="154" class="d-small">3  print("blink loaded", fpga_state())</text>
+  <text x="560" y="200" class="d-small">code editor (colors for Python,</text><text x="560" y="218" class="d-small">C, Verilog, Tcl), Ctrl+S saves</text>
+  <rect x="200" y="308" width="690" height="34" class="d-box"/><text x="212" y="330" class="d-small">Output   Monitor   Board   Registers   USB serial                                                         Clear</text>
+  <rect x="200" y="342" width="690" height="136" class="d-pl"/>
+  <text x="214" y="366" class="d-small">=== blink: starting program ===</text><text x="214" y="386" class="d-small">blink loaded. FPGA state: operating</text>
+  <rect x="10" y="478" width="880" height="32" rx="0" class="d-box"/><text x="22" y="499" class="d-small">connected: ardzy 169.254.x.x        Upload ...                                                         project: blink      Ardzy 0.1</text>
+</svg>
+<figcaption>Layout of the app window: toolbar, projects and files (left), code editor (middle), panels (bottom), status bar.</figcaption>
+</figure>
+
+<table>
+<tr><th>Button / panel</th><th>What it does</th></tr>
+<tr><td><b>Code / Board / I/O</b> (top left)</td><td>switches between the code editor, the full board view and the pin control view</td></tr>
+<tr><td><b>Board view</b></td><td>everything about the board, live: chip and silicon version, boot source and last reset reason, temperature and the 6 supply voltages with a 5-minute graph, CPU use and speed (fixed 666.7 MHz: speed switching crashed the kernel in testing, so it is off), memory, all clocks with <b>FPGA clock control</b> (FCLK0-3), microSD card, <b>NAND</b> (scan, backup to the PC), network (speed setting), status LEDs, buzzer and buttons, all <b>54 ARM pins</b> (switch the free ones), watchdog, reboot and power off</td></tr>
+<tr><td><b>I/O view</b></td><td>loads the built-in <b>pin-control design</b> (project <code>ardzy_io</code>), then every FPGA pin (36 connector pins, 4 LEDs, 4 I2C lines, test point) can be set to input, 0 or 1 with one click, with its live level; board ID (read only); <b>fan PWM</b> (duty, frequency) and the <b>speed (RPM) of all 6 fans</b>; FPGA clock measured by the FPGA itself</td></tr>
+<tr><td><b>Check</b> <kbd>Ctrl</kbd>+<kbd>R</kbd></td><td>Checks the project on the PC: is there a <code>.bit</code>, is it for the XC7Z010, is it older than your Verilog files, is the Python correct?</td></tr>
+<tr><td><b>Upload</b> <kbd>Ctrl</kbd>+<kbd>U</kbd></td><td>Saves, checks, sends the project, programs the FPGA, starts the program, opens the Monitor</td></tr>
+<tr><td><b>Build FPGA</b></td><td>Runs the project's <code>build.tcl</code> in Vivado (batch, no window). Takes 2 to 5 minutes. The <code>.bit</code> is copied into the project</td></tr>
+<tr><td><b>Stop / Restart</b></td><td>Stops or restarts your program on the board (the FPGA keeps its design)</td></tr>
+<tr><td><b>at boot</b></td><td>The board loads this project automatically at every power-on</td></tr>
+<tr><td>Board pill / <b>Scan</b></td><td>Green dot = connected. Click to see all boards found, or type a name/IP</td></tr>
+<tr><td><b>+ New</b></td><td>New project from a template: Python program, C program, FPGA blink, FPGA + Python LEDs</td></tr>
+<tr><td><b>Output</b></td><td>What the app is doing (check results, upload steps, Vivado progress)</td></tr>
+<tr><td><b>Monitor</b></td><td>Your program's output on the board, live (like Arduino's Serial Monitor)</td></tr>
+<tr><td><b>Board</b></td><td>Name, IP, system, kernel, FPGA state, loaded project, memory, CPU load, uptime, chip temperature</td></tr>
+<tr><td><b>Registers</b></td><td>Read/write any register of your FPGA design (e.g. <code>0x41200000</code>)</td></tr>
+<tr><td><b>USB serial</b></td><td>Console through a USB-UART adapter on J12: see the boot messages, log in without a network</td></tr>
+<tr><td>&#9881; Settings</td><td>Projects folder, path to Vivado, extra board names/IPs to try</td></tr>
+</table>
+<h3>How the app finds the board</h3>
+<ol>
+  <li>It sends a short message <code>ARDZY_DISCOVER</code> as a <b>broadcast</b> on every network card of the PC (UDP port 41414). This also covers a direct cable (169.254.x.x addresses, no router).</li>
+  <li>It sends the same message over <b>IPv6</b> (multicast <code>ff02::1</code>) on every network card. IPv6 link-local addresses (<code>fe80::...</code>) exist on every cable without any setup, so this works even when the PC's cable port has a fixed IPv4 address that does not match the board (for example <code>192.168.137.1</code> left over from Windows Internet Connection Sharing). This is how your board is reached today.</li>
+  <li>Every Ardzy board answers with its name, IP, system and FPGA state.</li>
+  <li>It also tries the remembered board and names like <code>ardzy.local</code> directly (works through routers).</li>
+  <li>One board found: it connects by itself. Several: you choose.</li>
+</ol>
+<p>Inside the app, the window talks to a small engine on <code>127.0.0.1</code> with a secret key that changes at every start, so web pages cannot control your board through it.</p>
+
+<h2 id="project">7. A project, file by file</h2>
+<table>
+<tr><th>File</th><th>Needed?</th><th>What it does</th></tr>
+<tr><td><code>*.bit</code></td><td>for FPGA changes</td><td>The FPGA design (from Vivado). If missing, the folder's Vivado project is searched (<code>*.runs\impl_1\*.bit</code>). If none: the FPGA stays as it is</td></tr>
+<tr><td><code>main.py</code></td><td>optional</td><td>Python 3 program, started after the FPGA is loaded</td></tr>
+<tr><td><code>*.c</code>, <code>*.h</code>, <code>Makefile</code></td><td>optional</td><td>C program: compiled <b>on the board</b> (gcc 14) when it changed, then started</td></tr>
+<tr><td><code>run.sh</code></td><td>optional</td><td>Any shell commands instead of a program</td></tr>
+<tr><td><code>devices.dtsi</code></td><td>optional</td><td>Linux devices for your FPGA blocks (for example a UIO device for interrupts)</td></tr>
+<tr><td><code>build.tcl</code></td><td>optional</td><td>Vivado script so <b>Build FPGA</b> can make the <code>.bit</code> with one click</td></tr>
+<tr><td><code>*.v</code>, <code>*.xdc</code></td><td>your sources</td><td>Verilog and pin constraints (stay on the PC)</td></tr>
+</table>
+<p>Only one program runs at a time: the order is <code>run.sh</code>, then <code>main.py</code>, then <code>Makefile</code>, then <code>*.c</code>.</p>
+
+<h3>The two examples</h3>
+<div class="grid2">
+<div class="box ok"><b>blink</b> FPGA only. A 30-bit counter on the 100 MHz clock; its top 4 bits (inverted, the LEDs are active low) drive the LEDs, so they count in binary about 1.5 times per second. <code>main.py</code> only prints a message.</div>
+<div class="box ok"><b>leds_python</b> FPGA + Python. An AXI GPIO block at <code>0x4120_0000</code> drives the LEDs. <code>main.py</code> writes a "Knight Rider" pattern (one LED lit, moving). Change the pattern, Upload, see it at once.</div>
+<div class="box ok"><b>board_hello</b> No FPGA. The red/green status LED blinks; the IP button beeps, the Reset button ends the program. Uses <code>led()</code>, <code>beep()</code>, <code>button()</code>.</div>
+</div>
+
+<h2 id="vivado">8. Making your own FPGA design</h2>
+<ol class="steps">
+  <li><b>Part:</b> <code>xc7z010clg400-1</code>. Any other part will be refused by the chip check.</li>
+  <li><b>Block design:</b> add a <b>ZYNQ7 Processing System</b> block. No board preset is needed: DDR and pin settings in Vivado are ignored, the SD card's boot loader already set them.</li>
+  <li><b>Clock:</b> use <code>FCLK_CLK0</code> (100 MHz). Need another frequency? Add a Clocking Wizard after it.</li>
+  <li><b>Registers:</b> enable <code>M_AXI_GP0</code>, connect your AXI blocks, read their addresses in the <b>Address Editor</b> (they start at <code>0x4000_0000</code>).</li>
+  <li><b>Pins:</b> copy lines from <code>projects\leds.xdc</code> or the pin table in the <a href="00_Hardware_Antminer_S9.html#connectors">hardware guide</a>. Always <code>IOSTANDARD LVCMOS33</code>.</li>
+  <li><b>Generate Bitstream</b>, then Upload in Ardzy: it finds the newest <code>.bit</code> in the project folder by itself.</li>
+</ol>
+<div class="box info"><b>Tip</b> Put the Vivado project <i>inside</i> the Ardzy project folder. Then you never have to copy <code>.bit</code> files by hand.</div>
+
+<h2 id="code">9. Programs: Python and C</h2>
+<h3>Python</h3>
+<pre><code>import time
+from ardzy import MMIO, UIO, fpga_state
+
+regs = MMIO(0x41200000)          # base address from the Address Editor
+regs.write(0x4, 0)               # AXI GPIO: direction = outputs
+regs.write(0x0, 0b1010)          # LEDs 1 and 3
+print(regs.read(0x0))
+
+irq = UIO("my_ip")              # needs devices.dtsi (below)
+count = irq.wait()               # sleeps until the FPGA raises its interrupt</code></pre>
+<p><code>devices.dtsi</code> for an interrupt from the FPGA (interrupt line 0 of IRQ_F2P = GIC number 29):</p>
+<pre><code>my_ip@43c00000 {
+    compatible = "generic-uio";
+    reg = &lt;0x43c00000 0x10000&gt;;
+    interrupt-parent = &lt;&amp;intc&gt;;
+    interrupts = &lt;0 29 4&gt;;
+};</code></pre>
+<h3>C</h3>
+<pre><code>#include &lt;fcntl.h&gt;
+#include &lt;stdint.h&gt;
+#include &lt;sys/mman.h&gt;
+int fd = open("/dev/mem", O_RDWR | O_SYNC);
+volatile uint32_t *gpio = mmap(0, 0x10000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0x41200000);
+gpio[1] = 0;        /* direction: outputs */
+gpio[0] = 0x5;      /* LEDs 0 and 2 */</code></pre>
+<p>Python has numpy for fast maths. <code>print()</code>/<code>printf()</code> output goes to the Monitor (C: call <code>setvbuf(stdout, NULL, _IOLBF, 0)</code> so each line appears at once).</p>
+
+<h2 id="board">10. On the board: commands and web page</h2>
+<p>Everything the app does also works from a terminal (PuTTY, <code>ardzy.local</code>, root):</p>
+<pre><code>ardzy list                  projects on the board
+ardzy load blink            program the FPGA + start the program
+ardzy load blink --default  ... and again at every power-on
+ardzy status                what is loaded and running
+ardzy log -f                program output, live (Ctrl+C to quit)
+ardzy stop / ardzy restart  the program
+ardzy default none          nothing at boot
+ardzy peek 0x41200000 4     read 4 registers
+ardzy poke 0x41200000 5     write a register
+ardzy bitinfo file.bit      which chip a bitstream is for
+ardzy new test              empty project with a main.py
+ardzy beep 0.2              buzzer
+ardzy led red on            status LED (green | red | ps, on | off)
+ardzy buttons -w            watch the IP / Reset buttons</code></pre>
+<p>There is also a <b>web page</b> at <code>http://ardzy.local</code> (any browser, also a phone) with upload by drag and drop, project list, live output and registers.</p>
+
+<h2 id="safety">11. Safety features</h2>
+<table>
+<tr><th>Feature</th><th>What it protects you from</th></tr>
+<tr><td>Chip ID check</td><td>Loading a bitstream made for another chip</td></tr>
+<tr><td>Hardware <b>watchdog</b> (30 s)</td><td>A design or address that freezes the board: it reboots by itself (reset mode confirmed active; a real freeze test is still to be done with your OK)</td></tr>
+<tr><td>Status LED</td><td>Green = Ardzy ready, red = safe mode: you see the state without a PC</td></tr>
+<tr><td><b>Safe mode</b></td><td>If the board crashes while starting the "at boot" project, the next start skips that project, so you can always get back in. Load any project to leave safe mode</td></tr>
+<tr><td>Clear before upload</td><td>Old files of a project never stay behind</td></tr>
+<tr><td>Fallback boot loader on the card</td><td>A new boot loader that does not start on real hardware (see Troubleshooting)</td></tr>
+</table>
+<div class="box warn"><b>Know this</b> Reading or writing an FPGA address where your design has nothing makes the AXI bus wait forever and the board freezes. The watchdog reboots it after about 30 seconds. Use only addresses from the Address Editor.
+The board's web page and API have no password: use it only on your own network.</div>
+
+<h2 id="status">12. Test status</h2>
+<table>
+<tr><th>What</th><th>How tested</th><th>Result</th></tr>
+<tr><td>DDR3 settings in the new boot loader</td><td>Compared with the proven FSBL, value by value; checked inside the built BOOT.bin</td><td><span class="tag ok">identical</span></td></tr>
+<tr><td>U-Boot &rarr; boot.scr &rarr; kernel &rarr; Debian 13</td><td>Full boot in QEMU (emulated Zynq-7000)</td><td><span class="tag ok">passed</span>, 0 failed services, 512 MB detected</td></tr>
+<tr><td>Network, SSH, web page, API, discovery answer</td><td>QEMU + from Windows</td><td><span class="tag ok">passed</span></td></tr>
+<tr><td>Internet names (DNS), <code>apt update</code>, clock sync (NTP), name <code>ardzy.local</code></td><td>QEMU with real internet through the PC</td><td><span class="tag ok">passed</span></td></tr>
+<tr><td>Ardzy app: find board, upload Python and C, Monitor, Stop</td><td>App on Windows against the emulated board</td><td><span class="tag ok">passed</span></td></tr>
+<tr><td><code>ardzy</code> tool: chip check, .bit conversion, overlay, safe mode logic</td><td>On ARM Debian 13 (emulated) with a simulated FPGA; conversion compared with Xilinx bootgen</td><td><span class="tag ok">passed</span></td></tr>
+<tr><td>Example designs</td><td>Vivado 2021.1: 0 errors, 0 critical warnings (timing met)</td><td><span class="tag ok">passed</span></td></tr>
+<tr><td><b>Real board</b>: new SPL sets up the 512 MB DDR3, U-Boot, kernel 6.18, Debian 13</td><td>Your Antminer S9 board, 2026-10-03</td><td><span class="tag ok">passed</span> 0 failed services, partition grew to 29 GB, chip temperature 49.8 &deg;C</td></tr>
+<tr><td><b>Real board</b>: Ethernet PHY (found at address 1), 100 Mbit/s link, the board keeps its own MAC address</td><td>Your board, direct cable</td><td><span class="tag ok">passed</span></td></tr>
+<tr><td><b>Real board</b>: app finds the board, uploads <b>blink</b> (FPGA programmed in 0.07 s) and <b>leds_python</b> (Python writes the AXI GPIO and reads back the right value)</td><td>Ardzy app engine against your board</td><td><span class="tag ok">passed</span></td></tr>
+<tr><td><b>Real board</b>: status LED, buzzer, both buttons; software reboot; watchdog in reset mode, used by systemd (30 s)</td><td>Your board</td><td><span class="tag ok">passed</span></td></tr>
+<tr><td><b>Real board</b>: watchdog really resets a frozen board</td><td>Needs a deliberate freeze (only with your OK)</td><td><span class="tag wait">not done yet</span></td></tr>
+</table>
+
+<h2 id="start">13. First start, step by step</h2>
+<div class="box ok"><b>The file to flash</b>
+<code>2_Ardzy\out\release\Ardzy-0.2-sdcard.img.xz</code> (compressed; the first one, 0.1, is <code>out\Ardzy-0.1-sdcard.img.xz</code>). The Ardzy app's <b>SD card</b> button writes it and checks the card
+(see <a href="05_Ardzy_0.2.html#sd">Ardzy 0.2, Writing an SD card</a>); balenaEtcher and Rufus flash it directly too, no need to unpack.
+Next to it: <code>HOW_TO_FLASH.txt</code> and <code>SHA256SUMS.txt</code> (to check the file). The same image unpacked is <code>2_Ardzy\out\ardzy_debian13.img</code>.
+Note: for SD cards the right format is a disk image (<code>.img</code>), not an <code>.iso</code> (that is for CDs/DVDs and PC installers).</div>
+<ol class="steps">
+  <li>Write <code>Ardzy-0.2-sdcard.img.xz</code> to a spare microSD card (4 GB or more) with the app's SD card button or balenaEtcher. Keep your current card as a backup.</li>
+  <li>Boot jumpers on SD (JP2 and JP4 on). Ethernet cable to the PC or router. Power on.</li>
+  <li>Wait about 2 minutes (the first start makes SSH keys and enlarges the partition).</li>
+  <li>Open <b>Ardzy</b> (the shortcut). It should find <b>ardzy</b> by itself. Otherwise click Scan.</li>
+  <li>Choose <b>blink</b>, press <b>Upload</b>: the 4 LEDs start counting.</li>
+  <li>Choose <b>leds_python</b>, Upload. Change the pattern in <code>main.py</code>, Upload again.</li>
+</ol>
+
+<h2 id="trouble">14. Troubleshooting</h2>
+<table>
+<tr><th>Symptom</th><th>What to do</th></tr>
+<tr><td>Board never appears (no ardzy.local after 3 minutes)</td><td>Use the <b>fallback</b>: put the SD card in the PC, rename <code>BOOT.bin</code> &rarr; <code>BOOT_new.bin</code> and <code>BOOT_fallback.bin</code> &rarr; <code>BOOT.bin</code>, try again. If that works, the new first stage needs a fix: tell Claude, and connect a USB-UART to see the messages</td></tr>
+<tr><td>Best way to see what is wrong</td><td>A <b>3.3 V USB-UART adapter</b> on J12 (board TX &rarr; adapter RX, RX &rarr; TX, GND &rarr; GND). Ardzy app &rarr; <b>USB serial</b> tab &rarr; choose the COM port &rarr; Open, then power on the board: you see every boot message</td></tr>
+<tr><td>Ping to the board's 169.254.x.x address fails</td><td>Normal if the PC's cable port has a fixed IPv4 address (yours: <code>192.168.137.1</code>). Ardzy, the web page (<code>http://ardzy.local</code>) and PuTTY (<code>ardzy.local</code>) use IPv6 then and work anyway. Optional: give the board internet by switching on Windows <i>Internet Connection Sharing</i> on the phone/internet adapter, shared to "Ethernet"</td></tr>
+<tr><td>Scan finds nothing, but the board is on</td><td>Windows firewall may block the answer: allow Ardzy when Windows asks. Or type the IP / <code>ardzy.local</code> in the board list</td></tr>
+<tr><td>"bitstream is for 7z020..."</td><td>The design was made for another chip. In Vivado set part <code>xc7z010clg400-1</code></td></tr>
+<tr><td>Board freezes after Upload and reboots</td><td>The design or program touched an address with nothing behind it, or the design hangs the bus. Watchdog reboot; if it was the "at boot" project, safe mode skips it next time</td></tr>
+<tr><td>Program output missing</td><td>Python: fine by default. C: add <code>setvbuf(stdout, NULL, _IOLBF, 0);</code></td></tr>
+<tr><td>Build FPGA fails</td><td>Check the Vivado path in Settings. Open the project in Vivado for the full report</td></tr>
+</table>
+
+<h2 id="rebuild">15. Rebuilding everything</h2>
+<p>In WSL (Ubuntu-20.04), as root, from <code>2_Ardzy\scripts</code>:</p>
+<pre><code>00_toolchain.sh      ARM GCC 14 compiler
+00_qemu.sh           newer ARM emulator (for Debian 13)
+01_get_sources.sh    U-Boot 2026.07 + Linux (xilinx-v2026.1) sources
+02_build_uboot.sh    BOOT.bin (SPL) + u-boot.img
+03_build_kernel.sh   zImage + system.dtb
+04_build_rootfs.sh   Debian 13 + Ardzy tools     (SKIP_DEBOOTSTRAP=1 to redo only the setup)
+05_make_image.sh     out\ardzy_debian13.img
+06_release.sh        out\release\Ardzy-0.2-sdcard.img.xz + checksums + flash instructions
+07_update_bundle.sh  out\release\Ardzy-0.2-update.tar.gz (update for boards already running Ardzy)
+test_qemu.sh uboot   boot test in the emulator
+test_os2_qemu.sh     OS 0.2 test in the emulator: settings, swap, update, automatic return
+                     (needs the emulator U-Boot from test_uboot_for_qemu.sh)</code></pre>
+<p>The app: <code>pc_app\build_exe.bat</code> makes <code>dist\Ardzy\Ardzy.exe</code>. Example designs: <code>projects\build_all.bat</code>.</p>
+
+<h2 id="files">16. Folder map</h2>
+<pre><code>ANTMINER S9\
+  Ardzy.lnk                  start the app
+  1_Clean_Linux\             project 1 (Debian 12, old boot files)
+  2_Ardzy\
+    README.md                short text guide
+    out\release\             THE FILE TO FLASH: Ardzy-0.2-sdcard.img.xz (+ HOW_TO_FLASH.txt, SHA256SUMS.txt, update bundle)
+    out\ardzy_debian13.img   the same image, unpacked
+    pc_app\                  the Ardzy app (ardzy_app.py, ui\, templates\, dist\Ardzy\Ardzy.exe)
+    projects\                your projects (blink, leds_python, leds.xdc)
+    board\                   files installed on the board (ardzy command, ardzy.py, web page, services)
+    kernel\                  device tree + kernel options
+    uboot\                   DDR/clock tables for the first boot stage
+    scripts\                 build and test scripts
+    fallback\                BOOT_fallback.bin (proven old loader)
+    pc_tools\                ardzy_upload.ps1 (upload without the app, used by UPLOAD.bat)</code></pre>
+</main>
+</body>
+</html>

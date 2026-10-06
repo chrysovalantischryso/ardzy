@@ -1,0 +1,83 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>LED strip (WS2812 / NeoPixel)</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Lights and display &middot; easy</div><h1>LED strip (WS2812 / NeoPixel)</h1><p class="lead">Drive WS2812B / SK6812 RGB LED strips with exact timing from the FPGA: up to 1024 LEDs, brightness and colour order in hardware.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 13 of 13 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>LED strip registers</td></tr><tr><td>2</td><td><code>0x43C02000</code></td><td>LED strip pixels (1024 words)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>ws_pin</code></td><td>J7 pin 5</td><td>T20</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J7 pin 5</td><td>strip DIN</td><td>through a 74AHCT125 level shifter (5 V strips), or a 330 ohm resistor for a short test</td></tr><tr><td>J7 pin 1 or 2 (GND)</td><td>strip GND and the 5 V supply&#x27;s GND</td><td>common ground is a must</td></tr><tr><td>5 V supply</td><td>strip +5V</td><td>about 60 mA per LED at full white</td></tr></table><h3>Parts</h3><ul><li>WS2812B or SK6812 LED strip / ring</li><li>5 V power supply (1 A per 16 LEDs at full white)</li><li>74AHCT125 level shifter (or 330 ohm resistor)</li><li>1000 uF capacitor across the strip supply</li></ul><h2>What it does</h2>
+<p>Drives a strip of addressable RGB LEDs (WS2812B, WS2812, SK6812, "NeoPixel") from J7 pin 5: up to 1024 LEDs, any colour per LED, a brightness setting, and the colour order of your strip. The demo plays a rainbow, a colour wipe, a theatre chase and a breathing glow.</p>
+<h2>How it works</h2>
+<p>A WS2812 strip has one data wire. Every LED takes the first 24 bits it sees (8 green, 8 red, 8 blue), keeps them, and passes the rest on to the next LED. A bit is a high pulse in a 1.25 us slot: a <b>short</b> pulse (0.4 us) is a 0, a <b>long</b> one (0.8 us) is a 1. A pause of more than 50 us (here 300 us) means "show the colours now".</p>
+<p>The timing is tight (+-0.15 us), which is hard for Linux on the ARM but easy for the FPGA: a counter at 100 MHz makes every edge to 10 ns.</p>
+<pre><code>ARM writes pixels -&gt; pixel memory (1024 words) -&gt; brightness, colour order -&gt; bit timer -&gt; J7 pin 5
+                                                        pin read back at the pad -&gt; pulse counter</code></pre>
+<p>The FPGA also reads its own pin back: it counts the high pulses and measures the short and long ones. The self-test uses that to prove the real signal at the pin is right.</p>
+<h2>Try it</h2>
+<ol><li>Strip <b>DIN</b> to J7 pin 5, strip <b>GND</b> to pin 1 (GND). The strip needs its own 5 V supply (60 mA per LED at full white); connect its ground to the board's ground.</li><li>Most WS2812B strips take the 3.3 V signal. If yours flickers, add a level shifter (74AHCT125) or power the first LED from 4.5 V (a diode in its supply).</li><li><b>Upload and run</b>. Change <code>N</code> in main.py to the number of LEDs on your strip.</li></ol>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, LedStrip, rgb, wheel
+strip = LedStrip(Bus(), slot=1, count=60)
+strip.order('GRB')                   # WS2812B; many SK6812 are GRB too
+strip.brightness(64)                 # 0..255: saves power and eyes
+strip.fill(rgb(255, 80, 0))          # all orange
+strip.set(0, 0x0000FF)               # LED 0 blue
+strip.show()                         # send
+strip.write([wheel(i * 4) for i in range(60)])   # a rainbow, then show() again</code></pre>
+<p><code>pin_stats()</code> returns the pulses the FPGA saw at the pin in the last frame. For SK6812 use <code>strip.timing(300, 600, 1250, 80)</code>.</p>
+<h3>Registers (slot 1, pixels in slot 2)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>write 1: send; read [0] busy, [31:8] frames sent</td></tr>
+<tr><td>1</td><td>COUNT</td><td>number of LEDs, 1..1024</td></tr>
+<tr><td>2</td><td>BRIGHT</td><td>brightness 0..255</td></tr>
+<tr><td>3</td><td>ORDER</td><td>0 GRB, 1 RGB, 2 BRG, 3 RBG, 4 BGR, 5 GBR</td></tr>
+<tr><td>4..7</td><td>T0H, T1H, TBIT, TRESET</td><td>timing in 10 ns clocks</td></tr>
+<tr><td>8..10</td><td>PULSES, HI0, HI1</td><td>measured at the pin</td></tr>
+<tr><td>11</td><td>ID</td><td>"WS28"</td></tr>
+</table>
+<p>A frame of 60 LEDs takes 60 x 24 x 1.25 us + 300 us = 2.1 ms: more than 400 frames per second are possible.</p>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Exact pulse timing from a counter</td><td>the bit timer: 40 clocks for a short pulse, 80 for a long one, 125 per bit</td></tr>
+<tr><td>A protocol that is only timing (no clock wire)</td><td>WS2812: the pulse width is the bit</td></tr>
+<tr><td>Memory feeding a serial output</td><td>the pixel memory read word by word, 24 bits shifted out per LED</td></tr>
+<tr><td>Checking your own output</td><td>the pin read back at the pad, its pulses counted and measured</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>A strip of 300 LEDs: how long does one update take? (24 bits per LED, 1.25 us per bit, plus the 300 us reset)</li></ol>
+<details><summary>Answer</summary>
+300 x 24 x 1.25 us = 9 ms, plus 0.3 ms: about 9.3 ms, so up to about 100 updates per second.
+</details>
+<ol><li>Why can Python on Linux not make this signal itself by toggling a pin?</li></ol>
+<details><summary>Answer</summary>
+A pulse must be 0.4 or 0.8 us with +-0.15 us. Linux can pause any program for tens of microseconds at any moment; one pause ruins a frame. The FPGA's counter is exact to 10 ns.
+</details>
+<ol><li>SK6812 RGBW strips have a fourth (white) byte. What would change in the design?</li></ol>
+<details><summary>Answer</summary>
+32 bits per LED instead of 24: the shift counter counts to 32 and each pixel word carries the white byte too.
+</details>
+<h2>Ideas</h2>
+<ul><li>A clock, a VU meter with the audio project, a level for the encoder knob.</li><li>More strips: add more <code>ardzy_ws2812</code> blocks on other pins (one per slot pair) in a copy of the project.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>First LED wrong, the rest dark</b>: the 3.3 V level is too low for your strip: level shifter.</li><li><b>Colours swapped</b>: set the colour order (<code>strip.order('RGB')</code>).</li><li><b>Flicker at full white</b>: the supply is too weak, or the strip's ground is not connected to the board's ground.</li></ul></main></body></html>

@@ -1,0 +1,3 @@
+Blockly 11.2.1 by Google (https://github.com/google/blockly), Apache License 2.0:
+https://www.apache.org/licenses/LICENSE-2.0
+Files: blockly_compressed.js, blocks_compressed.js, en.js (from https://unpkg.com/blockly@11.2.1/).

@@ -1,0 +1,83 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Signal generator (DDS)</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Test and measurement &middot; easy</div><h1>Signal generator (DDS)</h1><p class="lead">A function generator: sine, triangle, sawtooth and square from 0.02 Hz to several MHz in 0.023 Hz steps, amplitude, offset, duty and frequency sweeps, on four kinds of outputs.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 10 of 10 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Signal generator</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>sd</code></td><td>J6 pin 5</td><td>U14</td></tr><tr><td><code>pwm</code></td><td>J6 pin 11</td><td>U18</td></tr><tr><td><code>sync</code></td><td>J6 pin 12</td><td>U19</td></tr><tr><td><code>par[0]</code></td><td>J5 pin 5</td><td>T16</td></tr><tr><td><code>par[1]</code></td><td>J5 pin 11</td><td>V15</td></tr><tr><td><code>par[2]</code></td><td>J5 pin 12</td><td>W15</td></tr><tr><td><code>par[3]</code></td><td>J5 pin 15</td><td>U17</td></tr><tr><td><code>par[4]</code></td><td>J8 pin 5</td><td>Y18</td></tr><tr><td><code>par[5]</code></td><td>J8 pin 11</td><td>V16</td></tr><tr><td><code>par[6]</code></td><td>J8 pin 12</td><td>W16</td></tr><tr><td><code>par[7]</code></td><td>J8 pin 15</td><td>Y19</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J6 pin 5 (sigma-delta)</td><td>1 kohm resistor, then 10 nF to GND: the analog signal is at the capacitor</td><td>best for audio and low frequencies (up to about 20 kHz)</td></tr><tr><td>J6 pin 11 (PWM DAC)</td><td>1 kohm, then 100 nF to GND</td><td>390 kHz carrier, 8-bit</td></tr><tr><td>J6 pin 12 (sync)</td><td>scope trigger, or a clock input</td><td>a clean square wave at the set frequency</td></tr><tr><td>J5 pins 5/11/12/15 + J8 pins 5/11/12/15</td><td>R-2R ladder (bit 0 on J5 pin 5 ... bit 7 on J8 pin 15)</td><td>8-bit output, up to several MHz</td></tr></table><h3>Parts</h3><ul><li>resistors and capacitors for the filters</li><li>R-2R network (10 k / 20 k) for the parallel output</li><li>a scope to see the waves</li><li>nothing for the self-test</li></ul><h2>What it does</h2>
+<p>A function generator: sine, triangle, sawtooth and square waves from 0.02 Hz up, with amplitude, offset, duty cycle and frequency sweeps. It comes out four ways at the same time: a 1-bit sigma-delta DAC, an 8-bit PWM DAC, a square sync output, and 8 parallel bits for a resistor ladder.</p>
+<h2>How it works</h2>
+<p><b>Direct digital synthesis (DDS)</b>: a 32-bit phase grows by FREQ every clock (100 million times per second). The top 10 bits of the phase pick a value from a 1024-point sine table (or make a triangle, sawtooth or square from the phase itself).</p>
+<pre><code>frequency = FREQ x 100 MHz / 2^32         (steps of 0.023 Hz)
+1 kHz     -&gt; FREQ = 42 950</code></pre>
+<p>The value is then scaled (AMP), moved (OFFSET), and turned into a voltage:</p>
+<ul><li><b>sigma-delta</b> (J6 pin 5): a 1-bit stream at 100 MHz whose average follows the value. A 1 kohm resistor and a 10 nF capacitor (a low-pass) smooth it into the analog wave: clean up to about 20 kHz.</li><li><b>PWM</b> (J6 pin 11): 8 bits at 390.6 kHz; 1 kohm + 100 nF.</li><li><b>sync</b> (J6 pin 12): high for the first half of each period, a perfect square for a scope trigger or as a clock.</li><li><b>R-2R</b> (J5 + J8, 8 pins): the top 8 bits in parallel: with an R-2R ladder (10 k / 20 k resistors) you get an 8-bit DAC that is good up to several MHz.</li></ul>
+<p>A <b>sweep</b> adds SWEEP_STEP to FREQ every SWEEP_RATE clocks: the frequency glides from start to stop, for measuring filters and speakers. The FPGA measures the frequency at its own sync pin (read back at the pad) to prove the output.</p>
+<h2>Try it</h2>
+<ol><li>A resistor of 1 kohm from J6 pin 5, a 10 nF capacitor from its other end to GND (pin 1): the wave is on the capacitor.</li><li>A scope on the capacitor and its trigger on J6 pin 12, or headphones through a 10 uF capacitor (keep the volume low).</li><li><b>Upload and run</b>: the demo steps through the waves, then sweeps 100 Hz to 10 kHz.</li></ol>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, SignalGen
+g = SignalGen(Bus(), slot=1)
+g.wave('sine')
+g.frequency(440)
+g.amplitude(0.8)          # 0..1
+g.on()
+g.sweep(100, 10000, seconds=5, repeat=True)
+print(g.measured_hz())    # counted at the sync pin</code></pre>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] on [1] sweep running [2] sweep repeats</td></tr>
+<tr><td>1</td><td>FREQ</td><td>phase step</td></tr>
+<tr><td>2</td><td>WAVE</td><td>0 sine, 1 triangle, 2 sawtooth, 3 square</td></tr>
+<tr><td>3..5</td><td>AMP, OFFSET, DUTY</td><td>0..65535, signed, 32768 = 50 %</td></tr>
+<tr><td>6..8</td><td>SWEEP_STOP, SWEEP_STEP, SWEEP_RATE</td><td>the sweep</td></tr>
+<tr><td>9</td><td>PHASE</td><td>set the phase</td></tr>
+<tr><td>10..12</td><td>SAMPLE, MEAS_HZ, FREQ_NOW</td><td>(read)</td></tr>
+<tr><td>13</td><td>ID</td><td>"DDSG"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Direct digital synthesis</td><td>a 32-bit phase + FREQ every clock, a 1024-point sine table</td></tr>
+<tr><td>Digital to analog without a DAC chip</td><td>sigma-delta and PWM outputs plus an RC low-pass</td></tr>
+<tr><td>An R-2R ladder DAC</td><td>8 pins and 8 + 8 resistors make an 8-bit analog output</td></tr>
+<tr><td>Measuring your own output</td><td>the frequency at the sync pin, read back at the pad</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>What FREQ gives 440 Hz (the note A)?</li></ol>
+<details><summary>Answer</summary>
+440 x 2^32 / 100 000 000 = 18 898 (18 897.7 rounded): the real frequency is 440.003 Hz.
+</details>
+<ol><li>A 1 kohm and 10 nF low-pass: what is its corner frequency, and why does it suit the sigma-delta output?</li></ol>
+<details><summary>Answer</summary>
+1 / (2 pi R C) = 15.9 kHz: it keeps audio but removes the 100 MHz switching of the bit stream.
+</details>
+<ol><li>Why is an R-2R ladder good to several MHz while the sigma-delta is clean only to about 20 kHz?</li></ol>
+<details><summary>Answer</summary>
+The ladder outputs the whole 8-bit value at once every clock; the sigma-delta needs many clocks of 1-bit pulses averaged by a slow filter to make one value.
+</details>
+<h2>Ideas</h2>
+<ul><li>A two-tone (DTMF) generator: two blocks added together.</li><li>A frequency response meter: sweep through a filter and measure the level with the Zynq's XADC.</li><li>A clock source for another circuit: sync output up to 25 MHz.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>The wave is stairs or fuzzy</b>: the RC filter is missing or too small; the sigma-delta needs 10 nF with 1 kohm.</li><li><b>The level is low</b>: the outputs swing 0 to 3.3 V; the RC filter adds no gain. Use an op-amp for more.</li></ul></main></body></html>

@@ -1,0 +1,513 @@
+#!/usr/bin/env python3
+"""ardzy - use the Antminer S9 Zynq board like an Arduino.
+
+A "project" is a folder in /opt/ardzy/projects/<name> that may contain:
+  *.bit / *.bin     FPGA design (from the Ardzy app's built-in toolchain or Vivado)
+  *.ino             Arduino sketch (C++): compiled on the board, the pin-control FPGA design
+                    is loaded for it automatically; libraries/ = the sketch's own libraries
+  main.py           Python program, run after the FPGA is loaded
+  *.c (+ Makefile)  C program, compiled on the board, then run
+  run.sh            any shell command(s), run after the FPGA is loaded
+  devices.dtsi      optional device-tree nodes for your FPGA IP (UIO etc.)
+  overlay.dts       optional full overlay (advanced; replaces devices.dtsi)
+
+Commands:
+  ardzy list                     projects on the board
+  ardzy load <name> [--default]  program the FPGA + start the program (--default: also at every boot)
+  ardzy build <name>             compile a sketch without running it (like "Verify")
+  ardzy config [key=value ...]   board settings (/boot/ardzy.txt): hostname, password, network, ...
+  ardzy update <bundle.tar.gz>   install an Ardzy system update (safe: a bad kernel is undone)
+  ardzy pin-control              load the pin-control FPGA design (I/O and Tools views, sketches)
+  ardzy stop                     stop the program (FPGA keeps its design)
+  ardzy restart                  restart the program of the loaded project
+  ardzy status                   what is loaded / running
+  ardzy log [-f]                 program output (like a serial monitor); -f = follow
+  ardzy default <name>|none      project loaded automatically at boot
+  ardzy unload                   stop the program and remove the project's overlay
+  ardzy new <name>               create an empty project with a main.py template
+  ardzy delete <name>            delete a project
+  ardzy peek <addr> [count]      read 32-bit registers (e.g. ardzy peek 0x41200000)
+  ardzy poke <addr> <value>      write a 32-bit register
+  ardzy bitinfo <file.bit>       show what a bitstream file is for
+  ardzy beep [seconds]           sound the buzzer
+  ardzy led green|red|ps on|off  the board's status LEDs (ARM side)
+  ardzy buttons [-w]             state of the IP / Reset buttons (-w = watch)
+"""
+import os, sys, struct, subprocess, shutil, time, json, re, glob
+
+PROJ = '/opt/ardzy/projects'
+STATE = '/var/lib/ardzy'
+FW_DIR = '/lib/firmware/ardzy'
+OVL = '/sys/kernel/config/device-tree/overlays/ardzy'
+FPGA = '/sys/class/fpga_manager/fpga0'
+PIN_CONTROL_BIT = '/usr/lib/ardzy/fpga/ardzy_io.bit'   # the pin-control design (Arduino sketches, I/O view)
+ARDUINO_BUILD = '/usr/lib/ardzy/arduino/build.py'
+CHIP_IDCODE = 0x03722093          # XC7Z010 (the S9 chip)
+CHIP_PART = '7z010'
+
+def die(msg, code=1):
+    print('ardzy: ' + msg, file=sys.stderr)
+    sys.exit(code)
+
+def read(path, default=''):
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except OSError:
+        return default
+
+def write_state(name, value):
+    os.makedirs(STATE, exist_ok=True)
+    p = os.path.join(STATE, name)
+    if value is None:
+        if os.path.exists(p):
+            os.remove(p)
+    else:
+        with open(p, 'w') as f:
+            f.write(value + '\n')
+    os.sync()
+
+def proj_dir(name):
+    if not re.fullmatch(r'[A-Za-z0-9_.-]+', name or ''):
+        die('bad project name %r (use letters, digits, _ . -)' % name)
+    return os.path.join(PROJ, name)
+
+# ---------------------------------------------------------------- bitstreams
+def parse_bit(data):
+    """Xilinx .bit file -> (info dict, raw configuration bytes)."""
+    if data[:2] != b'\x00\x09':
+        return None, None
+    pos = 2 + 9
+    (n,) = struct.unpack_from('>H', data, pos)
+    pos += 2
+    info = {}
+    names = {'a': 'design', 'b': 'part', 'c': 'date', 'd': 'time'}
+    while pos < len(data):
+        key = chr(data[pos]); pos += 1
+        if key in names:
+            (n,) = struct.unpack_from('>H', data, pos); pos += 2
+            info[names[key]] = data[pos:pos + n].rstrip(b'\0').decode(errors='replace'); pos += n
+        elif key == 'e':
+            (n,) = struct.unpack_from('>I', data, pos); pos += 4
+            return info, data[pos:pos + n]
+        else:
+            break
+    return info, None
+
+def swap32(b):
+    import array
+    a = array.array('I', b + b'\0' * (-len(b) % 4))
+    a.byteswap()
+    return a.tobytes()
+
+def idcode_of(raw_be):
+    """Find the IDCODE write (type-1 packet 0x30018001) in a big-endian bitstream."""
+    i = raw_be.find(b'\x30\x01\x80\x01')
+    if i < 0:
+        return None
+    return struct.unpack_from('>I', raw_be, i + 4)[0]
+
+def to_fpga_bin(path, force=False):
+    """Return (bytes for the Zynq FPGA manager = byte-swapped .bin, info dict)."""
+    data = open(path, 'rb').read()
+    info, raw = parse_bit(data)
+    if raw is None:                       # already a .bin
+        head = data[:256]
+        if b'\xaa\x99\x55\x66' in head:   # big-endian .bin -> swap
+            raw = data
+        elif b'\x66\x55\x99\xaa' in head:  # already swapped (bootgen -process_bitstream bin)
+            raw = swap32(data)
+        else:
+            die('%s is not a Xilinx bitstream (.bit or .bin)' % path)
+        info = info or {}
+    idc = idcode_of(raw)
+    info['idcode'] = '0x%08x' % idc if idc is not None else 'unknown'
+    part = info.get('part', '')
+    ok_part = (not part) or re.sub(r'^xc', '', part.lower()).startswith(CHIP_PART)   # 7z010.. or xc7z010..
+    ok_id = idc is None or (idc & 0x0fffffff) == CHIP_IDCODE
+    if not (ok_part and ok_id) and not force:
+        die('bitstream is for %s (IDCODE %s), but this board is XC7Z010 (0x%08x).\n'
+            '    In Vivado use part xc7z010clg400-1.  (ardzy load --force to try anyway)'
+            % (part or '?', info['idcode'], CHIP_IDCODE))
+    return swap32(raw), info
+
+def find_bitstream(d):
+    c = sorted(glob.glob(os.path.join(d, '*.bit')) + glob.glob(os.path.join(d, '*.bin')),
+               key=os.path.getmtime, reverse=True)
+    return c[0] if c else None
+
+# ---------------------------------------------------------------- overlays
+def overlay_remove():
+    if os.path.isdir(OVL):
+        os.rmdir(OVL)
+        time.sleep(0.2)
+
+def overlay_apply(dts_text, workdir):
+    src = os.path.join(workdir, '.ardzy_overlay.dts')
+    out = os.path.join(workdir, '.ardzy_overlay.dtbo')
+    with open(src, 'w') as f:
+        f.write(dts_text)
+    r = subprocess.run(['dtc', '-@', '-q', '-I', 'dts', '-O', 'dtb', '-o', out, src],
+                       capture_output=True, text=True)
+    if r.returncode:
+        die('device tree overlay does not compile:\n' + r.stderr)
+    os.makedirs(OVL)
+    try:
+        with open(os.path.join(OVL, 'dtbo'), 'wb') as f:
+            f.write(open(out, 'rb').read())
+    except OSError as e:
+        msgs = subprocess.run(['dmesg'], capture_output=True, text=True).stdout.splitlines()[-6:]
+        os.rmdir(OVL)
+        die('loading failed (%s). Kernel says:\n  ' % e + '\n  '.join(msgs))
+    status = read(os.path.join(OVL, 'status'))
+    if status and status != 'applied':
+        die('overlay status: ' + status)
+
+def make_overlay(d, fw_name):
+    custom = os.path.join(d, 'overlay.dts')
+    if os.path.exists(custom):
+        text = open(custom).read()
+        return text.replace('@FIRMWARE@', fw_name)
+    text = '/dts-v1/;\n/plugin/;\n\n&fpga_full {\n\tfirmware-name = "%s";\n};\n' % fw_name
+    dpath = os.path.join(d, 'devices.dtsi')
+    if os.path.exists(dpath):
+        # your FPGA blocks become Linux devices under the AXI bus (amba already has
+        # #address-cells = <1> and #size-cells = <1>, so reg = <addr size> works as is)
+        text += '\n&amba {\n%s\n};\n' % open(dpath).read()
+    return text
+
+# ---------------------------------------------------------------- program
+def app_running():
+    return subprocess.run(['systemctl', 'is-active', '--quiet', 'ardzy-app']).returncode == 0
+
+def stop_app():
+    subprocess.run(['systemctl', 'stop', 'ardzy-app'])
+
+def is_sketch(d):
+    return bool(glob.glob(os.path.join(d, '*.ino')))
+
+def has_program(d):
+    return any(os.path.exists(os.path.join(d, f)) for f in ('run.sh', 'main.py', 'Makefile')) \
+        or bool(glob.glob(os.path.join(d, '*.c'))) or is_sketch(d)
+
+def run_app():
+    """Executed by ardzy-app.service: build (if C) and run the current project's program."""
+    name = read(os.path.join(STATE, 'current'))
+    if not name:
+        die('no project loaded')
+    d = proj_dir(name)
+    os.chdir(d)
+    os.environ['PYTHONUNBUFFERED'] = '1'
+    os.environ['ARDZY_PROJECT'] = name
+    print('=== %s: starting program ===' % name, flush=True)
+    if is_sketch(d):
+        if not os.path.exists('.build/sketch'):
+            die('the sketch is not built (upload it again)')
+        os.execv('.build/sketch', ['sketch'])
+    if os.path.exists('run.sh'):
+        os.execvp('bash', ['bash', 'run.sh'])
+    if os.path.exists('main.py'):
+        os.execvp('python3', ['python3', '-u', 'main.py'])
+    if os.path.exists('Makefile'):
+        if subprocess.run(['make']).returncode:
+            die('make failed')
+        os.execv('./app', ['./app'])
+    srcs = sorted(glob.glob('*.c'))
+    if srcs:
+        newest = max(os.path.getmtime(s) for s in srcs + glob.glob('*.h'))
+        if not os.path.exists('app') or os.path.getmtime('app') < newest:
+            print('compiling ' + ' '.join(srcs), flush=True)
+            if subprocess.run(['gcc', '-O2', '-Wall', '-o', 'app'] + srcs + ['-lm']).returncode:
+                die('compile failed')
+        os.execv('./app', ['./app'])
+    print('(no program in this project - FPGA only)', flush=True)
+
+# ---------------------------------------------------------------- commands
+def cmd_load(args):
+    force = '--force' in args
+    make_default = '--default' in args
+    args = [a for a in args if not a.startswith('--')]
+    if not args:
+        die('usage: ardzy load <name> [--default] [--force]')
+    name = args[0]
+    d = proj_dir(name)
+    if not os.path.isdir(d):
+        die('no project %s (see: ardzy list)' % name)
+    stop_app()
+    sketch = is_sketch(d)
+    if sketch:                              # compile first: errors go back to the app
+        print('compiling the sketch ...', flush=True)
+        r = subprocess.run(['python3', ARDUINO_BUILD, d])
+        if r.returncode:
+            die('the sketch did not compile (see the messages above)')
+    bit = find_bitstream(d)
+    pin_control = name == 'ardzy_io'
+    if not bit and sketch:
+        if read(STATE + '/fpga_design') == 'ardzy_io' and read(FPGA + '/state') == 'operating':
+            print('FPGA: pin-control design already running')
+        elif os.path.exists(PIN_CONTROL_BIT):
+            bit, pin_control = PIN_CONTROL_BIT, True
+        else:
+            print('warning: the pin-control FPGA design is missing (%s): pins will not work' % PIN_CONTROL_BIT)
+    if bit:
+        data, info = to_fpga_bin(bit, force)
+        os.makedirs(FW_DIR, exist_ok=True)
+        fw = 'ardzy/%s.bin' % name
+        with open('/lib/firmware/' + fw, 'wb') as f:
+            f.write(data)
+        print('FPGA  <- %s  (%s %s %s)' % (os.path.basename(bit), info.get('design', ''),
+                                          info.get('part', ''), info.get('date', '')))
+        overlay_remove()
+        t = time.time()
+        overlay_apply(make_overlay(d, fw), d)
+        print('FPGA programmed in %.2f s, state: %s' % (time.time() - t, read(FPGA + '/state')))
+        write_state('fpga_design', 'ardzy_io' if pin_control else name)
+    elif not sketch:
+        print('(no .bit/.bin in project: FPGA unchanged)')
+    write_state('current', name)
+    if make_default:
+        write_state('default', name)
+        print('default at boot: ' + name)
+    if has_program(d):
+        subprocess.run(['systemctl', 'reset-failed', 'ardzy-app'], stderr=subprocess.DEVNULL)
+        subprocess.run(['systemctl', 'start', 'ardzy-app'])
+        print('program started  (see output: ardzy log -f)')
+
+def cmd_build(args):
+    if not args:
+        die('usage: ardzy build <name>')
+    d = proj_dir(args[0])
+    if not os.path.isdir(d):
+        die('no project %s' % args[0])
+    if not is_sketch(d):
+        print('nothing to compile (not an Arduino sketch)')
+        return
+    r = subprocess.run(['python3', ARDUINO_BUILD, d])
+    if r.returncode:
+        die('the sketch did not compile (see the messages above)')
+    print('compiled OK')
+
+def cmd_unload(_):
+    stop_app()
+    overlay_remove()
+    write_state('fpga_design', None)
+    write_state('current', None)
+    print('unloaded (the FPGA keeps running its last design until the next load)')
+
+def cmd_status(_):
+    cur = read(os.path.join(STATE, 'current')) or '-'
+    dflt = read(os.path.join(STATE, 'default')) or '-'
+    print('project : %s' % cur)
+    print('program : %s' % ('running' if app_running() else 'stopped'))
+    print('default : %s' % dflt)
+    print('fpga    : %s (%s)' % (read(FPGA + '/state', '?'), read(FPGA + '/name', '?')))
+    print('overlay : %s' % (read(OVL + '/status', 'none') if os.path.isdir(OVL) else 'none'))
+    if os.path.exists(os.path.join(STATE, 'safemode')):
+        print('SAFE MODE: the default project was NOT loaded at boot (last boot did not finish).')
+        print('           fix the project, then: ardzy load <name>   (clears safe mode)')
+
+def cmd_list(_):
+    cur = read(os.path.join(STATE, 'current'))
+    dflt = read(os.path.join(STATE, 'default'))
+    names = sorted(os.listdir(PROJ)) if os.path.isdir(PROJ) else []
+    if not names:
+        print('no projects yet. Upload one from the PC, or: ardzy new myproject')
+    for n in names:
+        d = os.path.join(PROJ, n)
+        bit = find_bitstream(d)
+        tags = []
+        if n == cur: tags.append('LOADED')
+        if n == dflt: tags.append('default')
+        print('%-24s %-28s %s' % (n, os.path.basename(bit) if bit else '(no bitstream)', ' '.join(tags)))
+
+def cmd_log(args):
+    cmd = ['journalctl', '-u', 'ardzy-app', '-o', 'cat', '--no-pager', '-n', '200']
+    if '-f' in args:
+        cmd.append('-f')
+    os.execvp(cmd[0], cmd)
+
+def cmd_default(args):
+    if not args:
+        print(read(os.path.join(STATE, 'default')) or 'none')
+    elif args[0] == 'none':
+        write_state('default', None); print('no project at boot')
+    else:
+        if not os.path.isdir(proj_dir(args[0])):
+            die('no project ' + args[0])
+        write_state('default', args[0]); print('default at boot: ' + args[0])
+
+def cmd_new(args):
+    if not args:
+        die('usage: ardzy new <name>')
+    d = proj_dir(args[0])
+    os.makedirs(d, exist_ok=True)
+    p = os.path.join(d, 'main.py')
+    if not os.path.exists(p):
+        with open(p, 'w') as f:
+            f.write('import time\nfrom ardzy import MMIO\n\n'
+                    '# regs = MMIO(0x41200000)   # base address from the Vivado Address Editor\n'
+                    'n = 0\nwhile True:\n    print("hello from the S9", n)\n    n += 1\n    time.sleep(1)\n')
+    print('created %s  - copy your .bit there, then: ardzy load %s' % (d, args[0]))
+
+def cmd_delete(args):
+    if not args:
+        die('usage: ardzy delete <name>')
+    d = proj_dir(args[0])
+    if read(os.path.join(STATE, 'current')) == args[0]:
+        cmd_unload([])
+    if read(os.path.join(STATE, 'default')) == args[0]:
+        write_state('default', None)
+    shutil.rmtree(d, ignore_errors=True)
+    print('deleted ' + args[0])
+
+def cmd_peek(args):
+    from ardzy import peek
+    if not args:
+        die('usage: ardzy peek <addr> [count]')
+    a = int(args[0], 0); n = int(args[1], 0) if len(args) > 1 else 1
+    for i in range(n):
+        print('0x%08x: 0x%08x' % (a + 4 * i, peek(a + 4 * i)))
+
+def cmd_poke(args):
+    from ardzy import poke
+    if len(args) < 2:
+        die('usage: ardzy poke <addr> <value>')
+    poke(int(args[0], 0), int(args[1], 0))
+
+def cmd_bitinfo(args):
+    if not args:
+        die('usage: ardzy bitinfo <file>')
+    _, info = to_fpga_bin(args[0], force=True)
+    for k, v in info.items():
+        print('%-7s %s' % (k, v))
+    ok = (int(info['idcode'], 16) & 0x0fffffff) == CHIP_IDCODE if info['idcode'] != 'unknown' else None
+    print('fits this board (XC7Z010): %s' % {True: 'YES', False: 'NO', None: '?'}[ok])
+
+def load_pin_control():
+    """The pin-control design without a program (what the I/O and Tools views use)."""
+    if not os.path.exists(PIN_CONTROL_BIT):
+        print('pin-control design missing: %s' % PIN_CONTROL_BIT)
+        return False
+    data, info = to_fpga_bin(PIN_CONTROL_BIT)
+    os.makedirs(FW_DIR, exist_ok=True)
+    with open('/lib/firmware/ardzy/pin-control.bin', 'wb') as f:
+        f.write(data)
+    overlay_remove()
+    overlay_apply(make_overlay(os.path.dirname(PIN_CONTROL_BIT), 'ardzy/pin-control.bin'), '/tmp')
+    write_state('fpga_design', 'ardzy_io')
+    print('FPGA: pin-control design loaded (%s)' % read(FPGA + '/state'))
+    return True
+
+def cmd_pin_control(_):
+    stop_app()
+    load_pin_control()
+    write_state('current', None)
+
+def update_check():
+    """After a kernel update: undo it if U-Boot had to go back to the old kernel."""
+    try:
+        sys.path.insert(0, '/usr/lib/python3/dist-packages')
+        import ardzy_env
+        env = ardzy_env.read()[0]
+    except Exception as e:
+        print('U-Boot settings not readable: %s' % e)
+        return
+    if env.get('ardzy_rollback') == '1':
+        for f in ('zImage', 'system.dtb'):
+            if os.path.exists('/boot/%s.old' % f):
+                shutil.copy2('/boot/%s.old' % f, '/boot/' + f)
+        os.sync()
+        ardzy_env.set(ardzy_rollback=None, ardzy_try='0', ardzy_tried='0')
+        write_state('update_status', 'the new kernel did not start: the old one was put back (%s)' % time.strftime('%Y-%m-%d %H:%M'))
+        print('UPDATE UNDONE: the new kernel did not start, the previous one is back')
+
+def cmd_boot(_):
+    """Run once at boot by ardzy-autoload.service: load the default project unless safe mode."""
+    update_check()
+    flag = os.path.join(STATE, 'booting')
+    dflt = read(os.path.join(STATE, 'default'))
+    if os.path.exists(flag):
+        # the previous boot loaded the default project and never reached "boot OK"
+        write_state('safemode', '1')
+        write_state('booting', None)
+        print('SAFE MODE: previous boot did not finish, default project %s NOT loaded' % dflt)
+        return
+    write_state('safemode', None)
+    if not dflt:
+        if read(os.path.join(STATE, 'at_boot'), 'pin-control') == 'pin-control':
+            load_pin_control()
+        return
+    write_state('booting', '1')
+    cmd_load([dflt])
+
+def cmd_boot_ok(_):
+    write_state('booting', None)
+    try:                                   # a trial of a new kernel worked: keep it
+        sys.path.insert(0, '/usr/lib/python3/dist-packages')
+        import ardzy_env
+        env = ardzy_env.read()[0]
+        if env.get('ardzy_try') == '1' and env.get('ardzy_tried') == '1':
+            ardzy_env.set(ardzy_try='0', ardzy_tried='0')
+            write_state('update_status', 'new kernel %s confirmed (%s)' % (os.uname().release, time.strftime('%Y-%m-%d %H:%M')))
+    except Exception as e:
+        print('U-Boot settings not readable: %s' % e)
+
+def cmd_config(args):
+    if not args:
+        os.execv('/usr/local/sbin/ardzy-config', ['ardzy-config', 'show'])
+    os.execv('/usr/local/sbin/ardzy-config', ['ardzy-config', 'set'] + args)
+
+def cmd_update(args):
+    if not args:
+        die('usage: ardzy update <bundle.tar.gz>')
+    os.execv('/usr/local/sbin/ardzy-update', ['ardzy-update'] + args)
+
+def cmd_beep(args):
+    from ardzy import beep
+    beep(float(args[0]) if args else 0.1)
+
+def cmd_led(args):
+    from ardzy import led
+    if not args or args[0] not in ('green', 'red', 'ps'):
+        die('usage: ardzy led green|red|ps [on|off]')
+    led(args[0], (args[1] if len(args) > 1 else 'on') != 'off')
+
+def cmd_buttons(args):
+    from ardzy import button
+    if '-w' in args:                       # watch: print every change until Ctrl+C
+        last = None
+        while True:
+            now = (button('ip'), button('reset'))
+            if now != last:
+                ip, rst = ('pressed' if b else 'released' for b in now)
+                print('IP button: %-8s  Reset button: %s' % (ip, rst), flush=True)
+                last = now
+            time.sleep(0.05)
+    print('IP button: %s   Reset button: %s' % ('pressed' if button('ip') else 'released',
+                                              'pressed' if button('reset') else 'released'))
+
+COMMANDS = {
+    'load': cmd_load, 'build': cmd_build, 'config': cmd_config, 'update': cmd_update,
+    'pin-control': cmd_pin_control, 'unload': cmd_unload, 'status': cmd_status, 'list': cmd_list,
+    'log': cmd_log, 'default': cmd_default, 'new': cmd_new, 'delete': cmd_delete,
+    'peek': cmd_peek, 'poke': cmd_poke, 'bitinfo': cmd_bitinfo,
+    'stop': lambda a: (stop_app(), print('program stopped')),
+    'restart': lambda a: (subprocess.run(['systemctl', 'restart', 'ardzy-app']), print('program restarted')),
+    'run-app': lambda a: run_app(), 'boot': cmd_boot, 'boot-ok': cmd_boot_ok,
+    'beep': cmd_beep, 'led': cmd_led, 'buttons': cmd_buttons,
+}
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] in ('-h', '--help', 'help'):
+        print(__doc__); return
+    c = COMMANDS.get(sys.argv[1])
+    if not c:
+        die('unknown command %s (ardzy help)' % sys.argv[1])
+    if os.geteuid() != 0 and sys.argv[1] not in ('list', 'status', 'log', 'bitinfo'):
+        die('run as root')
+    if sys.argv[1] == 'load' and os.path.exists(os.path.join(STATE, 'safemode')):
+        write_state('safemode', None)
+    c(sys.argv[2:])
+
+if __name__ == '__main__':
+    main()

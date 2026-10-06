@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clean Linux Guide</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <nav class="back"><a href="index.html">&larr; All documents</a></nav>
+  <div class="kicker">Project 1 &middot; folder ANTMINER S9\1_Clean_Linux</div>
+  <h1>Clean Linux: a fresh Debian 12 for the board</h1>
+  <p>The first, simple step: replace the big old system on the SD card with a small, clean Debian, while keeping the boot files that are proven to work.</p>
+</div></header>
+
+<main class="wrap">
+<div class="toc"><b>Contents</b><ol>
+  <li><a href="#why">Why this step</a></li>
+  <li><a href="#what">What was done</a></li>
+  <li><a href="#inside">What is inside the image</a></li>
+  <li><a href="#how">How it was built</a></li>
+  <li><a href="#test">How it was tested</a></li>
+  <li><a href="#use">Flash and use it</a></li>
+  <li><a href="#files">Files in the folder</a></li>
+  <li><a href="#limits">Limits (and why Ardzy came next)</a></li>
+</ol></div>
+
+<h2 id="why">1. Why this step</h2>
+<p>The board was running <b>ADI Kuiper Linux</b> (Debian 11), a big system made for Analog Devices radio boards.
+It used <b>9.9 GB</b> and was full of programs you do not need. The goal: a <b>clean</b> system that is small, current, and only yours.</p>
+<p>Earlier, a PetaLinux image did not start on this board, and there was no serial cable to see why. So this step takes the <b>safe road</b>:
+reuse the boot files that already work, and replace only the operating system.</p>
+
+<h2 id="what">2. What was done</h2>
+<ol class="steps">
+  <li><b>Looked at the running board</b> over SSH: kernel 5.15.19 (Xilinx), all drivers built into the kernel (no module folder), SD card with a FAT boot partition and an ext4 system partition.</li>
+  <li><b>Copied the 4 proven boot files</b> from the board: <code>BOOT.bin</code>, <code>uImage</code>, <code>system.dtb</code>, <code>uboot.env</code>.</li>
+  <li><b>Checked the kernel</b> supports what Debian 12 needs (systemd: cgroups, devtmpfs, inotify, seccomp...) and what FPGA work needs (FPGA manager, device-tree overlays, UIO). All present.</li>
+  <li><b>Built a fresh Debian 12 system</b> on the PC (in WSL Ubuntu) with <code>debootstrap</code> for the ARM processor (armhf), running the ARM programs through the QEMU emulator.</li>
+  <li><b>Configured it</b>: name <code>tx</code> (so <code>tx.local</code> keeps working), network, SSH, first-boot setup, clock.</li>
+  <li><b>Packed everything into one SD card image</b> (2 GB) and tested it in an emulated Zynq board.</li>
+</ol>
+
+<h2 id="inside">3. What is inside the image</h2>
+<figure>
+<svg viewBox="0 0 900 170" role="img" aria-label="SD image layout">
+  <rect x="10" y="40" width="40" height="70" class="d-box"/><text x="14" y="30" class="d-small">4 MB</text>
+  <rect x="50" y="40" width="250" height="70" class="d-ps"/><text x="62" y="68" class="d-title">FAT boot, 256 MB</text><text x="62" y="92" class="d-small">BOOT.bin uImage system.dtb uboot.env</text>
+  <rect x="300" y="40" width="590" height="70" class="d-pl"/><text x="314" y="68" class="d-title">ext4 root, about 1.7 GB, grows to fill the card</text><text x="314" y="92" class="d-small">Debian 12 bookworm armhf, 551 MB used</text>
+  <text x="50" y="140" class="d-small">old proven boot files (from the Kuiper card)</text><text x="314" y="140" class="d-small">completely new</text>
+</svg>
+<figcaption>antminer_s9_debian12.img</figcaption>
+</figure>
+<table>
+<tr><th>Item</th><th>Value</th></tr>
+<tr><td>System</td><td>Debian 12 (bookworm), armhf, 551 MB</td></tr>
+<tr><td>Kernel</td><td>5.15.19-xilinx (from the old card, unchanged)</td></tr>
+<tr><td>Login</td><td>root / root (SSH allowed). Change it with <code>passwd</code></td></tr>
+<tr><td>Network</td><td>DHCP (with a router) + link-local 169.254.x.x (direct cable to the PC) + avahi, so the name <code>tx.local</code> works both ways. DNS from the router via systemd-resolved</td></tr>
+<tr><td>Programs</td><td>Python 3 + numpy, gcc/make, git, i2c-tools, dtc, htop, nano, curl</td></tr>
+<tr><td>First boot</td><td>creates new unique SSH keys and grows the partition to the whole card</td></tr>
+<tr><td>Clock</td><td>the board has no clock battery: fake-hwclock remembers the time, NTP corrects it when online</td></tr>
+<tr><td>FPGA</td><td>whatever <code>BOOT.bin</code> loads at power-on (the old FM "TEST" design); <code>fpga-status</code> shows the state</td></tr>
+</table>
+
+<h2 id="how">4. How it was built</h2>
+<p>Everything is in one script, <code>build_clean_debian.sh</code>, run inside WSL (Ubuntu 20.04) as root:</p>
+<pre><code>debootstrap --arch=armhf  bookworm  rootfs/      # download + unpack Debian for ARM
+chroot rootfs  (via qemu-arm-static)              # run ARM setup commands on the PC
+mkfs.vfat + mcopy   -> boot partition             # no loop devices needed
+mkfs.ext4 -d rootfs -> root partition
+sfdisk + dd         -> antminer_s9_debian12.img</code></pre>
+<div class="box info"><b>Small trick</b> Ubuntu 20.04's own debootstrap is too old to know Debian 12, so the script downloads Debian's newer debootstrap and keyring and uses them directly.</div>
+
+<h2 id="test">5. How it was tested</h2>
+<p>The image was started in <b>QEMU</b>, which can pretend to be a Zynq-7000 board. The board's own kernel and device tree were used.</p>
+<ul>
+  <li>Result: boots to <code>tx login:</code>, SSH login works, <b>0 failed services</b>, Python, numpy and gcc run. <span class="tag ok">passed</span></li>
+  <li>Found on the way: the board's console is on <b>UART1</b> (not UART0). This matches the real board.</li>
+  <li>Found in a later check and fixed: the DNS setting had been copied from the build PC (a WSL-only address), so internet names would not work on the board. Now <b>systemd-resolved</b> takes the DNS server from the router. Tested: names resolve, <code>apt update</code> works, the clock syncs. <span class="tag ok">passed</span></li>
+  <li>Not testable in an emulator: the real Ethernet chip and the FPGA. They use the same kernel and drivers as the working old card.</li>
+</ul>
+
+<h2 id="use">6. Flash and use it</h2>
+<ol class="steps">
+  <li>Use a <b>second</b> microSD card (keep the old one as a backup).</li>
+  <li>balenaEtcher: <i>Flash from file</i> &rarr; <code>antminer_s9_debian12.img</code> &rarr; the SD card &rarr; <i>Flash</i>. If Windows asks to format the card, click Cancel.</li>
+  <li>Board off, insert the card, power on, wait about 2 minutes.</li>
+  <li>PuTTY &rarr; <code>tx.local</code> &rarr; login <b>root / root</b>. Accept the new host key once. Then <code>passwd</code>.</li>
+</ol>
+
+<h2 id="files">7. Files in the folder</h2>
+<table>
+<tr><th>File</th><th>What it is</th></tr>
+<tr><td><code>antminer_s9_debian12.img</code></td><td>The SD card image</td></tr>
+<tr><td><code>build_clean_debian.sh</code></td><td>Rebuilds the image (edit hostname, password, packages at the top)</td></tr>
+<tr><td><code>test_in_qemu.sh</code></td><td>Starts the image in the emulator</td></tr>
+<tr><td><code>boot\</code></td><td>The 4 proven boot files from the old card. Project 2 also uses <code>BOOT.bin</code> as its safety fallback</td></tr>
+<tr><td><code>README.md</code></td><td>Short text version of this page</td></tr>
+</table>
+
+<h2 id="limits">8. Limits (and why Ardzy came next)</h2>
+<div class="box warn"><b>Not fully clean</b>
+The operating system is new, but the boot files are not ours: an old kernel (5.15) from the Kuiper card, a device tree that still describes the FM design, and a <code>BOOT.bin</code> that loads the FM "TEST" design into the FPGA at every power-on.</div>
+<p>Project 2, <a href="02_Ardzy.html">Ardzy</a>, builds <b>every</b> part from source, starts with an empty FPGA, and adds the "Arduino-style" upload system.</p>
+</main>
+</body>
+</html>

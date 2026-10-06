@@ -1,0 +1,6 @@
+set_property PACKAGE_PIN F16 [get_ports {lio[0]}]
+set_property PACKAGE_PIN L19 [get_ports {lio[1]}]
+set_property PACKAGE_PIN M19 [get_ports {lout[0]}]
+set_property PACKAGE_PIN M17 [get_ports {lout[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {lio[*]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {lout[*]}]

@@ -1,0 +1,44 @@
+{
+  "id": "RV32",
+  "title": "RISC-V processor in the FPGA",
+  "category": "Computing",
+  "level": "advanced",
+  "summary": "A third processor next to the two ARM cores: Ardzy's own RV32I RISC-V core with 16 KB RAM, LEDs, GPIO, timers, a console and mailboxes. Write assembly in the app, the ARM assembles and loads it.",
+  "slots": {
+    "0": "Info",
+    "1": "RISC-V control (run, status, console, mailboxes)",
+    "2-5": "RISC-V RAM (16 KB)"
+  },
+  "extra_files": [],
+  "pins": {
+    "gpio_out[0]": "j8[0]",
+    "gpio_out[1]": "j8[1]",
+    "gpio_out[2]": "j8[2]",
+    "gpio_out[3]": "j8[3]",
+    "gpio_in[0]": "j5[0]",
+    "gpio_in[1]": "j5[1]",
+    "gpio_in[2]": "j5[2]",
+    "gpio_in[3]": "j5[3]",
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [
+    [
+      "J8 pins 5, 11, 12, 15",
+      "RISC-V GPIO outputs 0..3 (address 0x8000_0004)",
+      "LEDs with 330 ohm, buzzers through a transistor"
+    ],
+    [
+      "J5 pins 5, 11, 12, 15",
+      "RISC-V GPIO inputs 0..3 (address 0x8000_0008)",
+      "buttons to GND (the pull-ups are on)"
+    ]
+  ],
+  "parts": [
+    "nothing needed: the 4 board LEDs show the programs",
+    "optional: LEDs and buttons on J8 / J5"
+  ],
+  "tested": "the self-test passed 6 of 6 checks on the real board (October 2026), with nothing connected."
+}

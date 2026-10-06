@@ -1,0 +1,15 @@
+[Unit]
+Description=Ardzy board settings from /boot/ardzy.txt
+DefaultDependencies=no
+After=local-fs.target boot.mount
+Wants=boot.mount
+Before=network-pre.target systemd-networkd.service systemd-hostnamed.service ssh.service avahi-daemon.service ardzy-autoload.service sysinit.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/ardzy-config
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sysinit.target

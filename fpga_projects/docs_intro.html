@@ -1,0 +1,6 @@
+<section class="intro">
+<h2>How to use these projects</h2>
+<p>Each project is a complete FPGA design for the S9 control board, ready to upload: a prebuilt bitstream, a Python demo, a self-test that measures every part on your own board, and a guide. In the Ardzy app open <b>Ready projects</b>, pick a card and press <b>Upload and run</b>, <b>Self-test</b> or <b>Guide</b>. <b>Copy to my projects</b> gives you an editable copy: change the Verilog or the program, press <b>Build FPGA</b> (the built-in toolchain, no Vivado needed) and <b>Upload</b>.</p>
+<p>All projects share one layout on the ARM side: a 64 KB register window at <code>0x43C0_0000</code> cut into 16 slots of 4 KB. Slot 0 is always the Info block (project name, seconds, the 4 LEDs). <code>blocks.py</code> has a Python driver for every block; the Verilog blocks are in the app's FPGA library (<code>fpga/hdl</code>) and can be combined in your own designs.</p>
+<p>Every self-test passed on the real board. Most need nothing connected: the FPGA reads its own pins back at the pads, and test generators inside stand in for sensors. The FM radio (project 12) sends radio signals: read its guide about the rules before you put an antenna on it.</p>
+</section>

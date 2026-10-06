@@ -1,0 +1,49 @@
+{
+  "id": "FMTX",
+  "title": "Radio transmitter (FM stereo + RDS, NFM, AM, SSB, CW, digital, pictures, AES67)",
+  "category": "Radio",
+  "level": "advanced",
+  "summary": "A radio station on one pin, made inside the FPGA: FM stereo with your station name and text on the radio's display (RDS), NFM, AM, USB, LSB and DSB, Morse code, RTTY and PSK31, pictures (SSTV), songs from WAV files and live sound from the network (AES67).",
+  "slots": {
+    "0": "Info",
+    "1": "Radio registers",
+    "2": "RDS blocks (2 banks of 256)",
+    "3": "MPX capture, samples 0..1023",
+    "4": "MPX capture, samples 1024..2047",
+    "5": "MPX capture, samples 2048..3071",
+    "6": "MPX capture, samples 3072..4095"
+  },
+  "pins": {
+    "rf": "j9[1]",
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "clocks": {
+    "u_radio.rclk": 250
+  },
+  "wiring": [
+    [
+      "J9 pin 11 (RF)",
+      "a short wire, 10 to 20 cm, as the antenna",
+      "a few meters of range in a room; the self-test needs nothing"
+    ],
+    [
+      "J9 pin 11 through a 1 kohm resistor",
+      "an SDR input (RTL-SDR) through a 30 to 40 dB attenuator",
+      "never the pin straight into an SDR: the resistor and the attenuator protect it and keep the signal off the air"
+    ],
+    [
+      "pin 1 (GND)",
+      "the ground (outer conductor) of the SDR cable",
+      ""
+    ]
+  ],
+  "parts": [
+    "an FM radio with RDS (a car radio, a kitchen radio, a phone with an FM chip)",
+    "optional: an RTL-SDR stick to see the spectrum, the RDS and the digital modes",
+    "nothing for the self-test"
+  ],
+  "tested": "the self-test passed 36 of 36 checks on the real board (October 2026), with nothing connected; the radio service test 23 of 23."
+}

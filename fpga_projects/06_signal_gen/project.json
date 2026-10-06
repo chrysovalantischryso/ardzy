@@ -1,0 +1,57 @@
+{
+  "id": "DDSG",
+  "title": "Signal generator (DDS)",
+  "category": "Test and measurement",
+  "level": "easy",
+  "summary": "A function generator: sine, triangle, sawtooth and square from 0.02 Hz to several MHz in 0.023 Hz steps, amplitude, offset, duty and frequency sweeps, on four kinds of outputs.",
+  "slots": {
+    "0": "Info",
+    "1": "Signal generator"
+  },
+  "pins": {
+    "sd": "j6[0]",
+    "pwm": "j6[1]",
+    "sync": "j6[2]",
+    "par[0]": "j5[0]",
+    "par[1]": "j5[1]",
+    "par[2]": "j5[2]",
+    "par[3]": "j5[3]",
+    "par[4]": "j8[0]",
+    "par[5]": "j8[1]",
+    "par[6]": "j8[2]",
+    "par[7]": "j8[3]",
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [
+    [
+      "J6 pin 5 (sigma-delta)",
+      "1 kohm resistor, then 10 nF to GND: the analog signal is at the capacitor",
+      "best for audio and low frequencies (up to about 20 kHz)"
+    ],
+    [
+      "J6 pin 11 (PWM DAC)",
+      "1 kohm, then 100 nF to GND",
+      "390 kHz carrier, 8-bit"
+    ],
+    [
+      "J6 pin 12 (sync)",
+      "scope trigger, or a clock input",
+      "a clean square wave at the set frequency"
+    ],
+    [
+      "J5 pins 5/11/12/15 + J8 pins 5/11/12/15",
+      "R-2R ladder (bit 0 on J5 pin 5 ... bit 7 on J8 pin 15)",
+      "8-bit output, up to several MHz"
+    ]
+  ],
+  "parts": [
+    "resistors and capacitors for the filters",
+    "R-2R network (10 k / 20 k) for the parallel output",
+    "a scope to see the waves",
+    "nothing for the self-test"
+  ],
+  "tested": "the self-test passed 10 of 10 checks on the real board (October 2026), with nothing connected."
+}

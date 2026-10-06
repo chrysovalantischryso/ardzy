@@ -1,0 +1,277 @@
+#!/usr/bin/env python3
+"""ardzy-config: the board's settings, from /boot/ardzy.txt (the SD card's FAT partition, so it can
+also be edited on a PC). Applied early at every boot when the file changed, and live by the app.
+
+    ardzy-config                 apply /boot/ardzy.txt if it changed (boot service)
+    ardzy-config --force         apply it again
+    ardzy-config show            print the settings as JSON
+    ardzy-config set key=value   change settings, save the file, apply the ones that can change live
+
+Settings:
+    hostname   board name on the network (<hostname>.local)              default ardzy
+    password   new root password: applied once, then erased from the file
+    network    auto (DHCP, else link-local) | static | linklocal          default auto
+    address    with network=static: 192.168.1.50/24
+    gateway    with network=static: 192.168.1.1
+    dns        with network=static: 1.1.1.1 (spaces between several)
+    timezone   Europe/Athens, UTC, America/New_York, ...                 default UTC
+    ssh        on | off                                                  default on
+    at_boot    pin-control | none | <project name>                       default pin-control
+"""
+import hashlib, json, os, re, subprocess, sys
+
+CONF = '/boot/ardzy.txt'
+STATE = '/var/lib/ardzy'
+APPLIED = os.path.join(STATE, 'config.sha256')
+DEFAULTS = {'hostname': 'ardzy', 'password': '', 'network': 'auto', 'address': '', 'gateway': '', 'dns': '',
+            'timezone': 'UTC', 'ssh': 'on', 'at_boot': 'pin-control'}
+ORDER = ['hostname', 'password', 'network', 'address', 'gateway', 'dns', 'timezone', 'ssh', 'at_boot']
+HEADER = '''# Ardzy board settings. The Ardzy app writes this file; you can also edit it on a PC
+# (the SD card's boot partition). Applied at the next boot, or at once from the app.
+#   hostname  board name: <hostname>.local          network  auto | static | linklocal
+#   password  new root password (erased once used)   address/gateway/dns  for network = static
+#   timezone  for example Europe/Athens or UTC       ssh      on | off
+#   at_boot   pin-control | none | <project name>
+'''
+NETFILE = '/etc/systemd/network/10-eth.network'
+
+
+def log(msg):
+    print('ardzy-config: ' + msg, flush=True)
+
+
+def current_state():
+    """The board's settings as they are now: the starting point when there is no ardzy.txt yet
+    (a board updated from Ardzy 0.1), so creating the file changes nothing."""
+    vals = dict(DEFAULTS)
+    try:
+        h = open('/etc/hostname').read().strip()
+        if valid_hostname(h):
+            vals['hostname'] = h
+    except OSError:
+        pass
+    z = os.path.realpath('/etc/localtime')
+    if z.startswith('/usr/share/zoneinfo/'):
+        vals['timezone'] = z[len('/usr/share/zoneinfo/'):]
+    if sh('systemctl', 'is-enabled', 'ssh.service').stdout.strip() in ('disabled', 'masked'):
+        vals['ssh'] = 'off'
+    try:
+        vals['at_boot'] = open(os.path.join(STATE, 'default')).read().strip() or vals['at_boot']
+    except OSError:
+        pass
+    return vals
+
+
+def read_conf():
+    if not os.path.exists(CONF):
+        return current_state()
+    vals = dict(DEFAULTS)
+    try:
+        for line in open(CONF, encoding='utf-8', errors='replace'):
+            line = line.split('#', 1)[0].strip()
+            if '=' in line:
+                k, v = line.split('=', 1)
+                k = k.strip().lower()
+                if k in DEFAULTS:
+                    vals[k] = v.strip()
+    except OSError:
+        pass
+    return vals
+
+
+def write_conf(vals):
+    lines = [HEADER] + ['%-9s = %s' % (k, vals.get(k, '')) for k in ORDER]
+    tmp = CONF + '.new'
+    with open(tmp, 'w', newline='\n') as f:
+        f.write('\n'.join(lines) + '\n')
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, CONF)
+
+
+def sh(*cmd):
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+
+# ---------------------------------------------------------------- appliers
+def valid_hostname(h):
+    return re.fullmatch(r'[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?', h or '') is not None
+
+
+def apply_hostname(v, live):
+    v = v.lower()
+    if not valid_hostname(v):
+        log('hostname %r not valid (letters, digits, -), kept' % v)
+        return
+    if open('/etc/hostname').read().strip() != v:
+        open('/etc/hostname', 'w').write(v + '\n')
+        hosts = open('/etc/hosts').read()
+        hosts = re.sub(r'^127\.0\.1\.1\s+.*$', '127.0.1.1\t' + v, hosts, flags=re.M)
+        if '127.0.1.1' not in hosts:
+            hosts += '127.0.1.1\t%s\n' % v
+        open('/etc/hosts', 'w').write(hosts)
+        log('hostname = ' + v)
+    sh('hostname', v)                       # systemd read /etc/hostname before this ran
+    if live:
+        sh('systemctl', 'restart', 'avahi-daemon')
+
+
+def apply_password(vals):
+    pw = vals.get('password', '')
+    if not pw:
+        return False
+    r = subprocess.run(['chpasswd'], input='root:%s\n' % pw, capture_output=True, text=True)
+    log('root password changed' if r.returncode == 0 else 'password NOT changed: ' + r.stderr.strip())
+    vals['password'] = ''
+    return True                                   # the file must be rewritten without it
+
+
+def network_text(vals):
+    mode = vals.get('network', 'auto')
+    head = '[Match]\nName=eth* en*\n\n[Network]\nMulticastDNS=no\n'
+    if mode == 'static' and vals.get('address'):
+        t = head + 'Address=%s\nLinkLocalAddressing=yes\n' % vals['address']
+        if vals.get('gateway'):
+            t += 'Gateway=%s\n' % vals['gateway']
+        for d in vals.get('dns', '').split():
+            t += 'DNS=%s\n' % d
+        return t
+    if mode == 'linklocal':
+        return head + 'DHCP=no\nLinkLocalAddressing=yes\n'
+    return head + 'DHCP=yes\nLinkLocalAddressing=yes\n'
+
+
+def apply_network(vals, live):
+    t = network_text(vals)
+    try:
+        old = open(NETFILE).read()
+    except OSError:
+        old = ''
+    if old != t:
+        open(NETFILE, 'w').write(t)
+        log('network = %s%s' % (vals.get('network'), ' ' + vals.get('address', '') if vals.get('network') == 'static' else ''))
+        if live:   # the connection drops for a moment; IPv6 link-local keeps working for the app
+            subprocess.Popen(['systemd-run', '--on-active=2', 'systemctl', 'restart', 'systemd-networkd'])
+
+
+def apply_timezone(v, live):
+    zone = '/usr/share/zoneinfo/' + v
+    if not re.fullmatch(r'[A-Za-z0-9_+\-/]+', v or '') or not os.path.isfile(zone):
+        log('time zone %r not known, kept' % v)
+        return
+    if os.path.realpath('/etc/localtime') != os.path.realpath(zone):
+        if os.path.lexists('/etc/localtime'):
+            os.remove('/etc/localtime')
+        os.symlink(zone, '/etc/localtime')
+        open('/etc/timezone', 'w').write(v + '\n')
+        log('time zone = ' + v)
+
+
+def apply_ssh(v, live):
+    on = v.lower() not in ('off', 'no', '0', 'false')
+    if on:
+        sh('systemctl', 'unmask', 'ssh.service')
+        sh('systemctl', 'enable', 'ssh.service')
+        if live:
+            sh('systemctl', 'start', 'ssh.service')
+    else:
+        sh('systemctl', 'disable', 'ssh.service')
+        sh('systemctl', 'mask', '--runtime', 'ssh.service')
+        if live:
+            sh('systemctl', 'stop', 'ssh.service')
+    log('ssh = ' + ('on' if on else 'off'))
+
+
+def apply_at_boot(v, live):
+    os.makedirs(STATE, exist_ok=True)
+    p = os.path.join(STATE, 'default')
+    if v in ('', 'none', 'pin-control'):
+        if os.path.exists(p):
+            os.remove(p)
+    elif re.fullmatch(r'[A-Za-z0-9_.-]+', v):
+        open(p, 'w').write(v + '\n')
+    open(os.path.join(STATE, 'at_boot'), 'w').write((v or 'none') + '\n')
+
+
+def apply(vals, live=False, only=None):
+    keys = only or ORDER
+    rewrite = False
+    if 'hostname' in keys:
+        apply_hostname(vals['hostname'], live)
+    if 'password' in keys:
+        rewrite |= apply_password(vals)
+    if {'network', 'address', 'gateway', 'dns'} & set(keys):
+        apply_network(vals, live)
+    if 'timezone' in keys:
+        apply_timezone(vals['timezone'], live)
+    if 'ssh' in keys:
+        apply_ssh(vals['ssh'], live)
+    if 'at_boot' in keys:
+        apply_at_boot(vals['at_boot'], live)
+    if rewrite:
+        write_conf(vals)
+    os.makedirs(STATE, exist_ok=True)
+    open(APPLIED, 'w').write(file_hash())
+
+
+def file_hash():
+    try:
+        return hashlib.sha256(open(CONF, 'rb').read()).hexdigest()
+    except OSError:
+        return ''
+
+
+def keep_mac():
+    """A published image has no MAC address in uboot.env: each board gets a random one from U-Boot or Linux at
+    its first start. Save that one, so the board keeps the same address (and DHCP name) from then on."""
+    try:
+        sys.path.insert(0, '/usr/lib/python3/dist-packages')
+        import ardzy_env
+        if ardzy_env.get('ethaddr'):
+            return
+        for dev in sorted(os.listdir('/sys/class/net')):
+            if dev != 'lo' and os.path.exists('/sys/class/net/%s/device' % dev):
+                mac = open('/sys/class/net/%s/address' % dev).read().strip()
+                if re.match(r'^([0-9a-f]{2}:){5}[0-9a-f]{2}$', mac) and mac != '00:00:00:00:00:00':
+                    ardzy_env.set(ethaddr=mac)
+                    log('network address %s saved (it stays the same from now on)' % mac)
+                return
+    except Exception as e:                      # (never stop the boot for this)
+        log('could not save the network address: %s' % e)
+
+
+def main():
+    args = sys.argv[1:]
+    if not args:
+        keep_mac()
+    if args and args[0] == 'show':
+        v = read_conf()
+        v['password'] = ''
+        print(json.dumps(v))
+        return
+    if args and args[0] == 'set':
+        vals = read_conf()
+        changed = []
+        for a in args[1:]:
+            k, _, val = a.partition('=')
+            k = k.strip().lower()
+            if k not in DEFAULTS:
+                sys.exit('unknown setting ' + k)
+            if k == 'hostname' and not valid_hostname(val.strip().lower()):
+                sys.exit('hostname: letters, digits and -, up to 32')
+            vals[k] = val.strip()
+            changed.append(k)
+        write_conf(vals)
+        apply(vals, live=True, only=changed)
+        return
+    if not os.path.exists(CONF):
+        write_conf(read_conf())                 # create it from the board's current settings
+    last = open(APPLIED).read().strip() if os.path.exists(APPLIED) else ''
+    if '--force' in args or file_hash() != last:
+        apply(read_conf())
+    else:
+        log('settings unchanged')
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>AXI-Stream lab (FIFO, CRC-32, arbiter)</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Computing &middot; advanced</div><h1>AXI-Stream lab (FIFO, CRC-32, arbiter)</h1><p class="lead">The building blocks for data streams in the FPGA, at work: FIFOs, a width converter, a CRC-32 engine checked against Python, a 100-million-words-per-second source with a meter, and a frame-aware arbiter.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 7 of 7 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Stream lab (chains A, B, C)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr></table><h3>Parts</h3><ul><li>nothing: everything happens inside the FPGA</li></ul><h2>What it does</h2>
+<p>A lab bench for <b>AXI-Stream</b>, the way data flows between blocks in FPGA designs (Xilinx IP, video, network, DSP chains all use it). Three small chains show the building blocks of the Ardzy library at work: FIFOs, a width converter, a CRC-32 engine checked against Python, a source that makes 100 million words per second with a meter that checks every one, and an arbiter that merges two streams without breaking their frames.</p>
+<h2>How it works</h2>
+<p>A stream moves one word when the source has data (<b>tvalid</b>) and the sink can take it (<b>tready</b>) at the same clock edge. <b>tlast</b> marks the last word of a frame (a packet). Either side may wait: that is <b>back pressure</b>, and it is what makes streams safe to connect in any order.</p>
+<pre><code>          tdata[31:0] ------------&gt;
+source    tvalid      ------------&gt;    sink        a word moves when tvalid AND tready
+          tlast       ------------&gt;
+          tready      &lt;------------</code></pre>
+<p>The three chains:</p>
+<table>
+<tr><th>Chain</th><th>Path</th><th>What it shows</th></tr>
+<tr><td>A</td><td>ARM -&gt; FIFO -&gt; 32 to 8 bits -&gt; CRC-32</td><td>the CRC of each frame, the same number as Python's <code>zlib.crc32</code></td></tr>
+<tr><td>B</td><td>counter source -&gt; FIFO -&gt; meter</td><td>100 million words per second; with back pressure (the meter takes a word only every n clocks) nothing is lost</td></tr>
+<tr><td>C</td><td>two sources -&gt; arbiter -&gt; FIFO -&gt; ARM</td><td>frames of 3 and 5 words arrive whole, the sources take turns</td></tr>
+</table>
+<p>The blocks (in <code>ardzy_axis.v</code>, ready for your own designs): <code>ardzy_axis_fifo</code>, <code>ardzy_axis_32to8</code>, <code>ardzy_axis_crc32</code>, <code>ardzy_axis_arb2</code>, <code>ardzy_axis_counter</code>, <code>ardzy_axis_meter</code>.</p>
+<h2>Try it</h2>
+<p>Nothing to wire. <b>Upload and run</b>: the Monitor shows the CRC of a text (FPGA and Python agree), the speed of chain B at 1, 2, 4 and 10 clocks per word, and the frames of chain C.</p>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, StreamLab
+import zlib
+lab = StreamLab(Bus(), slot=1)
+lab.reset()
+data = b'Hello, stream!  '
+print(hex(lab.crc_frame(data)), hex(zlib.crc32(data)))
+lab.sources(b=True)
+lab.slow(3)                         # the meter takes 1 word in 4 clocks
+print(lab.meter())                  # words per second, errors</code></pre>
+<p>Use the blocks in your own design: copy the project, and in <code>top.v</code> chain them with the <code>tdata / tvalid / tready / tlast</code> wires, as <code>streamlab.v</code> does.</p>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] reset [1] source B on [2] sources C on</td></tr>
+<tr><td>1, 2</td><td>IN_DATA, IN_LAST</td><td>a word into chain A / the last word of a frame</td></tr>
+<tr><td>3..5</td><td>CRC, CRC_FRAMES, CRC_BYTES</td><td>(read)</td></tr>
+<tr><td>6..8</td><td>B_PER_SEC, B_WORDS, B_ERRORS</td><td>the meter</td></tr>
+<tr><td>9, 10</td><td>B_SLOW, B_LEN</td><td>back pressure, frame length</td></tr>
+<tr><td>11..13</td><td>C_DATA, C_LEVEL, C_INFO</td><td>take a word from chain C</td></tr>
+<tr><td>14</td><td>A_LEVEL</td><td>words waiting in chain A</td></tr>
+<tr><td>15</td><td>ID</td><td>"AXIS"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Handshake: data moves only when valid and ready</td><td>tvalid / tready on every stream</td></tr>
+<tr><td>Back pressure</td><td>the meter takes a word only every n clocks; nothing is lost</td></tr>
+<tr><td>FIFOs decouple producers and consumers</td><td><code>ardzy_axis_fifo</code> between every pair of blocks</td></tr>
+<tr><td>Frames and arbitration</td><td>tlast marks the end of a frame; the arbiter never splits one</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>A source offers 100 million words per second, the sink takes 1 in 4 clocks. What happens to the source?</li></ol>
+<details><summary>Answer</summary>
+It sees tready low 3 clocks in 4 and waits: 25 million words per second pass, none lost. That is back pressure.
+</details>
+<ol><li>Why does CRC-32 detect any single changed bit in a frame?</li></ol>
+<details><summary>Answer</summary>
+CRC is the remainder of a polynomial division; a single changed bit adds a term the generator polynomial cannot divide, so the remainder always changes.
+</details>
+<ol><li>Why must a block never lower tvalid or change tdata before the word is taken?</li></ol>
+<details><summary>Answer</summary>
+The sink may take it at any later clock; changing it early would lose or corrupt that word. The rule makes any two blocks safe to connect.
+</details>
+<h2>Ideas</h2>
+<ul><li>A packet filter: pass only frames whose first word matches.</li><li>A moving average or FIR filter as a stream block between the source and the meter.</li><li>Feed the FM radio's audio from a stream.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li>The self-test checks every block; if your own chain loses words, look for a block that ignores tready (it must hold tvalid and the data until the word is taken).</li></ul></main></body></html>

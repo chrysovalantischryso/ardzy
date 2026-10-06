@@ -1,0 +1,88 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pattern generator</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Test and measurement &middot; easy</div><h1>Pattern generator</h1><p class="lead">The opposite of the logic analyzer: play any digital pattern of up to 1024 steps on 16 pins, up to 100 million steps per second, checked at the pins.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 9 of 9 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Pattern generator registers</td></tr><tr><td>2</td><td><code>0x43C02000</code></td><td>Pattern table (1024 words, bit n = pin n)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>pins[0]</code></td><td>J5 pin 5</td><td>T16</td></tr><tr><td><code>pins[1]</code></td><td>J5 pin 11</td><td>V15</td></tr><tr><td><code>pins[2]</code></td><td>J5 pin 12</td><td>W15</td></tr><tr><td><code>pins[3]</code></td><td>J5 pin 15</td><td>U17</td></tr><tr><td><code>pins[4]</code></td><td>J6 pin 5</td><td>U14</td></tr><tr><td><code>pins[5]</code></td><td>J6 pin 11</td><td>U18</td></tr><tr><td><code>pins[6]</code></td><td>J6 pin 12</td><td>U19</td></tr><tr><td><code>pins[7]</code></td><td>J6 pin 15</td><td>U15</td></tr><tr><td><code>pins[8]</code></td><td>J7 pin 5</td><td>T20</td></tr><tr><td><code>pins[9]</code></td><td>J7 pin 11</td><td>V20</td></tr><tr><td><code>pins[10]</code></td><td>J7 pin 12</td><td>W20</td></tr><tr><td><code>pins[11]</code></td><td>J7 pin 15</td><td>U20</td></tr><tr><td><code>pins[12]</code></td><td>J8 pin 5</td><td>Y18</td></tr><tr><td><code>pins[13]</code></td><td>J8 pin 11</td><td>V16</td></tr><tr><td><code>pins[14]</code></td><td>J8 pin 12</td><td>W16</td></tr><tr><td><code>pins[15]</code></td><td>J8 pin 15</td><td>Y19</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J5..J8 pins 5, 11, 12, 15</td><td>the circuit under test, or a scope / logic analyzer</td><td>3.3 V levels, keep the current small (under 8 mA)</td></tr><tr><td>J5..J8 pin 1 or 2 (GND)</td><td>the circuit&#x27;s GND</td><td></td></tr></table><h3>Parts</h3><ul><li>nothing for the self-test</li><li>a scope or logic analyzer to see the patterns</li></ul><h2>What it does</h2>
+<p>A digital pattern generator: the opposite of a logic analyzer. It plays a table of up to 1024 steps on 16 pins (J5 to J8), one step every 10 ns up to every 43 s, once or over and over. Use it to make test signals: clocks, counters, serial data, PWM, stepper sequences, a fake sensor for another board.</p>
+<h2>How it works</h2>
+<p>The ARM writes the table into a block RAM in the FPGA: word n holds the levels of the 16 pins for step n (bit k = pin k). A counter divides the 100 MHz clock: every DIV + 1 clocks the next word goes to the pins. At DIV = 0 that is 100 million steps per second, far faster than any program on a processor can toggle pins, and with no jitter.</p>
+<pre><code>table (block RAM) -&gt; step counter (DIV) -&gt; output register -&gt; 16 pins
+                                       pins read back at the pads -&gt; MISMATCH counter</code></pre>
+<p>Each output is also read back at its pad: the FPGA compares what the pin shows with what it should show and counts the differences (MISMATCH). A short circuit or another device driving the pin shows up there.</p>
+<table>
+<tr><th>Pin bit</th><th>Connector</th></tr>
+<tr><td>0..3</td><td>J5 pins 5, 11, 12, 15</td></tr>
+<tr><td>4..7</td><td>J6 pins 5, 11, 12, 15</td></tr>
+<tr><td>8..11</td><td>J7 pins 5, 11, 12, 15</td></tr>
+<tr><td>12..15</td><td>J8 pins 5, 11, 12, 15</td></tr>
+</table>
+<h2>Try it</h2>
+<p><b>Upload and run</b>: the demo plays a few patterns (a binary counter, a walking 1, a burst). Look at them with a scope, or with the <b>Tools</b> page's logic analyzer on another board, or with a cheap USB logic analyzer (and PulseView).</p>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, PatternGen
+pg = PatternGen(Bus(), slot=1)
+pg.outputs(0xFFFF)                       # all 16 pins are outputs
+pg.load([i for i in range(256)])         # an 8-bit counter on pins 0..7
+pg.rate(1_000_000)                       # 1 million steps per second
+pg.start(loop=True)
+print(pg.status())                       # step, loops, mismatches
+pg.stop()</code></pre>
+<p>A UART byte at 9600 baud on pin 0: <code>pg.rate(9600)</code>, then the bits of <code>[0] + data bits (LSB first) + [1]</code> as steps.</p>
+<h3>Registers (slot 1, the table in slot 2)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] run (start from step 0), [1] loop</td></tr>
+<tr><td>1</td><td>LENGTH</td><td>steps, 1..1024</td></tr>
+<tr><td>2</td><td>DIV</td><td>clocks per step minus 1</td></tr>
+<tr><td>3</td><td>OE</td><td>output enable per pin</td></tr>
+<tr><td>4</td><td>IDLE</td><td>levels when stopped</td></tr>
+<tr><td>5..8</td><td>STEP, LOOPS, MISMATCH, INPUTS</td><td>(read)</td></tr>
+<tr><td>9</td><td>ID</td><td>"PATG"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Block RAM as a pattern table</td><td>one word per step, bit k = pin k</td></tr>
+<tr><td>A divider sets the speed</td><td>DIV + 1 clocks per step: 100 million steps per second at DIV = 0</td></tr>
+<tr><td>No jitter: hardware timing</td><td>every edge exactly on a 10 ns clock edge</td></tr>
+<tr><td>Self-checking outputs</td><td>each pin read back at its pad, differences counted in MISMATCH</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>You want a 1 MHz square wave on pin 0 with a 2-step table (1, 0). What DIV?</li></ol>
+<details><summary>Answer</summary>
+Each step lasts DIV + 1 clocks and a period is 2 steps: 2 x (DIV + 1) x 10 ns = 1 us, so DIV = 49.
+</details>
+<ol><li>How would you make a 4-phase stepper motor sequence on pins 0..3?</li></ol>
+<details><summary>Answer</summary>
+A 4-step table: 0b0001, 0b0010, 0b0100, 0b1000 (or 8 half steps), looping, with DIV setting the step rate.
+</details>
+<ol><li>MISMATCH counts up while a pin is shorted to ground. Why is that useful?</li></ol>
+<details><summary>Answer</summary>
+The FPGA notices that the pin does not show what it drives: a wiring error, a short or two drivers fighting are found without a scope.
+</details>
+<h2>Ideas</h2>
+<ul><li>Drive a 7-segment display, a shift register (74HC595) or an R-2R ladder (a slow waveform).</li><li>Make the test signals for another project: encoder A/B signals for project 03, step/dir for a motor driver.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>MISMATCH counts up</b>: something else drives the pin, or the pin is shorted. Pins set as inputs (OE bit 0) are not checked.</li><li><b>Edges look slow on a scope at 100 MHz</b>: that is the pin and the probe; use short wires and the scope's 10x probe.</li></ul></main></body></html>

@@ -1,0 +1,4 @@
+# Board connection used by ardzy_upload.ps1 / UPLOAD.bat
+Board = ardzy.local
+User = root
+Password = root

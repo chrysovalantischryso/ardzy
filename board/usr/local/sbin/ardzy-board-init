@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+"""Set up the ARM-side (PS) extras of the Antminer S9 control board at boot.
+
+From the board schematic (AntMiner_ControlBoard_XC7010 V1.0):
+  MIO15  D2  green LED            active LOW   bank 500 (3.3 V)
+  MIO37  D3  red   (bicolor LED)  active HIGH  bank 501 (2.5 V), via transistor
+  MIO38  D3  green (bicolor LED)  active HIGH  bank 501 (2.5 V), via transistor
+  MIO39  BZ1 buzzer               active HIGH  bank 501 (2.5 V), via transistor
+  MIO47  S1  button "reset"       pressed = 0  bank 501, 4.7k pull-up
+  MIO51  S2  button "IP"          pressed = 0  bank 501, 4.7k pull-up
+The boot loader leaves these pins in GPIO mode but with the output driver off (tristate),
+so the pin settings are written here (SLCR MIO_PIN registers), then the lines are exported
+to /sys/class/gpio/gpioN (Linux GPIO number = MIO number on this kernel).
+"""
+import mmap, os, struct, sys, time
+
+SLCR = 0xF8000000
+UNLOCK, KEY_UNLOCK = 0x008, 0xDF0D
+# NOTE: do NOT lock the SLCR again afterwards. Linux keeps it unlocked for good (the clock
+# driver writes it, e.g. to switch the GPIO block's clock on); a lock silently breaks that.
+# MIO_PIN bits: 0 tristate, 1-7 mux (0 = GPIO), 9-11 IO type (2 = LVCMOS25, 3 = LVCMOS33), 12 pull-up
+PINS = {          # mio: (register value, direction, initial value)
+    15: (0x1600, 'out', 1),     # green LED D2, active low -> 1 = off
+    37: (0x0400, 'out', 0),     # red LED, off
+    38: (0x0400, 'out', 0),     # green LED, off (turned on below = "Ardzy ready")
+    39: (0x0400, 'out', 0),     # buzzer, off
+    47: (0x1401, 'in', None),   # button S1
+    51: (0x1401, 'in', None),   # button S2
+}
+
+
+def slcr_write(values):
+    fd = os.open('/dev/mem', os.O_RDWR | os.O_SYNC)
+    m = mmap.mmap(fd, 0x1000, mmap.MAP_SHARED, mmap.PROT_READ | mmap.PROT_WRITE, offset=SLCR)
+    os.close(fd)
+    words = memoryview(m).cast('I')                 # one 32-bit write each (not struct.pack_into)
+    words[UNLOCK >> 2] = KEY_UNLOCK
+    for mio, val in values.items():
+        words[(0x700 + 4 * mio) >> 2] = val
+    words.release()
+    m.close()
+
+
+def gpio(n, direction, value=None):
+    base = '/sys/class/gpio/gpio%d' % n
+    if not os.path.isdir(base):
+        with open('/sys/class/gpio/export', 'w') as f:
+            f.write(str(n))
+        for _ in range(50):
+            if os.path.exists(base + '/direction'):
+                break
+            time.sleep(0.02)
+    with open(base + '/direction', 'w') as f:
+        f.write('high' if direction == 'out' and value else ('low' if direction == 'out' else 'in'))
+
+
+def main():
+    if not os.path.exists('/sys/class/gpio/export'):
+        print('no GPIO interface: board extras skipped')
+        return 0
+    slcr_write({mio: v for mio, (v, _, _) in PINS.items()})
+    bad = []
+    for mio, (_, d, v) in PINS.items():
+        try:
+            gpio(mio, d, v)
+        except OSError as e:
+            bad.append('MIO%d: %s' % (mio, e))
+    try:
+        safe = os.path.exists('/var/lib/ardzy/safemode')
+        with open('/sys/class/gpio/gpio%d/value' % (37 if safe else 38), 'w') as f:
+            f.write('1')      # green = Ardzy ready, red = safe mode
+    except OSError as e:
+        bad.append('status LED: %s' % e)
+    print('board extras ready (LEDs, buzzer, buttons)%s%s' % (
+        ' - SAFE MODE' if safe else '', ('; problems: ' + '; '.join(bad)) if bad else ''))
+    return 0                  # never fail the boot because of an LED
+
+
+if __name__ == '__main__':
+    sys.exit(main())

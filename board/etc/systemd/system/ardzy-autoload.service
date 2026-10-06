@@ -1,0 +1,12 @@
+[Unit]
+Description=S9 load the default project at boot (skipped in safe mode)
+After=local-fs.target sys-kernel-config.mount
+Wants=sys-kernel-config.mount
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ardzy boot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Learn FPGA with Ardzy</title>
+<link rel="stylesheet" href="docs.css"><link rel="stylesheet" href="learn/learn.css">
+</head><body id="top">
+<header class="top"><div class="wrap">
+  <nav class="back"><a href="index.html">&larr; All documents</a></nav>
+  <div class="kicker">Document 7 &middot; Project 2_Ardzy</div>
+  <h1>Learn FPGA with Ardzy</h1>
+  <p>Ten lessons from logic gates to your own instrument. Each lesson explains one idea with a drawing you can play with,
+  has a working project on the board, its code, questions with answers and challenges. The same course is the
+  <b>Learn</b> view of the Ardzy app, where each project is created and uploaded with one click.</p>
+</div></header>
+<main class="wrap">
+  <div id="learnTabs" hidden></div>
+  <div class="box info" id="intro"></div>
+  <h2>The lessons</h2>
+  <ol id="toc"></ol>
+  <div id="lessons"></div>
+  <h2 id="ideas">Ideas: what to build next</h2>
+  <p>Ideas for your own projects, from an afternoon to a few weekends. "Start from" names the lesson or ready project
+  (document 6) to begin with.</p>
+  <div id="ideaList"></div>
+  <p><a href="#top">Back to the top</a></p>
+</main>
+<script>
+// small stand-ins for the app's helpers, so the app's widgets run here too
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[c]);
+const BV = { view: 'learn' };
+</script>
+<script src="learn/learn_data.js"></script>
+<script src="learn/learn_code.js"></script>
+<script src="learn/learn.js"></script>
+<script>
+$('intro').innerHTML = LEARN.intro.replace('Press <b>Create the project</b>, then <b>Upload and run</b>',
+  'In the app press <b>Create the project</b>, then <b>Upload and run</b>');
+$('toc').innerHTML = LEARN.lessons.map(L => `<li><a href="#lesson${L.id}">${esc(L.title)}</a></li>`).join('');
+$('lessons').innerHTML = LEARN.lessons.map(L => `<section class="project" id="lesson${L.id}">
+  <div class="kicker">Lesson ${L.id} &middot; about ${L.minutes} minutes &middot; you need: ${esc(L.need)}</div>
+  <h2>${esc(L.title)}</h2>
+  <div class="box ok"><b>You will learn:</b> ${esc(L.goal)}</div>
+  ${L.sections.map((s, i) => s.widget ? `<div class="lwidget" data-w="${s.widget}"></div>` : `<h3>${esc(s.h)}</h3>${s.html}`).join('')}
+  <h3>Do it on the board</h3>
+  <p>In the app: <b>Learn</b>, lesson ${L.id}. The project is <code>${L.template}</code> in <code>2_Ardzy/pc_app/templates</code>.</p>
+  <ol>${L.steps.map(s => `<li>${s}</li>`).join('')}</ol>
+  <h3>The code</h3>
+  ${L.files.map(f => `<details${f === 'top.v' ? ' open' : ''}><summary>${esc(f)}</summary><pre><code>${esc((LEARN_CODE[L.template] || {})[f] || '')}</code></pre></details>`).join('')}
+  <h3>Check yourself</h3>
+  ${L.quiz.map((q, i) => `<p><b>${i + 1}. ${q.q}</b></p><ul>${q.options.map(o => `<li>${o}</li>`).join('')}</ul>
+    <details><summary>Answer</summary><p><b>${q.options[q.answer]}</b>. ${q.why}</p></details>`).join('')}
+  <h3>Challenges</h3>
+  ${L.challenges.map((c, i) => `<p><b>${i + 1}.</b> ${c.task}</p><details><summary>Hint</summary><p>${c.hint}</p></details>
+    <details><summary>Answer</summary><p>${c.answer}</p></details>`).join('')}
+  <p><a href="#top">Back to the top</a></p></section>`).join('');
+document.querySelectorAll('.lwidget').forEach(el => { try { LW[el.dataset.w](el); } catch (e) { el.textContent = e; } });
+const level = ['', 'easy', 'medium', 'hard'];
+$('ideaList').innerHTML = '<table><tr><th>Idea</th><th>Level</th><th>What it is</th><th>You need</th><th>You learn</th><th>Start from</th></tr>' +
+  IDEAS.map(i => `<tr><td><b>${esc(i.t)}</b><br><small>${esc(i.cat)}</small></td><td>${level[i.d]}</td><td>${esc(i.how)}</td>
+    <td>${esc(i.parts)}</td><td>${esc(i.learn)}</td><td>${esc(i.start)}</td></tr>`).join('') + '</table>';
+</script>
+</body></html>

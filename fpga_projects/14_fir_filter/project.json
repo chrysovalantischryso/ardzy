@@ -1,0 +1,22 @@
+{
+  "id": "FIR1",
+  "title": "FIR filter lab (DSP in hardware)",
+  "category": "Sound",
+  "level": "intermediate",
+  "summary": "A digital filter made of one hardware multiplier: up to 64 taps, 1.5 million samples per second, results equal to the math to the last bit. Design low-pass, high-pass or band-pass filters in Python, feed them sound or the built-in sine and noise generator, and measure their frequency response.",
+  "slots": {
+    "0": "Info",
+    "1": "FIR filter, generator, meters"
+  },
+  "pins": {
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [],
+  "parts": [
+    "nothing: everything happens inside the FPGA"
+  ],
+  "tested": "the self-test passed 8 of 8 checks on the real board (October 2026), with nothing connected: 900 random samples equal to the integer math, 1.471 million samples per second at 63 taps."
+}

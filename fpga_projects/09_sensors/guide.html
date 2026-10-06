@@ -1,0 +1,89 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sensors: distance, IR remote, touch</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Sensors &middot; easy</div><h1>Sensors: distance, IR remote, touch</h1><p class="lead">Three sensor helpers timed by the FPGA to the microsecond: HC-SR04 ultrasonic distance, any NEC infrared remote control, and a capacitive touch pad.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 10 of 10 checks on the real board (October 2026), with nothing connected.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>Sensors</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr><tr><td><code>trig</code></td><td>J8 pin 5</td><td>Y18</td></tr><tr><td><code>echo</code></td><td>J8 pin 11</td><td>V16</td></tr><tr><td><code>ir</code></td><td>J8 pin 12</td><td>W16</td></tr><tr><td><code>touch</code></td><td>J8 pin 15</td><td>Y19</td></tr></table><h3>Wiring</h3><table><tr><th>Board</th><th>Goes to</th><th>Note</th></tr><tr><td>J8 pin 5 (TRIG)</td><td>HC-SR04 TRIG</td><td>3.3 V is enough to trigger it</td></tr><tr><td>J8 pin 11 (ECHO)</td><td>HC-SR04 ECHO through a divider: 1 kohm from ECHO, 2 kohm to GND</td><td>ECHO is 5 V: never connect it directly</td></tr><tr><td>J8 pin 12 (IR)</td><td>IR receiver OUT (VS1838B, TSOP38238)</td><td>receiver VCC to 3.3 V (pin 16)</td></tr><tr><td>J8 pin 15 (touch)</td><td>a wire or a coin as the pad, and 1 Mohm to 3.3 V</td><td>works without the resistor too (less sensitive)</td></tr><tr><td>pin 16 (3.3 V) / outside 5 V</td><td>IR receiver VCC / HC-SR04 VCC (5 V)</td><td>common GND</td></tr></table><h3>Parts</h3><ul><li>HC-SR04 ultrasonic sensor + 1 k and 2 k resistors</li><li>IR receiver VS1838B and any TV / NEC remote</li><li>1 Mohm resistor and a coin or foil for the touch pad</li><li>nothing for the self-test</li></ul><h2>What it does</h2>
+<p>Three sensors that need exact timing, measured by the FPGA: an <b>HC-SR04</b> ultrasonic distance sensor, an <b>IR remote</b> receiver (NEC codes, most cheap remotes) and a <b>capacitive touch</b> pad made of a wire or a coin. The demo prints distance, remote buttons and touches as they happen; LED 0 lights while the pad is touched.</p>
+<h2>How it works</h2>
+<h3>Distance (HC-SR04)</h3>
+<p>The FPGA sends a 10 us pulse on TRIG every 60 ms. The sensor sends 8 ultrasonic pulses and raises ECHO until the sound comes back. The FPGA times ECHO to the microsecond:</p>
+<pre><code>distance in mm = echo time in us x 343 / 2000      (sound at 20 C: 343 m/s, there and back)</code></pre>
+<p>No echo within 38 ms means "nothing in range" (more than about 4 m). An <b>echo simulator</b> inside can stand in for the sensor (the self-test uses it).</p>
+<h3>IR remote (NEC)</h3>
+<p>A remote flashes infrared light at 38 kHz; a receiver module (VS1838B, TSOP38238) turns the flashes into a clean low signal. The NEC code: a 9 ms start pulse, a 4.5 ms gap, then 32 bits (address, inverted address, command, inverted command), each bit a 0.56 ms pulse followed by a short (0 bit) or long (1 bit) gap. Holding a button sends <b>repeat codes</b>. The FPGA measures every gap, checks the inverted copies, and counts codes, repeats and errors. An IR transmitter inside the FPGA can send a test code to the decoder.</p>
+<h3>Touch</h3>
+<p>The pin pulls its wire low, lets go, and counts how long the 1 Mohm resistor to 3.3 V takes to charge it until it reads high: a few microseconds. A finger adds capacitance, so it takes longer. The base level follows slow changes (temperature, humidity); a difference above TOUCH_DIFF is a touch.</p>
+<h2>Try it</h2>
+<table>
+<tr><th>Sensor</th><th>Wiring</th></tr>
+<tr><td>HC-SR04</td><td>VCC 5 V, GND, TRIG to J8 pin 5, ECHO to J8 pin 11 <b>through a divider</b> (1 k to the pin, 2 k from the pin to GND): ECHO is 5 V!</td></tr>
+<tr><td>IR receiver</td><td>OUT to J8 pin 12, VCC 3.3 V, GND</td></tr>
+<tr><td>touch pad</td><td>a wire or a coin on J8 pin 15, and a 1 Mohm resistor from J8 pin 15 to 3.3 V</td></tr>
+</table>
+<p><b>Upload and run</b>, then wave a hand in front of the sensor, press remote buttons, touch the pad.</p>
+<h2>Program it</h2>
+<pre><code>from blocks import Bus, Sensors
+s = Sensors(Bus(), slot=1)
+s.setup(distance=True, touch=True)
+print(s.distance_mm())        # None when nothing is in range
+print(s.ir())                 # {'count', 'repeats', 'errors', 'address', 'command', ...}
+print(s.touch())              # {'raw', 'base', 'touched', 'touches'}</code></pre>
+<h3>Registers (slot 1)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>[0] distance [1] echo simulator [2] touch [3] IR test</td></tr>
+<tr><td>1</td><td>PERIOD</td><td>time between measurements</td></tr>
+<tr><td>2..5</td><td>ECHO_US, DIST_MM, RANGINGS, TIMEOUTS</td><td>(read)</td></tr>
+<tr><td>6</td><td>SIM_US</td><td>echo simulator</td></tr>
+<tr><td>7..10</td><td>IR_CODE, IR_COUNT, IR_REPEATS, IR_ERRORS</td><td>(read)</td></tr>
+<tr><td>11</td><td>TEST_CODE</td><td>the IR test code</td></tr>
+<tr><td>12..15</td><td>TOUCH_RAW, TOUCH_BASE, TOUCHED, TOUCH_DIFF</td><td>touch</td></tr>
+<tr><td>16</td><td>ID</td><td>"SENS"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>Timing a pulse to the microsecond</td><td>the ECHO pin's high time</td></tr>
+<tr><td>Decoding a protocol from pulse lengths</td><td>NEC IR: a 0 and a 1 differ only in the gap after the pulse</td></tr>
+<tr><td>Measuring capacitance by charge time</td><td>touch: how long a 1 Mohm resistor takes to charge the pin</td></tr>
+<tr><td>Simulators inside the design</td><td>an echo simulator stands in for the sensor in the self-test</td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li>The echo lasts 5830 us. How far is the object?</li></ol>
+<details><summary>Answer</summary>
+5830 x 343 / 2000 = 1000 mm: one metre.
+</details>
+<ol><li>Why does the NEC code send the address and the command twice, the second time inverted?</li></ol>
+<details><summary>Answer</summary>
+To catch errors: a byte and its inverse always add up to 0xFF. A disturbed bit breaks that and the code is thrown away.
+</details>
+<ol><li>Why does the touch sensor follow a slowly changing base level?</li></ol>
+<details><summary>Answer</summary>
+Humidity, temperature and the cable change the charge time slowly. A touch is a quick, big change on top of that; tracking the base keeps one threshold working all day.
+</details>
+<h2>Ideas</h2>
+<ul><li>A parking sensor with the LED strip (project 01) as a bar, or a beeper.</li><li>Control the radio (project 12) with a TV remote: next song, volume.</li><li>A theremin: the distance sets the pitch of the audio project's tone.</li></ul>
+<h2>If something is wrong</h2>
+<ul><li><b>Distance always None</b>: the divider on ECHO is missing a ground, or the sensor has no 5 V.</li><li><b>Jumping distances</b>: soft or slanted surfaces scatter the sound; measure flat, hard things.</li><li><b>IR codes with errors</b>: the receiver needs 3.3 V and a clean supply (a 100 nF capacitor at its pins helps); some remotes are not NEC (RC5, Sony).</li><li><b>Touch too sensitive / not enough</b>: change TOUCH_DIFF (<code>s.touch_threshold(clocks)</code>).</li></ul></main></body></html>

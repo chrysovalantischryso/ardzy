@@ -1,0 +1,11 @@
+[Unit]
+Description=Ardzy web page (http://ardzy.local)
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/ardzy/web/ardzyweb.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
