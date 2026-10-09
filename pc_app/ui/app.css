@@ -164,7 +164,14 @@ dialog::backdrop { background: rgba(0, 0, 0, .45); }
 dialog h2 { margin: 0 0 14px; font-size: 18px; }
 dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); margin: 10px 0; }
 dialog label input { color: var(--text); font-size: 15px; }
-.templates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.templates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; max-height: 52vh; overflow-y: auto; padding-right: 4px; }
+.lang-table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; }
+.lang-table td, .lang-table th { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+.lang-table th { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.lang-table code { font-size: 12.5px; }
+.lang-table .st-ok { color: var(--ok); font-weight: 600; }
+.lang-table .st-no { color: var(--muted); }
+.lang-table td:last-child { text-align: right; white-space: nowrap; }
 .tpl { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; cursor: pointer; }
 .tpl:hover { background: var(--hover); }
 .tpl.active { border-color: var(--accent); background: var(--sel); }

@@ -9,10 +9,18 @@ const TEMPLATES = {
   board_extras: ['Board LED, buzzer, buttons', 'Status LED, beep and the 2 buttons. No FPGA needed.'],
   python_only: ['Python program', 'Runs on the ARM, no FPGA change. Good first step.'],
   c_program: ['C program', 'Compiled on the board with gcc, then run.'],
+  cpp_program: ['C++ program', 'C++17, compiled on the board with g++. ardzy.hpp: LEDs, buttons, FPGA registers.'],
+  shell_script: ['Shell script (bash)', 'Commands like in a terminal. ardzy.sh: LEDs, buttons, FPGA registers.'],
+  perl_script: ['Perl program', 'Perl 5. Ardzy.pm: LEDs, buttons, FPGA registers.'],
+  asm_program: ['ARM assembly', 'The Cortex-A9 itself: assembled with gcc, printf from the C library.'],
+  js_program: ['JavaScript (Node.js)', 'Node.js 20. ardzy.js: LEDs, buttons, FPGA registers. Install it once: Settings, Languages.'],
+  lua_script: ['Lua program', 'Lua 5.4, small and fast to start. Install it once: Settings, Languages.'],
+  go_program: ['Go program', 'Go 1.24, compiled on the board. Install it once: Settings, Languages.'],
+  rust_program: ['Rust program', 'Rust 1.85, compiled on the board (slow: up to a minute). Install it once: Settings, Languages.'],
   fpga_blink: ['FPGA: blink LEDs', 'Verilog counter on the 4 LEDs. Shows the FPGA flow.'],
   fpga_python_leds: ['FPGA + Python', 'AXI GPIO in the FPGA, LEDs driven from Python.'],
 };
-const EDITABLE = /\.(py|c|h|v|sv|vhd|xdc|tcl|sh|txt|json|md|dtsi|dts|csv|ino|cpp|hpp)$|^Makefile$/;
+const EDITABLE = /\.(py|c|h|v|sv|vhd|xdc|tcl|sh|txt|json|md|dtsi|dts|csv|ino|cpp|hpp|pl|pm|lua|js|mjs|go|rs|s|S)$|^Makefile$/;
 
 const S = {
   projects: [], project: localStorage.getItem('ardzy.project') || '', files: [],
@@ -106,9 +114,26 @@ function setBoard(info, host) {
   refreshStatus();
 }
 // the status bar: what is on the board right now (every 4 s)
+// What the board runs: the project, and which FPGA design that means. A project without a .bit leaves
+// the FPGA as it was (an earlier project's design); an Arduino sketch brings the pin-control design.
+function boardNow(s) {
+  if (!s || !s.current) return null;
+  const p = (s.projects || []).find(x => x.name === s.current), files = p ? p.files : [];
+  const fpga = files.some(f => /\.(bit|bin)$/i.test(f)) ? s.current : files.some(f => /\.ino$/i.test(f)) ? 'ardzy_io' : null;
+  return { name: s.current, fpga };
+}
+// the note of the I/O and Tools views: what loading the pin-control design replaces
+function ioNowNote() {
+  const n = boardNow(S.status);
+  if (!n || n.fpga === 'ardzy_io' || n.name === 'ardzy_io') return '';
+  return `<p class="io-now">${esc(n.fpga ? TF('The FPGA now holds {0}. Loading the pin-control design replaces it; upload {0} again afterwards to get it back.', n.fpga)
+    : T('The FPGA holds the design of an earlier project. Loading the pin-control design replaces it.'))}</p>`;
+}
 function statusLine() {
-  const s = S.connected && S.status;
-  $('stBoard').textContent = s ? TF('FPGA: {0}', s.current || '-') + '  ·  ' + T(s.running ? 'program running' : 'program stopped') +
+  const s = S.connected && S.status, n = boardNow(s);
+  const what = !n ? TF('FPGA: {0}', '-') : n.fpga === n.name ? TF('FPGA: {0}', n.name)
+    : n.fpga === 'ardzy_io' ? TF('{0} · FPGA: pin control', n.name) : TF('program: {0} · FPGA: as before', n.name);
+  $('stBoard').textContent = s ? what + '  ·  ' + T(s.running ? 'program running' : 'program stopped') +
     (s.temp ? '  ·  ' + s.temp.replace(' C', ' °C') : '') : '';
   $('stBoard').classList.toggle('warn', !!(s && s.safemode));
 }
@@ -259,12 +284,14 @@ function panelWire() {
 }
 
 /* ---------- projects + files ---------- */
+const LANG_BADGE = { cpp: ['C++', 'C++ program'], sh: ['SH', 'Shell script (bash)'], perl: ['PL', 'Perl program'],
+  asm: ['ASM', 'ARM assembly'], js: ['JS', 'JavaScript (Node.js)'], lua: ['LUA', 'Lua program'], go: ['GO', 'Go program'], rust: ['RS', 'Rust program'] };
 async function refreshProjects() {
   const r = await api('/api/projects');
   S.projects = r.projects || [];
   $('projectList').innerHTML = S.projects.map(p => `
     <div class="item ${p.name === S.project ? 'active' : ''}" data-p="${esc(p.name)}">
-      <span>${esc(p.name)}</span>${p.kind === 'arduino' ? '<span class="badge cpp" title="Arduino sketch (C++)">C++</span>' : ''}${p.bit ? '<span class="badge" title="has an FPGA design: ' + esc(p.bit) + '">FPGA</span>' : ''}
+      <span>${esc(p.name)}</span>${p.kind === 'arduino' ? '<span class="badge cpp" title="Arduino sketch (C++)">C++</span>' : ''}${LANG_BADGE[p.kind] ? `<span class="badge cpp" title="${esc(T(LANG_BADGE[p.kind][1]))}">${LANG_BADGE[p.kind][0]}</span>` : ''}${p.bit ? '<span class="badge" title="has an FPGA design: ' + esc(p.bit) + '">FPGA</span>' : ''}
       ${S.status && S.status.current === p.name ? '<small>on board</small>' : ''}
     </div>`).join('') || '<div class="empty">No projects yet: click + New.</div>';
   $('projectList').querySelectorAll('.item').forEach(el => el.onclick = () => selectProject(el.dataset.p));
@@ -298,7 +325,8 @@ function selectProject(name) {
   refreshProjects();
   const p = S.projects.find(p => p.name === name);
   const first = p && (p.files.find(f => f === name + '.ino') || p.files.find(f => /\.ino$/.test(f)) ||
-    p.files.find(f => f === 'main.py') || p.files.find(f => /\.(py|c|v)$/.test(f)));
+    p.files.find(f => f === 'main.py') || p.files.find(f => /^main\.(cpp|sh|pl|S|s|js|lua|go|rs)$/.test(f)) ||
+    p.files.find(f => /\.(py|c|v)$/.test(f)));
   if (first) openFile(name, first);
 }
 
@@ -310,6 +338,12 @@ function modeFor(name) {
   if (/\.c$/.test(name)) return 'text/x-csrc';
   if (/\.(tcl|xdc)$/.test(name)) return 'tcl';
   if (/\.sh$/.test(name)) return 'shell';
+  if (/\.(pl|pm)$/.test(name)) return 'perl';
+  if (/\.lua$/.test(name)) return 'lua';
+  if (/\.(js|mjs)$/.test(name)) return 'javascript';
+  if (/\.go$/.test(name)) return 'go';
+  if (/\.rs$/.test(name)) return 'rust';
+  if (/\.[sS]$/.test(name)) return { name: 'gas', architecture: 'ARM' };
   if (/\.(dts|dtsi)$/.test(name)) return 'text/x-csrc';
   return null;
 }

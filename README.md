@@ -18,8 +18,9 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
 - **A clean SD card image**: U-Boot 2026.07, Linux 6.18, Debian 13, built 100 % from source by the
   scripts here. Nothing of the original Bitmain firmware is used, and the board's NAND is never touched.
 - **The Ardzy app for Windows**: finds the board on the network by itself, and has everything inside:
-  - **Code**: Arduino C++ sketches (`setup()` / `loop()`), Python, C and Verilog, with Check, Upload,
-    examples, the Arduino library list, a serial-style Monitor and a Plotter.
+  - **Code**: Arduino C++ sketches (`setup()` / `loop()`), Python, C, C++, Shell (bash), Perl, ARM assembly,
+    JavaScript (Node.js), Lua, Go, Rust and Verilog, with Check, Upload, examples, the Arduino library list,
+    a serial-style Monitor, a Plotter, and compiler errors marked in the editor.
   - **Build FPGA without Vivado**: Yosys + nextpnr + Ardzy's own bitstream writer, built in.
   - **Simulation**: Verilog testbenches run on the PC (Icarus Verilog) with the waves drawn in the app.
   - **Blocks**: programs made by snapping blocks together, like Scratch, and **FPGA blocks** for hardware.
@@ -40,6 +41,12 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
   from the board's DDR memory (about 100 times faster than the ARM), and learns your own handwriting.
   They open in their own screen in the app (Read, Write, Draw).
 - The app opens from a downloaded zip, and new users get the example projects.
+- **More programming languages**: C++, Shell (bash), Perl and ARM assembly are built into every board;
+  JavaScript (Node.js), Lua, Go and Rust install with one click (Settings, Languages: the PC downloads them
+  from Debian and the board installs them, the board needs no internet). Every language has an `ardzy`
+  library in its new projects: LEDs, buzzer, buttons, FPGA registers and `watch()`.
+- Clearer app: the status bar shows what the board runs, the FPGA design and its temperature; the AI screen
+  shows the real engine clock.
 
 ## Quick start
 
@@ -104,7 +111,8 @@ Your own designs replace it while Linux runs.
 ## The Ardzy app (Windows)
 Start `pc_app\dist\Ardzy\Ardzy.exe` (or `Ardzy.exe` from the release zip). It finds the board by itself (UDP
 port 41414, also over a direct cable). Everything is inside the app, nothing else to install:
-- **Code**: Arduino C++ sketches (`setup()` / `loop()`), Python, C, Verilog. **Check**, **Upload** (Ctrl+U),
+- **Code**: Arduino C++ sketches (`setup()` / `loop()`), Python, C, C++, Shell, Perl, ARM assembly, JavaScript,
+  Lua, Go, Rust, Verilog. **Check**, **Upload** (Ctrl+U),
   **Examples** (16), **Libraries** (the Arduino Library Manager list), Monitor with input, Plotter.
 - **Build FPGA** without Vivado: Yosys + nextpnr + Ardzy's own bitstream writer (`pc_app\tools\fpga`,
   library `pc_app\fpga\hdl`). Vivado still works if chosen in Settings.
@@ -146,7 +154,11 @@ A **project** is a folder in `projects\`:
 | `something.bit` | an FPGA design (part **xc7z010clg400-1**) |
 | `main.py` | Python program, starts after the FPGA is loaded |
 | `*.c` (+ `Makefile`) | C program, compiled on the board, then started |
-| `run.sh` | any shell commands instead of a program |
+| `main.cpp` | C++ program (g++, C++17), compiled on the board, then started |
+| `main.sh`, `main.pl` | bash script, Perl program |
+| `main.S` | ARM assembly (with any `.c` files), built by gcc on the board |
+| `main.js`, `main.lua`, `main.go`, `main.rs` | JavaScript (Node.js), Lua, Go, Rust: installed once from the app (Settings, Languages) |
+| `run.sh` | any shell commands instead of a program (for the languages above, the app makes one at upload) |
 | `devices.dtsi` | optional: Linux devices for your FPGA IP (UIO, drivers) |
 
 ### `ardzy` commands on the board

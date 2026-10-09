@@ -322,7 +322,17 @@ async function cpSearch() {
 // ------------------------------------------------------------------ problems: compiler / Python / Verilog errors
 const PROB_RES = [
   // gcc / Arduino:  name.ino:12:5: error: ...
-  [/^\s*([\w.\-\/]+\.(?:ino|cpp|c|h|hpp|cc)):(\d+):(?:(\d+):)?\s*(fatal error|error|warning|note):\s*(.*)$/, m => ({ file: m[1], line: +m[2], col: +(m[3] || 1), kind: m[4], msg: m[5] })],
+  [/^\s*([\w.\-\/]+\.(?:ino|cpp|c|h|hpp|cc|S|s)):(\d+):(?:(\d+):)?\s*(fatal error|error|warning|note):\s*(.*)$/, m => ({ file: m[1], line: +m[2], col: +(m[3] || 1), kind: m[4], msg: m[5] })],
+  // the assembler:  main.S:20: Error: bad instruction ...
+  [/^\s*([\w.\-\/]+\.[sS]):(\d+):\s*(Error|Warning):\s*(.*)$/, m => ({ file: m[1], line: +m[2], col: 1, kind: m[3] === 'Warning' ? 'warning' : 'error', msg: m[4] })],
+  // Go:  ./main.go:12:5: undefined: x
+  [/^\s*(?:\.\/)?([\w.\-\/]+\.go):(\d+):(\d+):\s*(.*)$/, m => ({ file: m[1], line: +m[2], col: +m[3], kind: 'error', msg: m[4] })],
+  // bash:  main.sh: line 12: foo: command not found
+  [/^\s*([\w.\-\/]+\.sh): line (\d+): (.*)$/, m => ({ file: m[1], line: +m[2], col: 1, kind: 'error', msg: m[3] })],
+  // Perl:  syntax error at main.pl line 12, near "..."   /   Can't locate ... at main.pl line 3.
+  [/^(.*?) at ([\w.\-\/]+\.p[lm]) line (\d+)[.,]/, m => ({ file: m[2], line: +m[3], col: 1, kind: /^(Use of|Useless|Name ".*" used only once|Scalar value)/.test(m[1]) ? 'warning' : 'error', msg: m[1] })],
+  // Lua:  lua5.4: main.lua:12: attempt to call a nil value
+  [/^\s*lua5\.4:\s*(?:\.\/)?([\w.\-\/]+\.lua):(\d+):\s*(.*)$/, m => ({ file: m[1], line: +m[2], col: 1, kind: 'error', msg: m[3] })],
   // Yosys / Icarus:  top.v:12: ERROR: ...   top.v:12.5-12.9: ERROR: ...
   // (only lines that say error / warning: "top_tb.v:17: $finish called at ..." is not a problem)
   [/^\s*(?:ERROR:\s*)?([\w.\-\/]+\.s?v):(\d+)(?:[.\d-]*)?:\s*(ERROR|error|Warning|warning|syntax error|sorry)[:,]?\s*(.*)$/, m => ({ file: m[1], line: +m[2], col: 1,
@@ -338,8 +348,21 @@ function cpProblemLine(text, from) {
     const m = t.match(re);
     if (m) { const p = mk(m, t); if (p.kind === 'note') return; p.file = p.file.split('/').pop(); p.from = from; cpAddProblem(p); return; }
   }
+  // Rust:  error[E0425]: cannot find value `x` in this scope   then   --> main.rs:12:5
+  let m = t.match(/^(error|warning)(?:\[\w+\])?:\s*(.*)$/);
+  if (m && !/^aborting due to|could not compile|\d+ warnings? emitted/.test(m[2])) { CP.rsLast = { kind: m[1], msg: m[2] }; return; }
+  m = t.match(/^\s*-->\s*([\w.\-\/]+\.rs):(\d+):(\d+)/);
+  if (m && CP.rsLast) { cpAddProblem({ file: m[1].split('/').pop(), line: +m[2], col: +m[3], kind: CP.rsLast.kind, msg: CP.rsLast.msg, from }); CP.rsLast = null; return; }
+  // JavaScript (Node.js):  /opt/ardzy/projects/x/main.js:12  ...  SyntaxError: ...   or   TypeError: ...  at ... (/opt/.../main.js:12:5)
+  m = t.match(/^(\/opt\/ardzy\/projects\/[^:]+\.js):(\d+)$/);
+  if (m) { CP.jsLast = { file: m[1].split('/').pop(), line: +m[2], col: 1 }; return; }
+  m = t.match(/^\s*at .*?\(?(\/opt\/ardzy\/projects\/[^:()]+\.js):(\d+):(\d+)\)?$/);
+  if (m && CP.jsErr) { cpAddProblem({ file: m[1].split('/').pop(), line: +m[2], col: +m[3], kind: 'error', msg: CP.jsErr, from }); CP.jsErr = null; return; }
+  m = t.match(/^(\w*Error):\s*(.*)$/);
+  if (m && CP.jsLast) { cpAddProblem(Object.assign(CP.jsLast, { kind: 'error', msg: m[1] + ': ' + m[2], from })); CP.jsLast = null; return; }
+  if (m && !CP.pyLast) CP.jsErr = m[1] + ': ' + m[2];
   // Python traceback in the Monitor:  File "/opt/ardzy/projects/x/main.py", line 12, in <module>  ...  NameError: ...
-  let m = t.match(/File "([^"]+\.py)", line (\d+)/);
+  m = t.match(/File "([^"]+\.py)", line (\d+)/);
   if (m && /\/opt\/ardzy\/projects\/|^[\w.\-]+\.py$/.test(m[1])) { CP.pyLast = { file: m[1].split('/').pop(), line: +m[2], col: 1, kind: 'error', msg: 'Python error', from }; return; }
   m = t.match(/^(\w+(?:Error|Exception|Interrupt)):?\s*(.*)$/);
   if (m && CP.pyLast) { CP.pyLast.msg = m[1] + (m[2] ? ': ' + m[2] : ''); cpAddProblem(CP.pyLast); CP.pyLast = null; }

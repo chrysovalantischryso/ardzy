@@ -12,7 +12,7 @@ if exist "%OUT%" rmdir /s /q "%OUT%"
 python -m PyInstaller --noconfirm --windowed --name Ardzy --icon "%~dp0ardzy.ico" ^
   --add-data "%~dp0ui;ui" --add-data "%~dp0templates;templates" ^
   --add-data "%~dp0fpga\hdl;fpga\hdl" --add-data "%~dp0tools\fpga;tools\fpga" ^
-  --add-data "%~dp0fpga\simlib;fpga\simlib" --add-data "%~dp0tools\icarus;tools\icarus" ^
+  --add-data "%~dp0board_packages.txt;." --add-data "%~dp0fpga\simlib;fpga\simlib" --add-data "%~dp0tools\icarus;tools\icarus" ^
   --add-data "%~dp0..\arduino\examples;arduino\examples" --add-data "%~dp0..\fpga_projects;fpga_projects" ^
   --add-data "%~dp0..\projects\ardzy_io;starter\ardzy_io" --add-data "%~dp0..\projects\blink;starter\blink" ^
   --add-data "%~dp0..\projects\board_hello;starter\board_hello" --add-data "%~dp0..\projects\fpga_ramtest;starter\fpga_ramtest" ^

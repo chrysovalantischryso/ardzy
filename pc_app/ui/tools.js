@@ -17,9 +17,8 @@ async function toolsShow() {
     $('toolsState').textContent = r.ok ? 'old pin-control design (version 1)' : 'pin-control design not loaded';
     $('btnToolsLoad').textContent = 'Load pin-control design';
     if (!S.status) { const st = await api('/api/board/status'); if (st.ok) S.status = st.status; }   // (right after start)
-    const cur = S.status && S.status.current;
     $('toolsBody').innerHTML = `<div class="dcard wide"><h3>${T('Instruments')}</h3><p>${esc(T(r.ok ? 'The tools need version 2 of the pin-control design.' : r.out))}</p>
-      ${cur && cur !== 'ardzy_io' ? `<p class="io-now">${esc(TF('The FPGA now holds {0}. Loading the pin-control design replaces it; upload {0} again afterwards to get it back.', cur))}</p>` : ''}
+      ${ioNowNote()}
       <p class="hint">${TF("The instruments live in the FPGA (the pin-control design, project ardzy_io): a 4096-sample logic analyzer over 56 signals, 8 PWM / clock generators, 4 frequency meters, a UART on any pins and I2C on the board's two buses. Press {0}.", '<b>' + T('Load pin-control design') + '</b>')}</p></div>`;
     TL.built = false;
     return;

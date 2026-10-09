@@ -1,0 +1,264 @@
+# Debian packages of the Ardzy 0.2 SD card image (dpkg-query: name version provides).
+# The language installer treats them as already on the board.
+adduser 3.152 
+apt 3.0.3 apt-transport-https (= 3.0.3)
+avahi-daemon 0.8-16 
+base-files 13.8+deb13u7 base, usr-is-merged
+base-passwd 3.6.7 
+bash 5.2.37-2+b10 
+bash-completion 1:2.16.0-7 dh-sequence-bash-completion
+binutils 2.44-3 elf-binutils
+binutils-arm-linux-gnueabihf 2.44-3 
+binutils-common 2.44-3 
+bsdutils 1:2.41.5-0+deb13u1 
+build-essential 12.12 
+bzip2 1.0.8-6 
+ca-certificates 20250419 
+cloud-guest-utils 0.33-1 
+coreutils 9.7-3 
+cpp 4:14.2.0-1 
+cpp-14 14.2.0-19 
+cpp-14-arm-linux-gnueabihf 14.2.0-19 
+cpp-arm-linux-gnueabihf 4:14.2.0-1 
+curl 8.14.1-2+deb13u5 
+dash 0.5.12-12 
+dbus 1.16.2-2 dbus-system-bus (= 1.16.2-2), default-dbus-system-bus
+dbus-bin 1.16.2-2 
+dbus-daemon 1.16.2-2 
+dbus-session-bus-common 1.16.2-2 
+dbus-system-bus-common 1.16.2-2 
+debconf 1.5.91 debconf-2.0
+debian-archive-keyring 2025.1 
+debianutils 5.23.2 
+device-tree-compiler 1.7.2-2+b1 
+diffutils 1:3.10-4 
+dmsetup 2:1.02.205-2 
+dosfstools 4.2-1.2 
+dpkg 1.22.22 
+dpkg-dev 1.22.22 dpkg-build-api (= 0), dpkg-build-api (= 1)
+e2fsprogs 1.47.2-3+b12 
+ethtool 1:6.14.2-1 
+fake-hwclock 0.14 
+fdisk 2.41.5-0+deb13u1 
+file 1:5.46-5 
+findutils 4.10.0-3 
+g++ 4:14.2.0-1 c++-compiler
+g++-14 14.2.0-19 c++-compiler, c++abi2-dev
+g++-14-arm-linux-gnueabihf 14.2.0-19 c++-compiler-arm-linux-gnueabihf
+g++-arm-linux-gnueabihf 4:14.2.0-1 
+gcc 4:14.2.0-1 c-compiler
+gcc-14 14.2.0-19 c-compiler
+gcc-14-arm-linux-gnueabihf 14.2.0-19 c-compiler-arm-linux-gnueabihf
+gcc-14-base 14.2.0-19 
+gcc-arm-linux-gnueabihf 4:14.2.0-1 
+git 1:2.47.3-0+deb13u1 git-completion, git-core
+git-man 1:2.47.3-0+deb13u1 
+grep 3.11-4 rgrep
+gzip 1.13-1+deb13u1 
+hostname 3.25 
+htop 3.4.1-5 
+i2c-tools 4.4-2 
+init-system-helpers 1.69~deb13u1 
+iproute2 6.15.0-1 arpd
+iputils-ping 3:20240905-3 ping
+kmod 34.2-2 
+less 668-1 
+libacl1 2.3.2-2+b1 
+libapparmor1 4.1.0-1 
+libapt-pkg7.0 3.0.3 libapt-pkg (= 3.0.3)
+libasan8 14.2.0-19 
+libatomic1 14.2.0-19 
+libattr1 1:2.5.2-3 
+libaudit-common 1:4.0.2-2+deb13u1 
+libaudit1 1:4.0.2-2+deb13u1 
+libavahi-common-data 0.8-16 
+libavahi-common3 0.8-16 
+libavahi-core7 0.8-16 
+libbinutils 2.44-3 
+libblas3 3.12.1-6 libblas.so.3
+libblkid1 2.41.5-0+deb13u1 
+libbpf1 1:1.5.0-3 
+libbrotli1 1.1.0-2+b7 
+libbsd0 0.12.2-2 
+libbz2-1.0 1.0.8-6 
+libc-bin 2.41-12+deb13u4 
+libc-dev-bin 2.41-12+deb13u4 
+libc-l10n 2.41-12+deb13u4 
+libc6 2.41-12+deb13u4 
+libc6-dev 2.41-12+deb13u4 libc-dev (= 2.41-12+deb13u4)
+libcap-ng0 0.8.5-4+b1 
+libcap2 1:2.75-10+deb13u1+b3 
+libcap2-bin 1:2.75-10+deb13u1+b3 
+libcbor0.10 0.10.2-2 
+libcc1-0 14.2.0-19 
+libcom-err2 1.47.2-3+b12 libcom-err2t64 (= 1.47.2-3+b12), libcomerr2 (= 1.47.2-3+b12)
+libcrypt-dev 1:4.4.38-1 libcrypt1-dev
+libcrypt1 1:4.4.38-1 
+libctf-nobfd0 2.44-3 
+libctf0 2.44-3 
+libcurl3t64-gnutls 8.14.1-2+deb13u5 
+libcurl4t64 8.14.1-2+deb13u5 
+libdaemon0 0.14-7.1+b3 
+libdb5.3t64 5.3.28+dfsg2-9 
+libdbus-1-3 1.16.2-2 
+libdebconfclient0 0.280 
+libdevmapper1.02.1 2:1.02.205-2 
+libdpkg-perl 1.22.22 
+libedit2 3.1-20250104-1 
+libelf1t64 0.192-4 
+liberror-perl 0.17030-1 
+libexpat1 2.8.3-1~deb13u1 
+libext2fs2t64 1.47.2-3+b12 e2fslibs (= 1.47.2-3+b12)
+libfdisk1 2.41.5-0+deb13u1 
+libfdt1 1.7.2-2+b1 
+libffi8 3.4.8-2 libffi8ubuntu1 (= 3.4.8-2)
+libfido2-1 1.15.0-1+b1 
+libgcc-14-dev 14.2.0-19 
+libgcc-s1 14.2.0-19 libgcc1 (= 1:14.2.0-19)
+libgdbm-compat4t64 1.24-2 
+libgdbm6t64 1.24-2 
+libgfortran5 14.2.0-19 
+libgmp10 2:6.3.0+dfsg-3 
+libgnutls30t64 3.8.9-3+deb13u4 
+libgomp1 14.2.0-19 
+libgssapi-krb5-2 1.21.3-5+deb13u1 
+libhogweed6t64 3.10.1-1 
+libi2c0 4.4-2 
+libidn2-0 2.3.8-2 
+libiniparser4 4.2.6-1 
+libisl23 0.27-1 
+libjansson4 2.14-2+b3 
+libk5crypto3 1.21.3-5+deb13u1 
+libkeyutils1 1.6.3-6 
+libkmod2 34.2-2 
+libkrb5-3 1.21.3-5+deb13u1 
+libkrb5support0 1.21.3-5+deb13u1 
+liblapack3 3.12.1-6 liblapack.so.3
+liblastlog2-2 2.41.5-0+deb13u1 
+libldap2 2.6.10+dfsg-1 
+liblz4-1 1.10.0-4 
+liblzma5 5.8.1-1+deb13u1 
+liblzo2-2 2.10-3+b1 
+libmagic-mgc 1:5.46-5 
+libmagic1t64 1:5.46-5 
+libmd0 1.1.0-2+b1 
+libmnl0 1.0.5-3 
+libmount1 2.41.5-0+deb13u1 
+libmpc3 1.3.1-1+b3 
+libmpfr6 4.2.2-1 
+libncursesw6 6.5+20250216-2 
+libnettle8t64 3.10.1-1 
+libnghttp2-14 1.64.0-1.1+deb13u1 
+libnghttp3-9 1.8.0-1 
+libngtcp2-16 1.11.0-1+deb13u1 
+libngtcp2-crypto-gnutls8 1.11.0-1+deb13u1 
+libnss-mdns 0.15.1-4+b1 
+libnss-myhostname 257.13-1~deb13u1 
+libnss-resolve 257.13-1~deb13u1 
+libp11-kit0 0.25.5-3 
+libpam-modules 1.7.0-5 libpam-mkhomedir, libpam-motd, libpam-umask
+libpam-modules-bin 1.7.0-5 
+libpam-runtime 1.7.0-5 
+libpam0g 1.7.0-5 
+libparted2t64 3.6-5 libparted
+libpcre2-8-0 10.46-1~deb13u2 
+libperl5.40 5.40.1-6+deb13u1 
+libpopt0 1.19+dfsg-2 
+libproc2-0 2:4.0.4-9 
+libpsl5t64 0.21.2-1.1+b1 
+libpython3-stdlib 3.13.5-1 
+libpython3.13-minimal 3.13.5-2+deb13u5 
+libpython3.13-stdlib 3.13.5-2+deb13u5 
+libreadline8t64 8.2-6 
+librtmp1 2.4+20151223.gitfa8646d.1-2+b5 
+libsasl2-2 2.1.28+dfsg1-9 
+libsasl2-modules-db 2.1.28+dfsg1-9 
+libseccomp2 2.6.0-2 
+libselinux1 3.8.1-1 
+libsemanage-common 3.8.1-1 
+libsemanage2 3.8.1-1 
+libsepol2 3.8.1-1 
+libsframe1 2.44-3 
+libsmartcols1 2.41.5-0+deb13u1 
+libsqlite3-0 3.46.1-7+deb13u2 
+libss2 1.47.2-3+b12 libss2t64 (= 1.47.2-3+b12)
+libssh2-1t64 1.11.1-1+deb13u2 
+libssl3t64 3.5.7-1~deb13u2 
+libstdc++-14-dev 14.2.0-19 libstdc++-dev
+libstdc++6 14.2.0-19 
+libsystemd-shared 257.13-1~deb13u1 
+libsystemd0 257.13-1~deb13u1 
+libtasn1-6 4.20.0-2+deb13u1 
+libtext-charwidth-perl 0.04-11+b4 
+libtext-wrapi18n-perl 0.06-10 
+libtinfo6 6.5+20250216-2 
+libtirpc-common 1.3.6+ds-1 
+libtirpc3t64 1.3.6+ds-1 
+libubsan1 14.2.0-19 
+libudev1 257.13-1~deb13u1 
+libunistring5 1.3-2 
+libuuid1 2.41.5-0+deb13u1 
+libwrap0 7.6.q-36 
+libwtmpdb0 0.73.0-3+deb13u1 
+libxtables12 1.8.11-2 
+libxxhash0 0.8.3-2 
+libyaml-0-2 0.2.5-2 
+libzstd1 1.5.7+dfsg-1 
+linux-libc-dev 6.12.107-1 
+locales 2.41-12+deb13u4 
+login 1:4.16.0-2+really2.41.5-0+deb13u1 
+login.defs 1:4.17.4-2 
+logsave 1.47.2-3+b12 
+lsb-base 11.6 
+make 4.4.1-2 
+mawk 1.3.4.20250131-1 awk
+media-types 13.0.0 
+mount 2.41.5-0+deb13u1 
+mtd-utils 1:2.3.0-1 mtd-tools
+nano 8.4-1+deb13u1 
+ncurses-base 6.5+20250216-2 ncurses-runtime
+ncurses-bin 6.5+20250216-2 
+netbase 6.5 
+openssh-client 1:10.0p1-7+deb13u4 ssh-client
+openssh-server 1:10.0p1-7+deb13u4 ssh-server
+openssh-sftp-server 1:10.0p1-7+deb13u4 
+openssl 3.5.7-1~deb13u2 
+openssl-provider-legacy 3.5.7-1~deb13u2 
+parted 3.6-5 
+passwd 1:4.17.4-2 
+patch 2.8-2 
+perl 5.40.1-6+deb13u1 libansicolor-perl (= 5.01), libarchive-tar-perl (= 3.02.001), libattribute-handlers-perl (= 1.03), libautodie-perl (= 2.37), libcompress-raw-bzip2-perl (= 2.212), libcompress-raw-zlib-perl (= 2.212), libcompress-zlib-perl (= 2.212), libcpan-meta-perl (= 2.150010), libcpan-meta-requirements-perl (= 2.143), libcpan-meta-yaml-perl (= 0.018), libdigest-md5-perl (= 2.58.01), libdigest-perl (= 1.20), libdigest-sha-perl (= 6.04), libencode-perl (= 3.21), libexperimental-perl (= 0.032), libextutils-cbuilder-perl (= 0.280240), libextutils-command-perl (= 7.70), libextutils-install-perl (= 2.22), libextutils-parsexs-perl (= 3.510000), libfile-spec-perl (= 3.9100), libhttp-tiny-perl (= 0.088), libi18n-langtags-perl (= 0.45), libio-compress-base-perl (= 2.212), libio-compress-bzip2-perl (= 2.212), libio-compress-perl (= 2.212), libio-compress-zlib-perl (= 2.212), libio-zlib-perl (= 1.15), libjson-pp-perl (= 4.16000), liblocale-maketext-perl (= 1.33), liblocale-maketext-simple-perl (= 0.21.01), libmath-bigint-perl (= 2.003002), libmath-complex-perl (= 1.6200), libmime-base64-perl (= 3.16.01), libmodule-corelist-perl (= 5.20250118.40), libmodule-load-conditional-perl (= 0.74), libmodule-load-perl (= 0.36), libmodule-metadata-perl (= 1.000038), libnet-perl (= 1:3.15), libnet-ping-perl (= 2.76), libparams-check-perl (= 0.38), libparent-perl (= 0.241), libparse-cpan-meta-perl (= 2.150010), libperl-ostype-perl (= 1.010), libpod-escapes-perl (= 1.07), libpod-simple-perl (= 3.45), libstorable-perl (= 3.32), libsys-syslog-perl (= 0.36), libterm-table-perl (= 0.018), libtest-harness-perl (= 3.48), libtest-simple-perl (= 1.302199), libtest-tester-perl (= 1.302199), libtest-use-ok-perl (= 1.302199), libtext-balanced-perl (= 2.06), libthread-queue-perl (= 3.14), libthreads-perl (= 2.40), libthreads-shared-perl (= 1.69), libtime-hires-perl (= 1.9777), libtime-local-perl (= 1.3500), libtime-piece-perl (= 1.3401.01), libunicode-collate-perl (= 1.31), libversion-perl (= 1:0.9930), libversion-requirements-perl, podlators-perl (= 5.01.02)
+perl-base 5.40.1-6+deb13u1 libfile-path-perl (= 2.18), libfile-temp-perl (= 0.2311), libio-socket-ip-perl (= 0.42), libscalar-list-utils-perl (= 1:1.63), libsocket-perl (= 2.038), libxsloader-perl (= 0.32), perlapi-5.40.0, perlapi-5.40.1
+perl-modules-5.40 5.40.1-6+deb13u1 perl-modules
+procps 2:4.0.4-9 watch
+psmisc 23.7-2 
+python3 3.13.5-1 python3-profiler, python3-supported-max (= 3.13), python3-supported-min (= 3.13)
+python3-minimal 3.13.5-1 
+python3-numpy 1:2.2.4+ds-1 python3-f2py, python3-numpy-api19, python3-numpy2-abi0
+python3-numpy-dev 1:2.2.4+ds-1 dh-sequence-numpy3
+python3-serial 3.5-2 
+python3.13 3.13.5-2+deb13u5 
+python3.13-minimal 3.13.5-2+deb13u5 
+readline-common 8.2-6 
+rpcsvc-proto 1.4.3-1 
+rsync 3.5.0+ds1-0+deb13u1 
+runit-helper 2.16.4 
+sed 4.9-2+deb13u1 
+sensible-utils 0.0.25 
+sqv 1.3.0-3+b2 
+sudo 1.9.16p2-3+deb13u2 
+systemd 257.13-1~deb13u1 systemd-sysusers (= 257.13-1~deb13u1), systemd-tmpfiles (= 257.13-1~deb13u1)
+systemd-resolved 257.13-1~deb13u1 resolvconf
+systemd-sysv 257.13-1~deb13u1 
+systemd-timesyncd 257.13-1~deb13u1 time-daemon
+systemd-zram-generator 1.2.1-2 
+sysvinit-utils 3.14-4 lsb-base (= 11.1.0)
+tar 1.35+dfsg-3.1 
+tzdata 2026c-0+deb13u1 tzdata-trixie
+ucf 3.0052 
+udev 257.13-1~deb13u1 
+unzip 6.0-29+deb13u1 
+util-linux 2.41.5-0+deb13u1 hardlink
+wget 1.25.0-2 
+xz-utils 5.8.1-1+deb13u1 lzma
+zlib1g 1:1.3.dfsg+really1.3.1-1+b1 libz1

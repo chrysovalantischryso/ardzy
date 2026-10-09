@@ -24,9 +24,11 @@ TEMPLATES_DIR = os.path.join(getattr(sys, '_MEIPASS', APP_DIR), 'templates')
 SETTINGS_FILE = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'Ardzy', 'settings.json')
 NAME_RE = re.compile(r'^[A-Za-z0-9_.-]+$')
 PROGRAM_FILES = ('main.py', 'run.sh', 'Makefile', 'devices.dtsi', 'overlay.dts')
-UPLOAD_EXT = ('.py', '.c', '.h', '.txt', '.json', '.csv', '.s', '.wav')
+UPLOAD_EXT = ('.py', '.c', '.h', '.txt', '.json', '.csv', '.s', '.wav',
+              '.cpp', '.hpp', '.sh', '.pl', '.pm', '.lua', '.js', '.go', '.rs', '.S')   # + the languages of langs.py
 EDIT_EXT = ('.py', '.c', '.h', '.v', '.sv', '.vhd', '.xdc', '.tcl', '.sh', '.txt', '.json', '.md',
-            '.dtsi', '.dts', '.csv', 'Makefile', '.ino', '.cpp', '.hpp', '.s')
+            '.dtsi', '.dts', '.csv', 'Makefile', '.ino', '.cpp', '.hpp', '.s', '.S', '.pl', '.pm', '.lua', '.js',
+            '.mjs', '.go', '.rs')
 CACHE_DIR = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'Ardzy', 'cache')
 ARDUINO_EXAMPLES = next((d for d in (os.path.join(getattr(sys, '_MEIPASS', APP_DIR), 'arduino', 'examples'),
                                      os.path.normpath(os.path.join(APP_DIR, '..', 'arduino', 'examples')),
@@ -39,6 +41,7 @@ GALLERY_DIR = next((d for d in (os.path.join(getattr(sys, '_MEIPASS', APP_DIR), 
 sys.path.insert(0, getattr(sys, '_MEIPASS', APP_DIR))
 import arduino_support                     # noqa: E402  (sketches, Library Manager, examples)
 import sdflash                             # noqa: E402  (SD card writer)
+import langs                               # noqa: E402  (C++, Shell, Perl, assembly, JavaScript, Lua, Go, Rust)
 from fpga import flow as fpga_flow          # noqa: E402  (built-in FPGA toolchain, no Vivado)
 from fpga import sim as fpga_sim            # noqa: E402  (Verilog simulation with Icarus)
 
@@ -418,6 +421,8 @@ def find_bit(d):
 def project_kind(d, files):
     if any(f.endswith('.ino') for f in files):
         return 'arduino'
+    if langs.lang_of(files):
+        return langs.lang_of(files)
     if any(f.endswith(('.v', '.sv')) for f in files) or 'build.tcl' in files:
         return 'fpga'
     if 'main.py' in files:
@@ -679,6 +684,123 @@ def simulate(name, tb, ns):
     return True
 
 
+SOURCE_EXT = ('.py', '.c', '.cpp', '.hpp', '.h', '.sh', '.pl', '.pm', '.lua', '.js', '.go', '.rs', '.S', '.s')
+LANG_LIBS = {'cpp': 'ardzy.hpp', 'sh': 'ardzy.sh', 'perl': 'Ardzy.pm', 'js': 'ardzy.js', 'lua': 'ardzy.lua',
+             'go': 'ardzy.go', 'rust': 'ardzy.rs'}
+LANG_TEMPLATES = {'cpp': 'cpp_program', 'sh': 'shell_script', 'perl': 'perl_script', 'asm': 'asm_program',
+                  'js': 'js_program', 'lua': 'lua_script', 'go': 'go_program', 'rust': 'rust_program'}
+LANG_USES_LIB = {'cpp': r'#include\s*"ardzy\.hpp"', 'sh': r'ardzy\.sh', 'perl': r'\buse\s+Ardzy\b',
+                 'js': r'require\(\s*[\'"]\./ardzy', 'lua': r'require\s*\(?\s*[\'"]ardzy',
+                 'go': r'\b(Led|Beep|Button|Peek|Poke|Reg|RegWrite|Watch)\(', 'rust': r'\bmod\s+ardzy\b'}
+
+
+def lang_lib_missing(d, lang):
+    """The ardzy library file the program uses but the project lacks (it is sent from the template)."""
+    lib = LANG_LIBS.get(lang)
+    if not lib or os.path.exists(os.path.join(d, lib)):
+        return None
+    main = os.path.join(d, langs.LANGS[lang]['main'])
+    if os.path.exists(main) and re.search(LANG_USES_LIB[lang], open(main, encoding='utf-8', errors='replace').read()):
+        return os.path.join(TEMPLATES_DIR, LANG_TEMPLATES[lang], lib)
+    return None
+
+
+def lang_status():
+    """{lang: info or None} for the languages that are installed from the app (None: not on this board).
+    The installer leaves a small file per language in the board's projects folder (.lang-<id>/info.json)."""
+    out = {}
+    for k in langs.INSTALLABLE:
+        try:
+            out[k] = board.call('GET', '/api/file?p=.lang-%s&f=info.json' % k, timeout=8)
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+            out[k] = None
+    return out
+
+
+def verify_lang(d, lang):
+    L = langs.LANGS[lang]
+    ok = True
+    log('  language: %s (%s)' % (L['name'], 'built into the board' if not L['pkgs'] else 'installed from the app'))
+    if os.path.exists(os.path.join(d, 'run.sh')):
+        log('  your own run.sh starts the program (the app makes none)', 'warn')
+    lib = lang_lib_missing(d, lang)
+    if lib:
+        log('  %s is not in the project: the app sends its own copy' % os.path.basename(lib), 'warn')
+    for f in os.listdir(d):
+        p = os.path.join(d, f)
+        if f.endswith(('.sh', '.pl', '.pm')) and b'\r\n' in open(p, 'rb').read():
+            log('  %s has Windows line ends: the app sends it with Linux ones' % f)
+    if L['pkgs'] and board.host:
+        try:
+            if not lang_status().get(lang):
+                log('  %s is not installed on the board yet: open Settings, Languages, and press Install' % L['name'],
+                    'err')
+                ok = False
+        except Exception as e:
+            log('  could not ask the board which languages it has (%s)' % e, 'warn')
+    if lang in ('cpp', 'asm', 'go', 'rust'):
+        log('  it is compiled on the board when it starts (errors appear in the Monitor)')
+    return ok
+
+
+def install_language(lang):
+    """Install a language on the board: Debian packages fetched by this PC, sent as an update bundle."""
+    L = langs.LANGS[lang]
+    if not L['pkgs']:
+        log('%s is built into the board: nothing to install.' % L['name'], 'ok')
+        return True
+    if not board.host:
+        log('No board connected: click Scan, then choose your board.', 'err')
+        return False
+    log('Installing %s on the board %s ...' % (L['name'], board.host), 'head')
+    cache = os.path.join(os.path.dirname(SETTINGS_FILE), 'debian')
+    try:
+        repo = langs.Repo(cache, log=log).load()
+    except (OSError, urllib.error.URLError) as e:
+        log('Could not reach Debian (deb.debian.org): this PC needs the internet for it (%s).' % e, 'err')
+        return False
+    have, prov = langs.board_packages()
+    pk = repo.resolve(L['pkgs'], have, prov)
+    size = sum(int(d.get('Size', 0)) for d in pk)
+    inst = sum(int(d.get('Installed-Size', 0)) for d in pk) / 1024
+    log('  %d Debian package%s: %.1f MB to download, %s MB on the board' % (
+        len(pk), '' if len(pk) == 1 else 's', size / 2**20, '%.1f' % inst if inst < 10 else '%.0f' % inst))
+    files = []
+    for i, d in enumerate(pk):
+        log('  [%d/%d] %s %s (%.1f MB)' % (i + 1, len(pk), d['Package'], d['Version'], int(d.get('Size', 0)) / 2**20))
+        files.append(repo.download(d))
+    marker = {'lang': lang, 'name': L['name'], 'date': time.strftime('%Y-%m-%d %H:%M'),
+              'packages': ['%s=%s' % (d['Package'], d['Version']) for d in pk]}
+    bundle = os.path.join(tempfile.gettempdir(), 'ardzy-lang-%s.tar' % lang)
+    langs.make_bundle(lang, files, bundle, marker)
+    data = open(bundle, 'rb').read()
+    os.remove(bundle)
+    log('  sending %.1f MB to the board, which installs %s ...' % (len(data) / 2**20, 'it' if len(pk) == 1 else 'them'))
+    r = board.call('PUT', '/api/system/update', data=data, timeout=1800)
+    out = r.get('out', '')
+    ok = r.get('ok') and 'with problems' not in out
+    for line in out.splitlines():
+        if line.strip() and not line.startswith(('REBOOT_NEEDED', 'RESTART_WEB')):
+            log('  ' + line, 'ok' if ok else 'err')
+    if not ok:
+        try:                                        # not installed: no marker may say it is
+            board.call('POST', '/api/delete?p=.lang-' + lang, timeout=30)
+        except Exception:
+            pass
+        log('%s was NOT installed (see above). Try again; if it fails again, send the Output to the author.'
+            % L['name'], 'err')
+        return False
+    for p in files:                                 # the packages are on the board now: free this PC's disk
+        try:
+            os.remove(p)
+        except OSError:
+            pass
+    log('%s is installed. New project, %s: the template is ready to upload.' % (L['name'], L['name']), 'ok')
+    return True
+
+
 def verify(name):
     """Local checks before an upload (like Arduino 'Verify')."""
     d = proj_path(name)
@@ -706,8 +828,10 @@ def verify(name):
         # Verilog but no bitstream: the program would talk to FPGA registers that are not there (an access to an
         # empty FPGA address can hang the board's bus until it is reset), so stop here
         uses_fpga = False
-        for src in glob.glob(os.path.join(d, '*.py')) + glob.glob(os.path.join(d, '*.c')):
-            if re.search(r'0x4[0-3][0-9a-fA-F_]{6}\b|MMIO\(|/dev/mem', open(src, encoding='utf-8', errors='replace').read()):
+        for src in [p for p in glob.glob(os.path.join(d, '*'))
+                    if p.endswith(SOURCE_EXT) and os.path.basename(p) not in LANG_LIBS.values()]:
+            if re.search(r'0x4[0-3][0-9a-fA-F_]{6}\b|MMIO\(|/dev/mem|\breg(_write|Write)?\(|\bReg(Write)?\(|\b(peek|poke|Peek|Poke)\(',
+                         open(src, encoding='utf-8', errors='replace').read()):
                 uses_fpga = True
         if uses_fpga:
             log('  the FPGA design is not built yet (Verilog here, but no .bit), and the program uses FPGA'
@@ -717,6 +841,9 @@ def verify(name):
             log('  note: the Verilog here is not built yet (no .bit): press Build FPGA to use it', 'warn')
     else:
         log('  no FPGA design (.bit): only the program will run, the FPGA stays as it is', 'warn')
+    lang = langs.lang_of(os.listdir(d))
+    if lang:
+        ok = verify_lang(d, lang) and ok
     for py in glob.glob(os.path.join(d, '*.py')):
         try:
             py_compile.compile(py, cfile=os.path.join(tempfile.gettempdir(), 'ardzy_check.pyc'), doraise=True)
@@ -726,9 +853,9 @@ def verify(name):
             ok = False
     if glob.glob(os.path.join(d, '*.c')):
         log('  C files are compiled on the board during the upload (errors appear in the Monitor)')
-    if not bit and not any(os.path.exists(os.path.join(d, f)) for f in PROGRAM_FILES) \
+    if not bit and not lang and not any(os.path.exists(os.path.join(d, f)) for f in PROGRAM_FILES) \
             and not glob.glob(os.path.join(d, '*.c')):
-        log('  nothing to run: add a .bit and/or main.py / *.c / run.sh', 'err')
+        log('  nothing to run: add a .bit and/or a program (main.py, main.c, main.cpp, main.js, ...) or run.sh', 'err')
         ok = False
     log('Check %s' % ('passed' if ok else 'FAILED'), 'ok' if ok else 'err')
     return ok
@@ -759,9 +886,17 @@ def upload(name, run=True, default=False):
     log('Uploading %s to %s ...' % (name, board.host), 'head')
     q = urllib.parse.quote
     board.call('POST', '/api/clear?p=' + q(name))
-    for p in upload_files(d):
-        fname = os.path.basename(p)
-        data = open(p, 'rb').read()
+    sends = [(os.path.basename(p), open(p, 'rb').read()) for p in upload_files(d)]
+    lang = langs.lang_of(os.listdir(d))
+    if lang:
+        lib = lang_lib_missing(d, lang)
+        if lib:
+            sends.append((os.path.basename(lib), open(lib, 'rb').read()))
+        if not os.path.exists(os.path.join(d, 'run.sh')):
+            sends.append(('run.sh', langs.run_script(lang)))
+    for fname, data in sends:
+        if fname.endswith(('.sh', '.pl', '.pm')):
+            data = data.replace(b'\r\n', b'\n')          # bash and Perl want Linux line ends
         t = time.time()
         board.call('PUT', '/api/upload?p=%s&f=%s' % (q(name), q(fname)), data=data, timeout=120)
         log('  sent %-28s %8.1f KB  (%.1f s)' % (fname, len(data) / 1024, time.time() - t))
@@ -971,10 +1106,11 @@ def new_project(name, template):
                 p2 = os.path.join(root, f.replace('__NAME__', name))
                 os.rename(p, p2)
                 p, f = p2, os.path.basename(p2)
-            if f.endswith(('.tcl', '.py', '.v', '.c', '.md', '.txt', '.ino', '.cpp', '.h', '.xdc')):
-                t = open(p, encoding='utf-8').read()
+            if f.endswith(('.tcl', '.py', '.v', '.c', '.md', '.txt', '.ino', '.cpp', '.h', '.xdc', '.sh', '.pl', '.lua',
+                           '.js', '.go', '.rs', '.S')):
+                t = open(p, encoding='utf-8', newline='').read()      # (line ends kept: bash wants Linux ones)
                 if '__NAME__' in t:              # (only then: a prebuilt .bit must stay newer than its sources)
-                    open(p, 'w', encoding='utf-8').write(t.replace('__NAME__', name))
+                    open(p, 'w', encoding='utf-8', newline='').write(t.replace('__NAME__', name))
     return d
 
 
@@ -1427,7 +1563,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             board.host, board.info = '', {}
             return {'ok': True}
         if path == '/api/board/status':
-            return {'ok': True, 'status': board.call('GET', '/api/status', timeout=4)}
+            st = board.call('GET', '/api/status', timeout=4)
+            if isinstance(st.get('projects'), list):     # (.lang-* = the language installer's marks, not projects)
+                st['projects'] = [p for p in st['projects'] if not str(p.get('name', '')).startswith('.')]
+            return {'ok': True, 'status': st}
         if path == '/api/board/log':
             return dict(ok=True, **board.call('GET', '/api/log' + ('?cursor=' + q(a['cursor']) if a.get('cursor') else ''), timeout=6))
         if path == '/api/board/action':
@@ -1454,6 +1593,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return run_job('NAND backup', nand_backup, bool(a.get('raw')))
         if path == '/api/io/load':
             return run_job('Load pin control', load_io_design)
+        if path == '/api/langs':                    # the programming languages, and which the board has
+            st, err = {}, ''
+            if board.host:
+                try:
+                    st = lang_status()
+                except Exception as e:
+                    err = str(e)
+            return {'ok': True, 'board': bool(board.host), 'error': err, 'langs': [
+                {'id': k, 'name': v['name'], 'main': v['main'], 'builtin': not v['pkgs'], 'packages': v['pkgs'] or [],
+                 'size': v.get('size'),
+                 'installed': True if not v['pkgs'] else (bool(st.get(k)) if board.host and not err else None),
+                 'info': st.get(k)} for k, v in langs.LANGS.items()]}
+        if path == '/api/langs/install':
+            k = a.get('lang', '')
+            if k not in langs.LANGS:
+                return {'ok': False, 'out': 'unknown language'}
+            return run_job('Install ' + langs.LANGS[k]['name'], install_language, k)
         if path == '/api/bench/net':
             return run_job('Network speed test', net_speed, int(a.get('mb', 32)))
         if path == '/api/gallery':

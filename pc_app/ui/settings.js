@@ -79,7 +79,7 @@ function appSound(ok) {
 }
 
 // ------------------------------------------------------------------ the window
-const APP_SECTIONS = [['general', 'General'], ['look', 'Look'], ['text', 'Text'], ['behavior', 'Behavior'], ['board', 'Board and FPGA'], ['about', 'About']];
+const APP_SECTIONS = [['general', 'General'], ['look', 'Look'], ['text', 'Text'], ['behavior', 'Behavior'], ['board', 'Board and FPGA'], ['langs', 'Languages'], ['about', 'About']];
 let appSection = 'general', appEngine = null;
 async function appOpen(section) {
   if (section) appSection = section;
@@ -139,6 +139,11 @@ function appRender() {
       <p class="hint">${esc(appEngine.toolInfo)}</p>
       <label>Vivado (vivado.bat) <input id="appViv" value="${esc(set.vivado || '')}" spellcheck="false"></label>
       <div class="row"><button class="primary small" id="appSaveEngine">${T('Save')}</button><span class="hint" id="appSaved"></span></div>`;
+  } else if (appSection === 'langs') {
+    h = `<p class="hint">${T('The languages your programs can be written in. The built-in ones are on every Ardzy SD card. The others are installed once per board: this PC downloads them from Debian (it needs the internet; the board does not) and the board installs them.')}</p>
+      <div id="langList"><p class="hint">${T('asking the board ...')}</p></div>
+      <p class="hint">${T('Every language has an ardzy library in its new projects: LEDs, buzzer, buttons, FPGA registers and watch(). Start one with + New.')}</p>`;
+    setTimeout(langRender, 0);
   } else {
     h = `<p><b>Ardzy ${esc(appEngine.version || '0.2a')} ${esc(appEngine.stage || 'BETA')}</b>: ${T('the Antminer S9 control board used like an Arduino.')}</p>
       <p class="hint">${T('This is a BETA version: it works, but some parts may still change. Please report problems on GitHub.')}</p>
@@ -194,6 +199,31 @@ function appRender() {
   };
 }
 
+// ------------------------------------------------------------------ programming languages
+async function langRender() {
+  const box = $('langList');
+  if (!box) return;
+  const r = await api('/api/langs');
+  if (!$('langList')) return;
+  const busy = S.busy;
+  const st = l => l.builtin ? `<span class="st-ok">${T('built in')}</span>` : l.installed === true ? `<span class="st-ok" title="${esc(l.info && l.info.date || '')}">${T('installed')}</span>`
+    : l.installed === false ? `<span class="st-no">${T('not installed')}</span>` : `<span class="st-no">${T('no board connected')}</span>`;
+  const size = l => l.size ? TF('{0} MB download, {1} MB on the board', l.size[0], l.size[1]) : '';
+  $('langList').innerHTML = `<table class="lang-table"><tr><th>${T('Language')}</th><th>${T('main file')}</th><th>${T('on the board')}</th><th></th></tr>` +
+    r.langs.map(l => `<tr><td><b>${esc(l.name)}</b>${l.builtin ? '' : `<br><small class="hint">${esc(size(l))}</small>`}</td><td><code>${esc(l.main === '.ino' ? 'name.ino' : l.main)}</code></td>
+      <td>${st(l)}</td><td>${l.builtin ? '' : `<button class="${l.installed ? 'ghost' : 'primary'} small" data-lang="${l.id}" ${!r.board || busy ? 'disabled' : ''}>${l.installed ? T('Install again') : T('Install')}</button>`}</td></tr>`).join('') +
+    '</table>' + (r.error ? `<p class="hint">${esc(r.error)}</p>` : '') + (busy ? `<p class="hint">${TF('Busy: {0}. The Output tab shows the progress.', busy)}</p>` : '');
+  $('langList').querySelectorAll('[data-lang]').forEach(b => b.onclick = async e => {
+    e.preventDefault();
+    const l = r.langs.find(x => x.id === b.dataset.lang);
+    const q = api('/api/langs/install', { lang: l.id });
+    b.disabled = true; b.textContent = T('installing ...');
+    const a = await q;
+    if (!a.ok) { b.disabled = false; b.textContent = T('Install'); return alert(a.out); }
+    if (typeof showTab === 'function') showTab('output');
+  });
+}
+
 // ------------------------------------------------------------------ start
 (function appStart() {
   appApply();
@@ -206,7 +236,10 @@ function appRender() {
   window.showView = v => { sv0(v); try { localStorage.setItem('ardzy.lastView', v); } catch (e) { } };
   window.appStartView = () => APP.startView === 'last' ? (pref('lastView', 'code') || 'code') : APP.startView;
   const t0start = Date.now();
-  window.onJobEnd = (name, state) => { if (Date.now() - t0start > 5000) appSound(state === 'ok'); };   // (not for the jobs replayed at start)
+  window.onJobEnd = (name, state) => {
+    if (Date.now() - t0start > 5000) appSound(state === 'ok');      // (not for the jobs replayed at start)
+    if ($('dlgApp').open && appSection === 'langs') setTimeout(langRender, 300);
+  };
   if (APP.panel !== 'keep') {
     const hidden = $('bottom').classList.contains('collapsed');
     if ((APP.panel === 'hidden') !== hidden && S.panelToggle) S.panelToggle();
