@@ -171,7 +171,7 @@ const I18N_ROWS = [
   ['Sound when a job ends (upload, build, simulation)', 'Ήχος όταν τελειώνει μια εργασία (ανέβασμα, κατασκευή, προσομοίωση)', 'Звук по окончании задания (загрузка, сборка, симуляция)'],
   ['Bottom panel at start', 'Κάτω πίνακας στην αρχή', 'Нижняя панель при запуске'], ['as I left it', 'όπως τον άφησα', 'как было'], ['shown', 'ανοιχτός', 'открыта'], ['hidden', 'κρυφός', 'скрыта'],
   ['This is a BETA version: it works, but some parts may still change. Please report problems on GitHub.', 'Αυτή είναι έκδοση BETA: λειτουργεί, αλλά κάποια μέρη μπορεί ακόμα να αλλάξουν. Αναφέρετε τα προβλήματα στο GitHub.', 'Это BETA-версия: она работает, но некоторые части ещё могут измениться. Сообщайте о проблемах на GitHub.'],
-  ['Ardzy 0.2 BETA: a test version, some parts may still change', 'Ardzy 0.2 BETA: δοκιμαστική έκδοση, κάποια μέρη μπορεί ακόμα να αλλάξουν', 'Ardzy 0.2 BETA: тестовая версия, некоторые части ещё могут измениться'],
+  ['Ardzy 0.2a BETA: a test version, some parts may still change', 'Ardzy 0.2a BETA: δοκιμαστική έκδοση, κάποια μέρη μπορεί ακόμα να αλλάξουν', 'Ardzy 0.2a BETA: тестовая версия, некоторые части ещё могут измениться'],
   ['Instruments', 'Όργανα', 'Инструменты'],
   ['The tools need version 2 of the pin-control design.', 'Τα εργαλεία χρειάζονται την έκδοση 2 του σχεδίου ελέγχου ακροδεκτών.', 'Инструментам нужна версия 2 проекта управления выводами.'],
   ['load the pin-control design first (project ardzy_io)', 'φορτώστε πρώτα το σχέδιο ελέγχου ακροδεκτών (έργο ardzy_io)', 'сначала загрузите проект управления выводами (проект ardzy_io)'],

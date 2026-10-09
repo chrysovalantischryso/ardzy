@@ -140,7 +140,7 @@ function appRender() {
       <label>Vivado (vivado.bat) <input id="appViv" value="${esc(set.vivado || '')}" spellcheck="false"></label>
       <div class="row"><button class="primary small" id="appSaveEngine">${T('Save')}</button><span class="hint" id="appSaved"></span></div>`;
   } else {
-    h = `<p><b>Ardzy ${esc(appEngine.version || '0.2')} ${esc(appEngine.stage || 'BETA')}</b>: ${T('the Antminer S9 control board used like an Arduino.')}</p>
+    h = `<p><b>Ardzy ${esc(appEngine.version || '0.2a')} ${esc(appEngine.stage || 'BETA')}</b>: ${T('the Antminer S9 control board used like an Arduino.')}</p>
       <p class="hint">${T('This is a BETA version: it works, but some parts may still change. Please report problems on GitHub.')}</p>
       <p class="hint">${T('Made by chryso. Open source under the GNU GPL version 3.')}</p>
       <p class="hint">${esc(appEngine.settings_file || '')}</p>

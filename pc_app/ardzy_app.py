@@ -13,7 +13,7 @@ Run:  python ardzy_app.py          (or the packaged Ardzy.exe)
 import json, os, sys, socket, struct, threading, time, subprocess, shutil, secrets, re, glob, tempfile
 import http.server, socketserver, urllib.request, urllib.error, urllib.parse, py_compile, webbrowser
 
-APP_VERSION = '0.2'
+APP_VERSION = '0.2a'                    # the app; the board's system (SD image) is 0.2
 APP_STAGE = 'BETA'                      # shown next to the version everywhere
 DISCOVERY_PORT = 41414
 CHIP_IDCODE = 0x03722093        # XC7Z010
@@ -99,9 +99,12 @@ def startfile(path):
 
 def default_workspace():
     # 2_Ardzy/projects when running from 2_Ardzy/pc_app (or its dist folder), else Documents/Ardzy
+    # (only the projects folder of an Ardzy checkout: next to pc_app and fpga_projects. A "projects" folder found
+    # anywhere else above the app, for example D:\projects, belongs to something else.)
     for up in ('..', os.path.join('..', '..'), os.path.join('..', '..', '..')):
-        p = os.path.normpath(os.path.join(APP_DIR, up, 'projects'))
-        if os.path.isdir(p):
+        root = os.path.normpath(os.path.join(APP_DIR, up))
+        p = os.path.join(root, 'projects')
+        if os.path.isdir(p) and os.path.isdir(os.path.join(root, 'pc_app')) and os.path.isdir(os.path.join(root, 'fpga_projects')):
             return p
     return os.path.join(os.path.expanduser('~'), 'Documents', 'Ardzy')
 
