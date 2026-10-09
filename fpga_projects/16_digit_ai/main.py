@@ -80,7 +80,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith('/state'):            # for the Ardzy app's AI page
             with lock:
-                st = {'running': True, 'count': ai.count(), 'cycles': ai.cycles()}
+                st = {'running': True, 'project': '16_digit_ai', 'count': ai.count(), 'cycles': ai.cycles()}
             st.update({'fpga_us': fpga_us, 'arm_us': arm_us, 'per_second': int(1e6 / total_us), 'test_right': right,
                        'trained': round(100 * m['accuracy'], 1), 'hidden': m['hid'], 'weights': 64 * 784 + 640})
             return self.send(200, json.dumps(st), 'application/json')

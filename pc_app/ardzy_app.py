@@ -1425,6 +1425,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return ai_call('/guess', {'px': a.get('px', '')})
         if path == '/api/ai/example':
             return ai_call('/example')
+        if path in ('/api/ai/write', '/api/ai/next', '/api/ai/draw', '/api/ai/morph', '/api/ai/style'):
+            return ai_call(path[7:], a, timeout=30)     # projects 17 (write, next) and 18 (draw, morph, style)
         if path == '/api/radio/state':
             return radio_state(a.get('p') or RADIO_PROJECT)
         if path == '/api/radio/config':

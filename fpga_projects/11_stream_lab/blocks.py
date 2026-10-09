@@ -1396,3 +1396,111 @@ def digit_text(x):
             line += ' ▀▄█'[a | (b << 1)]
         out.append(line)
     return '\n'.join(out)
+
+
+# ---------------------------------------------------------------------------------------- AI: general network engine
+SIGMOID = [int(round(255 / (1 + __import__('math').exp(-(i - 128) / 16)))) for i in range(256)]   # = mlp_sigmoid.v
+
+
+def mlp_pad(layers):
+    """A network as the engine runs it: inputs padded to a multiple of 4, outputs to a multiple of 16.
+    layers = [{'w': int8 (OUT, IN), 'b': ints (OUT), 'shift': 0..31, 'act': 0 none | 1 ReLU | 2 sigmoid}, ...]"""
+    import numpy as np
+    out, prev = [], None
+    for k, l in enumerate(layers):
+        w = np.asarray(l['w'], dtype=np.int8)
+        o, i = w.shape
+        ip = (prev if prev is not None else -(-i // 4) * 4)
+        op = -(-o // 16) * 16
+        W = np.zeros((op, ip), np.int8)
+        W[:o, :i] = w
+        B = np.zeros(op, np.int64)
+        B[:o] = l['b']
+        if l['act'] == 0:
+            B[o:] = -(1 << 30)                 # padded outputs never win
+        out.append({'w': W, 'b': B, 'shift': int(l['shift']), 'act': int(l['act']), 'outs': o, 'ins': i})
+        prev = op
+    return out
+
+
+def mlp_reference(layers, x):
+    """Exactly the engine's integer math. x = the input bytes. Returns (index of the largest score,
+    the scores or the output bytes of the last layer)."""
+    import numpy as np
+    L = mlp_pad(layers)
+    v = np.zeros(L[0]['w'].shape[1], np.int64)
+    x = np.asarray(x, dtype=np.int64).ravel()
+    v[:len(x)] = x
+    for l in L:
+        s = (l['w'].astype(np.int64) @ v + l['b']) >> l['shift']
+        if l['act'] == 0:
+            return int(np.argmax(s)), [int(a) for a in s[:l['outs']]]
+        v = np.clip(s, 0, 255) if l['act'] == 1 else np.array(SIGMOID, np.int64)[np.clip(s, -128, 127) + 128]
+    return None, [int(a) for a in v[:L[-1]['outs']]]
+
+
+class MLP(Block):
+    """The general network engine (projects 17, 18): up to 4 layers, 16 lanes, 64 multiplications per clock.
+    Several networks can be in its memory at once: load() returns a handle, use() switches to it."""
+    LANES, WORDS, BIASES = 16, 2048, 128
+
+    def __init__(self, bus, slot=1):
+        super().__init__(bus, slot)
+        self.wnext = self.bnext = 0
+        self.cur = None
+
+    def load(self, layers):
+        """Send a network into the engine's memory, after the ones already there. Returns its handle."""
+        import numpy as np
+        L = mlp_pad(layers)
+        cfg = []
+        for l in L:
+            og, in4 = l['w'].shape[0] // 16, l['w'].shape[1] // 4
+            if self.wnext + og * in4 > self.WORDS or self.bnext + og > self.BIASES:
+                raise ValueError('the networks do not fit in the engine (2048 words, 128 biases per lane)')
+            for lane in range(self.LANES):
+                rows = l['w'][lane::16]                         # neurons lane, 16 + lane, ...
+                self.w(6, lane * 2048 + self.wnext)
+                for v in np.ascontiguousarray(rows).reshape(-1).view('<u4').tolist():
+                    self.w(7, v)
+                self.w(6, 0x10000 + lane * 128 + self.bnext)
+                for b in l['b'][lane::16]:
+                    self.w(7, int(b))
+            cfg.append((in4, og, self.wnext, self.bnext, l['shift'], l['act'], l['outs']))
+            self.wnext += og * in4
+            self.bnext += og
+        return cfg
+
+    def use(self, cfg):
+        for k, c in enumerate(cfg):
+            for f, v in enumerate(c[:6]):
+                self.w(16 + 8 * k + f, v)
+        self.w(4, len(cfg))
+        self.cur = cfg
+
+    def run(self, x, timeout=0.1):
+        """Run the current network on the input bytes x. Returns (largest index, scores or output bytes)."""
+        import numpy as np
+        cfg = self.cur
+        b = np.zeros(cfg[0][0] * 4, np.uint8)
+        x = np.asarray(x, dtype=np.uint8).ravel()
+        b[:len(x)] = x
+        for i, v in enumerate(b.view('<u4').tolist()):
+            self.w(256 + i, v)
+        self.w(0, 1)
+        t0 = time.time()
+        while self.r(1) & 1:
+            if time.time() - t0 > timeout:
+                raise RuntimeError('the network engine does not finish')
+        last = cfg[-1]
+        if last[5] == 0:
+            return self.r(2), [self.rs(768 + j) for j in range(last[6])]
+        base = 512 if len(cfg) % 2 else 256
+        words = [self.r(base + i) for i in range((last[6] + 3) // 4)]
+        return None, list(np.array(words, dtype='<u4').view(np.uint8)[:last[6]])
+
+    def cycles(self):
+        return self.r(3)
+
+    def count(self):
+        return self.r(5)

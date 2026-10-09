@@ -1,0 +1,91 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Text AI: a small language model in the FPGA writes text letter by letter</title><style>
+:root{--bg:#fbfaf7;--text:#1d2329;--muted:#5b6672;--line:#dfe3e8;--acc:#b8860b;--code:#f1f3f5;--ok:#e8f5e9;--info:#e8f1fb;--warn:#fff6e0;--bad:#fdecea}
+@media (prefers-color-scheme: dark){:root{--bg:#15191d;--text:#e3e7eb;--muted:#9aa5b1;--line:#2c3339;--acc:#d4a84f;--code:#1f252b;--ok:#17301c;--info:#162638;--warn:#33290f;--bad:#3a1b18}}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:16px 20px 40px}
+h1{font-size:24px;margin:4px 0 6px}h2{font-size:19px;margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:4px}
+h3{font-size:16px;margin:18px 0 6px}.kicker{color:var(--acc);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.lead{color:var(--muted);margin-top:0}code{background:var(--code);padding:1px 5px;border-radius:4px;font:13px Consolas,monospace}
+pre{background:var(--code);padding:10px 12px;border-radius:8px;overflow:auto}pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:6px 0 12px;font-size:14px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}th{background:var(--code)}
+.box{border-radius:8px;padding:9px 12px;margin:10px 0;border:1px solid var(--line)}.box.ok{background:var(--ok)}
+.box.info{background:var(--info)}.box.warn{background:var(--warn)}.box.bad{background:var(--bad)}
+svg{max-width:100%;height:auto}a{color:var(--acc)}
+:root{--paper:#fff;--ps:#e8f1fb;--psl:#2f6db5;--pl:#eaf6ec;--pll:#2e8b57;--accs:#fbf1dc;--amb:#c58a00;--ambs:#fff3d6;--red:#c0392b;--reds:#fde8e6}
+@media (prefers-color-scheme: dark){:root{--paper:#1b2026;--ps:#16263a;--psl:#6aa8f0;--pl:#15301f;--pll:#5cc98a;--accs:#33290f;--amb:#e3ad4c;--ambs:#33290f;--red:#ff7b7b;--reds:#3a1b18}}
+figure{margin:16px 0 22px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)}
+figure svg{width:100%;height:auto;display:block}figcaption{color:var(--muted);font-size:14px;margin-top:6px;text-align:center}
+.d-text{fill:var(--text);font:14px "Segoe UI",sans-serif}.d-small{fill:var(--muted);font:12.5px "Segoe UI",sans-serif}
+.d-title{fill:var(--text);font:600 15px "Segoe UI",sans-serif}.d-mono{fill:var(--text);font:12.5px Consolas,monospace}
+.d-box{fill:var(--paper);stroke:var(--line);stroke-width:1.5}.d-ps{fill:var(--ps);stroke:var(--psl);stroke-width:1.5}
+.d-pl{fill:var(--pl);stroke:var(--pll);stroke-width:1.5}.d-acc{fill:var(--accs);stroke:var(--acc);stroke-width:1.5}
+.d-warn{fill:var(--ambs);stroke:var(--amb);stroke-width:1.5}.d-red{fill:var(--reds);stroke:var(--red);stroke-width:1.5}
+.d-line{stroke:var(--muted);stroke-width:1.8;fill:none}.d-arrow{stroke:var(--acc);stroke-width:2.2;fill:none}
+.d-blue{stroke:var(--psl);stroke-width:2.2;fill:none}.d-dash{stroke:var(--muted);stroke-width:1.5;fill:none;stroke-dasharray:5 4}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 12px;margin:8px 0}summary{cursor:pointer;font-weight:600}
+</style></head><body><main class="wrap"><div class="kicker">Computing &middot; intermediate</div><h1>Text AI: a small language model in the FPGA writes text letter by letter</h1><p class="lead">A language model, the idea behind chatbots, made small enough for the FPGA: it reads the last 16 letters and scores every letter that could come next, 64 multiplications per clock. Give it the start of a sentence and watch it write on, choose how adventurous it is, see what it was thinking, and train it on your own text.</p><div class="box ok"><b>Tested on the real board</b> the self-test passed 8 of 8 checks on the real board (October 2026): random networks and the text model equal to the Python integer math, 2076 clocks (20.8 microseconds) per letter, about 530 times faster than numpy on the ARM.</div><h3>Registers (ARM side)</h3><table><tr><th>Slot</th><th>Address</th><th>Block</th></tr><tr><td>0</td><td><code>0x43C00000</code></td><td>Info</td></tr><tr><td>1</td><td><code>0x43C01000</code></td><td>General neural network engine (up to 4 layers, 64 multiplications per clock)</td></tr></table><h3>Pins</h3><table><tr><th>Signal</th><th>Board pin</th><th>FPGA pin</th></tr></table><h3>Parts</h3><ul><li>nothing: everything happens inside the FPGA</li></ul><h2>What it does</h2>
+<p>A <b>language model</b>, the idea behind chatbots, made small enough for the FPGA. It reads the last 16 letters and gives every letter it knows a <b>score</b>: how likely it is to come next. Writing is just that, over and over: guess, pick a letter, add it, guess again.</p>
+<ul><li>The three layers of the network (126 000 weights) run in the FPGA's <b>general network engine</b>: 64 multiplications per clock, one letter in about <b>21 microseconds</b>.</li><li>In the Ardzy app (<b>Ready projects</b>, Text AI, <b>Open</b>): type the start of a sentence and let it write on; choose how adventurous it is; type and watch its guesses for the next letter.</li><li>It learned from the Ardzy guides and lessons and from the documentation inside Python itself, so it writes things that sound like... computer documentation. <b>Train it on your own text</b> with <code>make_model.py --text yourfile.txt</code>.</li><li>The FPGA's answer is checked against the same math in Python: <b>every score equal, to the last bit</b>.</li></ul>
+<p>It is tiny compared with a chatbot (126 thousand weights against billions), so expect English-looking words and half-sentences with a wink of meaning, not answers to questions.</p>
+<p>Nothing to connect. LED 0 flashes while it thinks.</p>
+<h2>How it works</h2>
+<h3>1. From letters to numbers</h3>
+<p>The model knows 48 letters (a .. z, digits, space, punctuation; everything is lower case). Each letter has an <b>embedding</b>: 12 numbers that were learned in training, so that letters which behave alike (vowels, digits ...) get similar numbers. The last 16 letters become 16 x 12 = <b>192 numbers</b>. That small table lookup is done by the ARM.</p>
+<h3>2. The network</h3>
+<table>
+<tr><th>Layer</th><th>Neurons</th><th>Looks at</th><th>Weights</th></tr>
+<tr><td>1</td><td>256 (ReLU)</td><td>the 192 numbers</td><td>49 152</td></tr>
+<tr><td>2</td><td>256 (ReLU)</td><td>layer 1</td><td>65 536</td></tr>
+<tr><td>3</td><td>48, one per letter (scores)</td><td>layer 2</td><td>12 288</td></tr>
+</table>
+<h3>3. Picking a letter: the temperature</h3>
+<p>The scores become probabilities (softmax). Then a letter is <b>drawn by lot</b>, the likely ones more often. The <b>temperature</b> decides how much: low (0.3) always takes nearly the most likely letter (safe, but it repeats itself), high (1.2) gives rare letters a chance (lively, then nonsense). Around 0.6 to 0.8 reads best.</p>
+<h3>4. The general network engine</h3>
+<p>Project 16's engine could run one network shape. This one (<code>mlp_engine.v</code>) runs <b>any</b> network of up to 4 layers: for every layer the ARM sets how many inputs and outputs, where its weights are, the shift and the activation (none, ReLU or sigmoid). The same 16 lanes with 64 multiplications per clock do all layers one after the other; the values between layers go back and forth between two buffers inside the lanes. Project 18 uses the same engine for pictures.</p>
+<p>Signed numbers as bytes: the engine's inputs are bytes 0 .. 255, the embeddings are signed. So the ARM sends <code>value + 128</code>, and the extra <code>128 x (sum of the weights)</code> is taken off again through layer 1's biases (<code>make_model.py</code>, <code>quantize</code>). The result is exactly the same.</p>
+<h2>Try it</h2>
+<p><b>Upload and run</b>: the Monitor shows the bit-for-bit check, three texts it writes, and the speed. Then use the app: Ready projects, Text AI, <b>Open</b>.</p>
+<h2>Train it on your own text</h2>
+<p>On the PC, in this project's folder:</p>
+<p>    python make_model.py --text mystories.txt</p>
+<p>Any plain text works; more is better (a few hundred KB or more). It takes a few minutes. Then <b>Upload and run</b> again: the new <code>text_model.py</code> goes to the board.</p>
+<h2>Program it</h2>
+<pre><code>import base64, numpy as np, text_model as tm
+from blocks import Bus, MLP, mlp_reference
+nn = MLP(Bus(), slot=1)
+dec = lambda s, shape: np.frombuffer(base64.b64decode(''.join(s)), np.int8).reshape(shape)
+layers = [{'w': dec(getattr(tm, 'W%d' % (k + 1)), tm.SHAPES[k]), 'b': getattr(tm, 'B%d' % (k + 1)),
+           'shift': tm.SHIFTS[k], 'act': tm.ACTS[k]} for k in range(3)]
+nn.use(nn.load(layers))                 # the network into the engine
+best, scores = nn.run(input_bytes)      # 192 bytes in, 48 scores out (and the best one)</code></pre>
+<h3>Registers (slot 1, the general engine)</h3>
+<table>
+<tr><th>Word</th><th>Name</th><th>Meaning</th></tr>
+<tr><td>0</td><td>CTRL</td><td>write 1: run the network</td></tr>
+<tr><td>1</td><td>STATUS</td><td>[0] busy [1] a result is ready</td></tr>
+<tr><td>2, 3</td><td>RESULT, CYCLES</td><td>the largest score's index; clocks of the last run</td></tr>
+<tr><td>4</td><td>LAYERS</td><td>1 .. 4</td></tr>
+<tr><td>5</td><td>COUNT</td><td>runs since power-on</td></tr>
+<tr><td>6, 7</td><td>WADDR, WDATA</td><td>load weights (lane x 2048 + word) and biases (0x10000 + lane x 128 + n)</td></tr>
+<tr><td>16 + 8L .. 21 + 8L</td><td>layer L</td><td>IN4, OG, WBASE, BBASE, SHIFT, ACT</td></tr>
+<tr><td>256 .. 511, 512 .. 767</td><td>buffers A, B</td><td>the input (A) and the values between layers</td></tr>
+<tr><td>768 .. 1022</td><td>SCORES</td><td>the last layer's results</td></tr>
+<tr><td>1023</td><td>ID</td><td>"MLP1"</td></tr>
+</table>
+<h2>Learn from it</h2>
+<table>
+<tr><th>Idea</th><th>Where to see it</th></tr>
+<tr><td>A language model: guess the next letter</td><td><code>scores()</code> and <code>write()</code> in <code>main.py</code></td></tr>
+<tr><td>Embeddings</td><td><code>EMBED</code> in <code>text_model.py</code>, <code>emb[ids]</code></td></tr>
+<tr><td>Temperature and sampling</td><td><code>probs()</code> in <code>main.py</code></td></tr>
+<tr><td>One engine for any network</td><td><code>mlp_engine.v</code>: the layer registers, <code>S_SETUP</code></td></tr>
+<tr><td>Training with backpropagation</td><td><code>train()</code> in <code>make_model.py</code></td></tr>
+</table>
+<h3>Exercises</h3>
+<ol><li><b>Temperature.</b> Write the same start at 0.2, 0.7 and 1.5. When does it repeat itself? When does it stop making words?</li><li><b>Context.</b> It sees only 16 letters. Can it close a bracket opened 30 letters earlier? Try it.</li><li><b>Your text.</b> Train it on a song text, a recipe collection or your own messages (<code>--text</code>). How many rounds before it writes your words?</li></ol>
+<details><summary>What to expect</summary>
+Low temperature loops ("the the the" or one favourite sentence); high temperature invents words. With 16 letters of memory it forgets the start of long sentences; real language models see thousands of words. Common words of your text appear after a few rounds; its style after more.
+</details>
+<h2>If something is wrong</h2>
+<ul><li><b>The page in the app says the AI is not running</b>: press <b>Upload and run</b> and wait a few seconds.</li><li><b>Strange letters</b>: it only knows the 48 letters it learned; others in your start are left out.</li><li><b>"The FPGA does not hold the TEXT project"</b>: upload this project again.</li></ul></main></body></html>

@@ -1,0 +1,26 @@
+{
+  "id": "DRAW",
+  "title": "Image AI: a network in the FPGA draws new handwritten digits",
+  "category": "Computing",
+  "level": "intermediate",
+  "summary": "The opposite of project 16: ask for a digit and the FPGA draws a new one, never the same twice, from 16 random numbers that decide its style. Make whole rows of them, morph a 3 slowly into an 8, and let project 16's reader, loaded in the same engine, check every drawing.",
+  "slots": {
+    "0": "Info",
+    "1": "General neural network engine (up to 4 layers, 64 multiplications per clock)"
+  },
+  "pins": {
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [],
+  "parts": [
+    "nothing: everything happens inside the FPGA"
+  ],
+  "extra_files": [
+    "mlp_engine.v",
+    "mlp_sigmoid.v"
+  ],
+  "tested": "the self-test passed 7 of 7 checks on the real board (October 2026): every pixel and every reading equal to the Python integer math, 28 of 30 drawings read back as the digit asked for, 12.5 microseconds per drawing, about 790 times faster than numpy on the ARM."
+}

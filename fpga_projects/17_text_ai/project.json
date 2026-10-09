@@ -1,0 +1,26 @@
+{
+  "id": "TEXT",
+  "title": "Text AI: a small language model in the FPGA writes text letter by letter",
+  "category": "Computing",
+  "level": "intermediate",
+  "summary": "A language model, the idea behind chatbots, made small enough for the FPGA: it reads the last 16 letters and scores every letter that could come next, 64 multiplications per clock. Give it the start of a sentence and watch it write on, choose how adventurous it is, see what it was thinking, and train it on your own text.",
+  "slots": {
+    "0": "Info",
+    "1": "General neural network engine (up to 4 layers, 64 multiplications per clock)"
+  },
+  "pins": {
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [],
+  "parts": [
+    "nothing: everything happens inside the FPGA"
+  ],
+  "extra_files": [
+    "mlp_engine.v",
+    "mlp_sigmoid.v"
+  ],
+  "tested": "the self-test passed 8 of 8 checks on the real board (October 2026): random networks and the text model equal to the Python integer math, 2076 clocks (20.8 microseconds) per letter, about 530 times faster than numpy on the ARM."
+}

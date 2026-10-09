@@ -34,8 +34,10 @@ function galleryRender() {
       <div class="gbtns">
         ${p.name === '12_fm_radio' ? '<button class="primary small" data-a="radio" title="The radio station: frequency, songs, RDS text, digital modes">Open</button>' : ''}
         ${p.name === '16_digit_ai' ? '<button class="primary small" data-a="ai" title="Draw digits and watch the FPGA read them">Open</button>' : ''}
+        ${p.name === '17_text_ai' ? '<button class="primary small" data-a="aiw" title="Let the language model write">Open</button>' : ''}
+        ${p.name === '18_image_ai' ? '<button class="primary small" data-a="aid" title="Let the FPGA draw digits">Open</button>' : ''}
         ${p.guide ? '<button class="small" data-a="guide">Guide</button>' : ''}
-        <button class="${p.name === '12_fm_radio' || p.name === '16_digit_ai' ? '' : 'primary '}small" data-a="run" ${p.bit ? '' : 'disabled title="no prebuilt design yet"'}>Upload and run</button>
+        <button class="${['12_fm_radio', '16_digit_ai', '17_text_ai', '18_image_ai'].includes(p.name) ? '' : 'primary '}small" data-a="run" ${p.bit ? '' : 'disabled title="no prebuilt design yet"'}>Upload and run</button>
         ${p.test ? '<button class="small" data-a="test" title="Upload and run the self-test: every part is measured on your board">Self-test</button>' : ''}
         <button class="ghost small" data-a="copy" title="Copy into your projects to change the design or the program">Copy to my projects</button>
       </div>
@@ -46,7 +48,9 @@ function galleryRender() {
 async function galleryAction(name, a) {
   if (a === 'guide') return galleryGuide(name);
   if (a === 'radio') return showView('radio');
-  if (a === 'ai') return showView('ai');
+  if (a === 'ai') return aiOpen('read');
+  if (a === 'aiw') return aiOpen('write');
+  if (a === 'aid') return aiOpen('draw');
   if (a === 'copy') {
     const as = prompt('Name of the copy in your projects (letters, digits, _ . -):', name.replace(/^\d\d_/, ''));
     if (!as) return;

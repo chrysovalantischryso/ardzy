@@ -1,13 +1,17 @@
-/* Ardzy - AI view: project 16_digit_ai, a neural network in the FPGA that reads handwritten digits.
-   The board runs the project's main.py (it serves /state, /guess and /example on port 8080); the engine passes
-   the calls on (/api/ai/...), so this works over an IPv6 link-local cable too.
+/* Ardzy - AI view: the AI projects, one tab each. Read: 16_digit_ai reads handwritten digits. Write: 17_text_ai,
+   a small language model. Draw: 18_image_ai draws new digits. The board runs the project's main.py (a service on
+   port 8080); the engine passes the calls on (/api/ai/...), so this works over an IPv6 link-local cable too.
    Helpers from app.js / board.js: $, esc, api, out, S, T, TF, showView, showTab, galleryGuide. */
 const AI = { timer: null, st: null, built: false, drawing: false, last: null, busy: false, again: false,
   hist: [], cur: null, pen: 20, tally: { right: 0, wrong: 0 } };
-const AI_PROJECT = '16_digit_ai';
+const AI_PROJ = { read: '16_digit_ai', write: '17_text_ai', draw: '18_image_ai' };
+AI.tab = 'read';
+const aiProject = () => AI_PROJ[AI.tab];
 try { Object.assign(AI.tally, JSON.parse(localStorage.getItem('ardzy.ai.tally') || '{}')); } catch (e) { /* no storage */ }
 
 function aiShow() {
+  const m = location.hash.match(/ai=(read|write|draw)/);      // a link like #view=ai&ai=write opens that tab
+  if (m && !AI.hashTab) { AI.hashTab = true; AI.tab = m[1]; }
   if (!AI.built) aiBuild();
   aiPoll().then(() => {             // a link like #view=ai&example=1 opens with one of the test digits drawn
     if (/example=1/.test(location.hash) && AI.st && AI.st.ok && !AI.cur) $('aiExample').click();
@@ -19,22 +23,37 @@ async function aiPoll() {
   clearTimeout(AI.timer);
   const r = S.connected ? await api('/api/ai/state') : { ok: false };
   AI.st = r;
-  const running = !!r.ok;
+  const onBoard = r.ok ? (r.project || '16_digit_ai') : r.current;
+  const running = !!r.ok && onBoard === aiProject();
   $('aiOff').hidden = running;
-  $('aiMain').classList.toggle('dim', !running);
+  for (const [t, id] of [['read', 'aiMain'], ['write', 'aiWriteMain'], ['draw', 'aiDrawMain']]) {
+    $(id).hidden = AI.tab !== t;
+    $(id).classList.toggle('dim', AI.tab === t && !running);
+  }
+  document.querySelectorAll('#aiTabs button').forEach(b => {
+    b.classList.toggle('on', b.dataset.t === AI.tab);
+    b.classList.toggle('live', !!r.ok && AI_PROJ[b.dataset.t] === onBoard);
+  });
   if (!S.connected) $('aiState').textContent = T('no board');
-  else if (running) $('aiState').textContent = TF('running on the board, {0} digits read', r.count);
-  else $('aiState').textContent = r.current === AI_PROJECT ? T('starting ...') : T('not running on the board');
+  else if (running) $('aiState').textContent = TF('running on the board, {0} runs of the network', r.count);
+  const stopped = r.current === aiProject() && S.status && S.status.running === false;
+  if (S.connected && !running) $('aiState').textContent = stopped ? T('stopped') : r.current === aiProject() ? T('starting ...') : T('not running on the board');
   $('aiOffText').textContent = !S.connected ? T('No board connected: click Scan.') :
-    r.current === AI_PROJECT ? T('The project is on the board, but its program is not answering yet (it needs a few seconds to start).') :
-      T('Upload the project: it loads the neural network into the FPGA and starts the drawing service on the board.');
-  if (running) aiStats(r);
+    stopped ? T('The project is on the board, but its program is stopped (for example after the board was restarted). Press Upload and run.') :
+    r.current === aiProject() ? T('The project is on the board, but its program is not answering yet (it needs a few seconds to start).') :
+      r.ok ? TF('The board runs another AI project now ({0}). Upload this one to use it here: only one design fits in the FPGA at a time.', onBoard) :
+        T('Upload the project: it loads the neural network into the FPGA and starts its service on the board.');
+  if (running && AI.tab === 'read') aiStats(r);
+  if (running && AI.tab === 'write') aiWriteStats(r);
+  if (running && AI.tab === 'draw') aiDrawStats(r);
   if (BV.view === 'ai') AI.timer = setTimeout(aiPoll, running ? 4000 : 2000);
 }
 
 function aiBuild() {
   AI.built = true;
   $('aiBody').innerHTML = `
+    <div class="seg ai-tabs" id="aiTabs"><button data-t="read" title="16 &middot; ${T('Read handwritten digits')}">${T('Read')}</button><button data-t="write"
+      title="17 &middot; ${T('A language model writes text')}">${T('Write')}</button><button data-t="draw" title="18 &middot; ${T('Draw new digits')}">${T('Draw')}</button></div>
     <div class="dcard ai-off" id="aiOff" hidden><h3>${T('The AI is not running')}</h3><p id="aiOffText"></p>
       <button class="primary" id="aiStart">${T('Upload and run')}</button></div>
     <div class="ai-grid" id="aiMain">
@@ -75,7 +94,12 @@ function aiBuild() {
           <button class="ghost small" id="aiReset" title="${T('Start counting again')}">${T('Reset')}</button></div>
         <div id="aiList" class="ai-list"><span class="hint">${T('The digits you draw appear here.')}</span></div>
       </div>
-    </div>`;
+    </div>
+    <div class="ai-grid ai-write" id="aiWriteMain" hidden></div>
+    <div class="ai-grid ai-drawgen" id="aiDrawMain" hidden></div>`;
+  $('aiTabs').querySelectorAll('button').forEach(b => b.onclick = () => aiOpen(b.dataset.t));
+  aiBuildWrite();
+  aiBuildDraw();
   const pad = $('aiPad'), g = pad.getContext('2d');
   const clear = () => { g.fillStyle = '#000'; g.fillRect(0, 0, 280, 280); };
   clear();
@@ -196,17 +220,166 @@ function aiStats(r) {
   if (!AI.cur && r.fpga_us) aiRace(r.fpga_us, r.arm_us, r.cycles);
 }
 
+/* ---------------------------------------------------------------- Write (17_text_ai) */
+function aiBuildWrite() {
+  $('aiWriteMain').innerHTML = `
+    <div class="dcard ai-wbox">
+      <h3>${T('The start')}</h3>
+      <textarea id="aiwStart" rows="3" spellcheck="false" placeholder="${T('type the start of a sentence, for example: the fpga')}">the fpga </textarea>
+      <div class="ai-sliders">
+        <label>${T('Length')} <input type="range" id="aiwLen" min="40" max="800" step="20" value="240"><b id="aiwLenV">240</b></label>
+        <label title="${T('Low: safe and repetitive. High: surprising, then nonsense.')}">${T('Temperature')}
+          <input type="range" id="aiwTemp" min="0.2" max="1.5" step="0.05" value="0.7"><b id="aiwTempV">0.70</b></label>
+      </div>
+      <div class="row"><button class="primary" id="aiwGo">${T('Write')}</button><button id="aiwAgain">${T('Again, differently')}</button>
+        <span class="grow"></span><label class="check"><input type="checkbox" id="aiwColor" checked> ${T('show how sure it was')}</label></div>
+      <p class="hint">${T('It writes one letter at a time: the FPGA scores every letter, one is picked by lot (the likely ones more often), added, and the next one is scored.')}</p>
+    </div>
+    <div class="dcard ai-wguess">
+      <h3>${T('What comes next?')}</h3>
+      <div id="aiwGuess" class="ai-bars one"></div>
+      <p class="hint">${T('Its guesses for the letter after your start, updated as you type.')}</p>
+    </div>
+    <div class="dcard ai-wout">
+      <h3>${T('What it wrote')}</h3>
+      <div id="aiwText" class="ai-text"><span class="hint">${T('Press Write.')}</span></div>
+      <div class="hint" id="aiwSpeed"></div>
+    </div>`;
+  const upd = () => { $('aiwLenV').textContent = $('aiwLen').value; $('aiwTempV').textContent = (+$('aiwTemp').value).toFixed(2); };
+  $('aiwLen').oninput = upd; $('aiwTemp').oninput = upd;
+  $('aiwGo').onclick = () => aiWrite(null);
+  $('aiwAgain').onclick = () => aiWrite(null);
+  $('aiwColor').onchange = () => { if (AI.wlast) aiWriteShow(AI.wlast); };
+  $('aiwStart').oninput = () => { clearTimeout(AI.wguessT); AI.wguessT = setTimeout(aiWriteGuess, 300); };
+  $('aiwStart').onkeydown = e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); aiWrite(1); } };
+}
+
+async function aiWrite(seed) {
+  if (AI.wbusy) return;
+  AI.wbusy = true; $('aiwGo').disabled = $('aiwAgain').disabled = true;
+  const start = $('aiwStart').value;
+  const r = await api('/api/ai/write', { start, length: +$('aiwLen').value, temperature: +$('aiwTemp').value,
+    seed: seed === null ? Math.floor(Math.random() * 1e6) : seed });
+  AI.wbusy = false; $('aiwGo').disabled = $('aiwAgain').disabled = false;
+  if (!r.ok) return out(r.out || r.error || T('the AI demo does not answer'), 'err');
+  AI.wlast = { start, ...r };
+  aiWriteShow(AI.wlast);
+  aiWriteGuess();
+}
+
+function aiWriteShow(r) {
+  const color = $('aiwColor').checked;
+  const letters = [...r.text].map((c, i) => {
+    const p = r.sure[i];
+    const ch = c === '\n' ? '<br>' : esc(c);
+    return color ? `<span class="${p < 0.25 ? 'u3' : p < 0.5 ? 'u2' : p < 0.8 ? 'u1' : ''}" title="${Math.round(100 * p)} %">${ch}</span>` : ch;
+  }).join('');
+  $('aiwText').innerHTML = `<b>${esc(r.start)}</b>${letters}`;
+  $('aiwSpeed').textContent = TF('{0} letters in {1} s ({2} per second). The FPGA scores a letter in {3} microseconds; the ARM with numpy needs {4}.',
+    r.text.length, r.seconds.toFixed(2), Math.round(r.per_second), r.fpga_us.toFixed(1), Math.round(r.arm_us));
+}
+
+async function aiWriteGuess() {
+  if (AI.tab !== 'write' || !AI.st || !AI.st.ok || AI.st.project !== '17_text_ai') return;
+  const r = await api('/api/ai/next', { text: $('aiwStart').value });
+  if (!r.ok) return;
+  const show = c => c === ' ' ? T('space') : c === '\n' ? T('new line') : c;
+  $('aiwGuess').innerHTML = r.next.map(([c, p], i) => `<div class="ai-bar${i === 0 ? ' top' : ''}"><b>${esc(show(c))}</b>` +
+    `<span><i style="width:${(100 * p).toFixed(1)}%"></i></span><em>${(100 * p).toFixed(p < 0.1 ? 1 : 0)} %</em></div>`).join('');
+}
+
+function aiWriteStats(r) {
+  if (!AI.wguessed) { AI.wguessed = true; aiWriteGuess(); if (!AI.wlast) aiWrite(1); }
+  if (!AI.wlast) $('aiwSpeed').textContent = TF('The FPGA scores a letter in {0} microseconds; the ARM with numpy needs {1}.', r.fpga_us.toFixed(1), Math.round(r.arm_us));
+}
+
+/* ---------------------------------------------------------------- Draw (18_image_ai) */
+function aiBuildDraw() {
+  const digits = sel => [...Array(10).keys()].map(d => `<option${d === sel ? ' selected' : ''}>${d}</option>`).join('');
+  $('aiDrawMain').innerHTML = `
+    <div class="dcard ai-dctl">
+      <h3>${T('Draw a digit')}</h3>
+      <div class="seg ai-digits" id="aidDigits">${[...Array(10).keys()].map(d => `<button data-d="${d}"${d === 7 ? ' class="on"' : ''}>${d}</button>`).join('')}</div>
+      <div class="ai-sliders">
+        <label title="${T('0: the average digit. Higher: wilder styles.')}">${T('Variety')} <input type="range" id="aidVar" min="0" max="2.5" step="0.1" value="1"><b id="aidVarV">1.0</b></label>
+        <label>${T('How many')} <select id="aidCount"><option>8</option><option selected>16</option><option>24</option></select></label>
+      </div>
+      <div class="row"><button class="primary" id="aidGo">${T('Draw')}</button></div>
+      <h3 class="ai-sub">${T('Morph one digit into another')}</h3>
+      <div class="row"><label>${T('from')} <select id="aidFrom">${digits(3)}</select></label><label>${T('to')} <select id="aidTo">${digits(8)}</select></label>
+        <button id="aidMorph">${T('Morph')}</button></div>
+      <h3 class="ai-sub">${T('Walk through styles')}</h3>
+      <div class="row"><button id="aidStyle">${T('Same digit, changing style')}</button></div>
+      <p class="hint">${T("Every picture is drawn by the FPGA from 16 random numbers (its style) and the digit you ask for. Then project 16's reader, in the same FPGA, reads it back.")}</p>
+    </div>
+    <div class="dcard ai-dout">
+      <div class="row"><h3 id="aidTitle">${T('Its drawings')}</h3><span class="grow"></span><span class="hint" id="aidAgree"></span></div>
+      <div id="aidGrid" class="ai-gen"><span class="hint">${T('Press Draw.')}</span></div>
+      <div class="hint" id="aidSpeed"></div>
+    </div>`;
+  AI.ddigit = 7;
+  $('aidDigits').querySelectorAll('button').forEach(b => b.onclick = () => {
+    AI.ddigit = +b.dataset.d;
+    $('aidDigits').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    aiDraw('draw');
+  });
+  $('aidVar').oninput = () => { $('aidVarV').textContent = (+$('aidVar').value).toFixed(1); };
+  $('aidGo').onclick = () => aiDraw('draw');
+  $('aidMorph').onclick = () => aiDraw('morph');
+  $('aidStyle').onclick = () => aiDraw('style');
+}
+
+async function aiDraw(kind) {
+  if (AI.dbusy) return;
+  AI.dbusy = true;
+  const a = { variety: +$('aidVar').value, seed: Math.floor(Math.random() * 1e6) };
+  if (kind === 'draw') Object.assign(a, { digit: AI.ddigit, count: +$('aidCount').value });
+  if (kind === 'morph') Object.assign(a, { from: +$('aidFrom').value, to: +$('aidTo').value, steps: 11 });
+  if (kind === 'style') Object.assign(a, { digit: AI.ddigit, steps: 11 });
+  const r = await api('/api/ai/' + kind, a);
+  AI.dbusy = false;
+  if (!r.ok) return out(r.out || r.error || T('the AI demo does not answer'), 'err');
+  $('aidTitle').textContent = kind === 'draw' ? TF('{0} new drawings of a {1}', r.images.length, a.digit) :
+    kind === 'morph' ? TF('A {0} becoming a {1}', a.from, a.to) : TF('One {0}, its style changing', a.digit);
+  $('aidGrid').innerHTML = r.images.map((im, i) => {
+    const want = kind === 'morph' ? null : a.digit;
+    const cls = want === null ? '' : im.read === want ? ' good' : ' bad';
+    return `<figure class="ai-gitem${cls}"><canvas id="aidC${i}" width="28" height="28"></canvas>
+      <figcaption title="${T("what project 16's reader says")}">${T('reads')} <b>${im.read}</b> ${Math.round(100 * im.sure)} %</figcaption></figure>`;
+  }).join('');
+  r.images.forEach((im, i) => {
+    const b = atob(im.pixels), v = new Array(784);
+    for (let k = 0; k < 784; k++) v[k] = b.charCodeAt(k);
+    aiPaint('aidC' + i, 28, v);
+  });
+  if (kind !== 'morph') {
+    const n = r.images.filter(im => im.read === a.digit).length;
+    $('aidAgree').textContent = TF('the reader agrees with {0} of {1}', n, r.images.length);
+  } else $('aidAgree').textContent = '';
+  $('aidSpeed').textContent = TF('The FPGA draws a picture in {0} microseconds and reads it in {1}; the ARM with numpy needs {2} to draw one.',
+    r.draw_us.toFixed(1), r.read_us.toFixed(1), Math.round(r.arm_us));
+}
+
+function aiDrawStats(r) {
+  if (!AI.ddrawn) { AI.ddrawn = true; aiDraw('draw'); }
+}
+
 async function aiUpload(test) {
   if (!S.connected) { out(T('No board connected: click Scan.'), 'err'); return; }
-  const r = await api('/api/gallery/upload', { name: AI_PROJECT, test });
+  const r = await api('/api/gallery/upload', { name: aiProject(), test });
   if (!r.ok) out(r.out || 'busy', 'err');
   else if (test) showTab('monitor');
   setTimeout(aiPoll, 3000);
 }
 
 $('aiBack').onclick = () => showView('gallery');
-$('aiGuide').onclick = () => galleryGuide(AI_PROJECT);
+$('aiGuide').onclick = () => galleryGuide(aiProject());
 $('aiTest').onclick = () => aiUpload(true);
 $('aiUpload').onclick = () => aiUpload(false);
+function aiOpen(tab) {
+  AI.tab = tab || AI.tab;
+  if (BV.view !== 'ai') showView('ai'); else aiShow();
+}
+window.aiOpen = aiOpen;
 window.aiShow = aiShow;
 window.aiLeave = aiLeave;
