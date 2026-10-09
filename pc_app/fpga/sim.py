@@ -8,7 +8,7 @@ Ardzy library (fpga/hdl) is used as it is. The waves (VCD) are turned into a com
 Icarus can not work in folders with spaces, so it runs from a copy in %LOCALAPPDATA%\\Ardzy\\icarus and each
 simulation in its own work folder there (file names stay the same, so error lines point at your files).
 """
-import ctypes, glob, os, re, shutil, subprocess, sys, time
+import ctypes, glob, hashlib, os, re, shutil, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASE = getattr(sys, '_MEIPASS', os.path.dirname(HERE))
@@ -46,14 +46,30 @@ def icarus():
         raise RuntimeError('Icarus Verilog is missing in the app (tools/icarus)')
     if ' ' not in SRC_ICARUS:
         return SRC_ICARUS
-    dst = os.path.join(home(), 'icarus')
-    stamp = str(os.path.getsize(os.path.join(SRC_ICARUS, 'bin', 'vvp.exe'))) + ':' + \
-        str(int(os.path.getmtime(os.path.join(SRC_ICARUS, 'bin', 'vvp.exe'))))
+    # one folder per Icarus version (named by the content, so the app and its exe share it), made under a
+    # temporary name and renamed when complete: Windows may finish deleting a folder later (a virus scanner
+    # holding a file), so "delete, then copy to the same name" could fail with "file already exists"
+    h = hashlib.sha1()
+    for f in ('iverilog.exe', 'vvp.exe'):
+        h.update(open(os.path.join(SRC_ICARUS, 'bin', f), 'rb').read())
+    name = 'icarus-' + h.hexdigest()[:10]
+    dst = os.path.join(home(), name)
     mark = os.path.join(dst, 'ardzy_copy.txt')
-    if not (os.path.exists(mark) and open(mark).read() == stamp):
-        shutil.rmtree(dst, ignore_errors=True)
-        shutil.copytree(SRC_ICARUS, dst)
-        open(mark, 'w').write(stamp)
+    if not os.path.exists(mark):
+        tmp = '%s.tmp%d' % (dst, os.getpid())
+        shutil.rmtree(tmp, ignore_errors=True)
+        shutil.copytree(SRC_ICARUS, tmp)
+        open(os.path.join(tmp, 'ardzy_copy.txt'), 'w').write(name)
+        try:
+            os.rename(tmp, dst)
+        except OSError:                          # (another Ardzy made it at the same moment, or a half one is left)
+            if not os.path.exists(mark):
+                shutil.rmtree(dst, ignore_errors=True)
+                os.rename(tmp, dst)
+            shutil.rmtree(tmp, ignore_errors=True)
+    for old in glob.glob(os.path.join(home(), 'icarus*')):         # older copies: removed when nothing uses them
+        if os.path.basename(old) != name and '.tmp' not in old:
+            shutil.rmtree(old, ignore_errors=True)
     return dst
 
 
@@ -118,7 +134,7 @@ def new_testbench(pdir, run_ns=10000, wiggle=False):
     text = ''.join(open(os.path.join(pdir, f), encoding='utf-8', errors='replace').read() for f in design_files(pdir))
     ports = _ports(text, top)
     soc = re.search(r'ardzy_soc\s*(?:#\s*\(.*?\))?\s*(\w+)\s*\(', text, re.S)
-    bus = re.search(r'ardzy_bus\s+(\w+)\s*\(', text)
+    bus = re.search(r'\bardzy_bus(?:_ddr)?\b\s*(?:#\s*\((?:[^()]|\([^()]*\))*\)\s*)?(\w+)\s*\(', text)
     name = top + '_tb'
     fn = name + '.v'
     if os.path.exists(os.path.join(pdir, fn)):
@@ -185,8 +201,13 @@ def _library(work):
 
 def run(pdir, tb, limit_ns=100000, log=print, timeout=120):
     ic = icarus()
-    work = os.path.join(home(), 'sim', re.sub(r'\W', '_', os.path.basename(pdir)))
-    shutil.rmtree(work, ignore_errors=True)
+    # a new work folder for every run (the last runs of each project are removed when they are free): reusing
+    # one could fail while Windows still holds the old waves file
+    base = re.sub(r'\W', '_', os.path.basename(pdir))
+    for old in sorted(glob.glob(os.path.join(home(), 'sim', base + '-*')))[:-2]:
+        shutil.rmtree(old, ignore_errors=True)
+    shutil.rmtree(os.path.join(home(), 'sim', base), ignore_errors=True)       # (the folder of older app versions)
+    work = os.path.join(home(), 'sim', '%s-%d-%d' % (base, int(time.time() * 1000), os.getpid()))
     os.makedirs(work)
     tb_path = os.path.join(pdir, tb)
     if not os.path.isfile(tb_path):

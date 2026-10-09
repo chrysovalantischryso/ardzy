@@ -659,12 +659,20 @@ SIM_LAST = {}          # project -> the waves of its last simulation (for the vi
 
 def simulate(name, tb, ns):
     d = proj_path(name)
+    tbs = fpga_sim.testbenches(d)
+    if tb and tb not in tbs:                   # (a testbench name left from another project)
+        tb = ''
     if not tb:
-        tbs = fpga_sim.testbenches(d)
         if not tbs:
-            log('No testbench in %s: press "New testbench" first.' % name, 'err')
-            return False
-        tb = tbs[0]
+            if not fpga_sim.design_files(d):
+                log('%s has no Verilog (.v) files: Simulate is for FPGA designs. Make one with + New, '
+                    '"FPGA: blink LEDs" or "FPGA blocks".' % name, 'err')
+                return False
+            tb = fpga_sim.new_testbench(d, 10000, True)
+            log('No testbench in %s yet: made %s (the inputs change by themselves; open it to set your own).'
+                % (name, tb), 'ok')
+        else:
+            tb = tbs[0]
     log('Simulating %s with %s (Icarus Verilog, up to %s) ...' % (name, tb, fpga_sim.fmt_ns(ns)), 'head')
     t = time.time()
     r = fpga_sim.run(d, tb, ns, log=log)

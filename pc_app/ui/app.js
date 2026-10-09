@@ -73,6 +73,7 @@ async function pollEvents() {
         if (e.state === 'ok' && e.text === 'Build FPGA') refreshProjects();
         if (e.state !== 'start' && window.onJobEnd && !S.evReplay) onJobEnd(e.text, e.state);
         if (e.text === 'Build FPGA' && e.state !== 'start' && window.BK_after) BK_after(e.state === 'ok');
+        if (e.text === 'Simulate' && e.state !== 'start') { refreshProjects(); if (window.simInfo) simInfo(); }   // (a testbench may be new)
         if (e.text === 'Simulate' && e.state === 'ok' && window.simLoad) simLoad();
         if (e.text === 'Simulate' && e.state === 'fail' && typeof CP !== 'undefined' && CP.problems.length) showTab('problems');
         if (e.text === 'Install library' && e.state !== 'start' && window.libsRefresh) libsRefresh();
