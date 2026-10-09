@@ -96,10 +96,21 @@ function setBusy(b) {
 function setBoard(info, host) {
   S.connected = !!info; S.board = info ? { ...info, host } : null;
   $('boardDot').className = 'dot' + (info ? ' on' : '');
-  $('boardName').textContent = info ? `${info.hostname}  (${host})` : 'No board';
-  $('stConn').textContent = info ? TF('connected: {0}', info.hostname + ' ' + host) : T('offline');
+  // the name on the button; the address (often a long IPv6 link-local one) in the tooltip
+  const kind = !host ? '' : /^fe80:/i.test(host) ? T('IPv6 link-local') : host.includes(':') ? 'IPv6' : /^[\d.]+$/.test(host) ? 'IPv4' : T('name');
+  $('boardName').textContent = info ? info.hostname : T('No board');
+  $('boardPill').title = info ? TF('Board {0} at {1} ({2}). Click to choose another board.', info.hostname, host, kind) : T('Board connection: click to choose');
+  $('stConn').textContent = info ? TF('connected: {0}', info.hostname) : T('offline');
+  $('stConn').title = info ? host : '';
   S.monCursor = null;
   refreshStatus();
+}
+// the status bar: what is on the board right now (every 4 s)
+function statusLine() {
+  const s = S.connected && S.status;
+  $('stBoard').textContent = s ? TF('FPGA: {0}', s.current || '-') + '  ·  ' + T(s.running ? 'program running' : 'program stopped') +
+    (s.temp ? '  ·  ' + s.temp.replace(' C', ' °C') : '') : '';
+  $('stBoard').classList.toggle('warn', !!(s && s.safemode));
 }
 async function refreshApp() {
   const r = await api('/api/app');
@@ -134,6 +145,7 @@ async function refreshStatus() {
   $('boardDot').className = 'dot on';
   const s = r.status, b = S.board || {};
   S.status = s;
+  statusLine();
   if (S.project) $('chkBoot').checked = s.default === S.project;
   const cards = [
     ['Board', b.hostname], ['Address', (b.ips || [b.host]).join(', ')],
@@ -562,5 +574,5 @@ function setTheme(t) {
   if (ht) showTab(ht);
   setInterval(refreshApp, 5000);
   setInterval(() => S.connected && document.querySelector('.panel.active')?.dataset.panel === 'board' && refreshStatus(), 3000);
-  setInterval(() => S.connected && api('/api/board/status').then(r => { if (r.ok) { S.status = r.status; $('boardDot').className = 'dot on'; } else { $('boardDot').className = 'dot err'; } }), 4000);
+  setInterval(() => S.connected && api('/api/board/status').then(r => { if (r.ok) { S.status = r.status; $('boardDot').className = 'dot on'; } else { $('boardDot').className = 'dot err'; } statusLine(); }), 4000);
 })();

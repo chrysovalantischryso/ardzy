@@ -45,7 +45,13 @@ async function aiPoll() {
     r.current === aiProject() ? T('The project is on the board, but its program is not answering yet (it needs a few seconds to start).') :
       r.ok ? TF('The board runs another AI project now ({0}). Upload this one to use it here: only one design fits in the FPGA at a time.', onBoard) :
         T('Upload the project: it loads the neural network into the FPGA and starts its service on the board.');
-  $('aiStudioNote').textContent = onBoard === AI_STUDIO && r.ok ? TF('AI Studio: the big networks, {0} MB of weights streamed from the DDR', (r.mb || 0).toFixed(1)) : '';
+  if (onBoard === AI_STUDIO && r.ok) {
+    const n = v => Math.round(v).toLocaleString();
+    const line = (k, label) => r.sizes && r.stats && r.stats[k] ? TF('{0}: {1} weights, {2} µs in the FPGA (ARM {3} µs)', label, n(r.sizes[k]),
+      r.stats[k].fpga_us.toFixed(0), n(r.stats[k].arm_us)) : '';
+    $('aiStudioNote').innerHTML = esc(TF('AI Studio: the big networks, {0} MB of weights streamed from the DDR, engine clock {1} MHz', (r.mb || 0).toFixed(1), r.mhz || 75)) +
+      '<br>' + [line('read', T('reader')), line('write', T('text model')), line('draw', T('drawer'))].filter(Boolean).map(esc).join(' &middot; ');
+  } else $('aiStudioNote').textContent = '';
   $('aiMine').hidden = !(onBoard === AI_STUDIO && r.ok);
   if (!$('aiMine').hidden && !AI.mineLoaded) { AI.mineLoaded = true; aiMineCounts(); }
   if (running && AI.tab === 'read') aiStats(r);
@@ -246,11 +252,16 @@ function aiRace(fpga, arm, cycles) {
     <div class="ai-race"><b>FPGA</b><span><i style="width:${w(fpga)}%"></i></span><em>${fpga.toFixed(1)} &micro;s</em></div>
     <div class="ai-race arm"><b>ARM</b><span><i style="width:${w(arm)}%"></i></span><em>${Math.round(arm)} &micro;s</em></div>
     <div class="ai-x">${TF('The FPGA is {0} x faster', Math.round(arm / fpga))}</div>`;
-  $('aiFacts').textContent = TF('{0} clocks at 100 MHz, 64 multiplications in every clock. The ARM runs the same math with numpy.', cycles);
+  const mhz = (AI.st && AI.st.mhz) || 100;
+  if (!cycles) cycles = Math.round(fpga * mhz);
+  $('aiFacts').textContent = aiStudioOn()
+    ? TF('{0} clocks at {1} MHz; the weights stream from the DDR memory while it runs. The ARM runs the same math with numpy.', cycles, mhz)
+    : TF('{0} clocks at {1} MHz, 64 multiplications in every clock. The ARM runs the same math with numpy.', cycles, mhz);
 }
 
 function aiStats(r) {
-  if (!AI.cur && r.fpga_us) aiRace(r.fpga_us, r.arm_us, r.cycles);
+  const s = (r.stats && r.stats.read) || r;     // AI Studio keeps each network's own numbers
+  if (!AI.cur && s.fpga_us) aiRace(s.fpga_us, s.arm_us, s.cycles);
 }
 
 /* ---------------------------------------------------------------- Write (17_text_ai) */

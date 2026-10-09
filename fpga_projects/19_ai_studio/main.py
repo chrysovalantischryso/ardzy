@@ -132,7 +132,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path.startswith('/state'):
-            return self.send(200, {'running': True, 'project': '19_ai_studio', 'models': ['read', 'write', 'draw'],
+            return self.send(200, {'running': True, 'project': '19_ai_studio', 'models': ['read', 'write', 'draw'], 'mhz': MHZ, 'ports': ports,
                                    'reader': M['read']['file'], 'count': nn.count(), 'stats': stats, 'sizes': sizes,
                                    'fpga_us': stats['write']['fpga_us'], 'arm_us': stats['write']['arm_us'], 'letters': V,
                                    'mb': store.next * ports / 1e6})

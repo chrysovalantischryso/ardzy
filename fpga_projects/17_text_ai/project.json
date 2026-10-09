@@ -1,7 +1,7 @@
 {
   "id": "TEXT",
   "title": "Text AI: a small language model in the FPGA writes text letter by letter",
-  "category": "Computing",
+  "category": "AI",
   "level": "intermediate",
   "summary": "A language model, the idea behind chatbots, made small enough for the FPGA: it reads the last 16 letters and scores every letter that could come next, 64 multiplications per clock. Give it the start of a sentence and watch it write on, choose how adventurous it is, see what it was thinking, and train it on your own text.",
   "slots": {

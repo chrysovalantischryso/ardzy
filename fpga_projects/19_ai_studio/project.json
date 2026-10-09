@@ -1,7 +1,7 @@
 {
   "id": "AIST",
   "title": "AI Studio: three neural networks, 2 MB of weights, streamed from the DDR",
-  "category": "Computing",
+  "category": "AI",
   "level": "advanced",
   "summary": "All three AIs in one FPGA design, and much bigger: the weights live in the board's 512 MB DDR memory and stream into the FPGA through two HP ports while a network runs, about 100 times faster than the ARM. Read digits with a reader 10 times bigger, let a text model with 32 letters of memory write, draw sharper digits, and teach the reader your own handwriting.",
   "slots": {

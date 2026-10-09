@@ -15,6 +15,7 @@ const VIEW_PANES = { board: 'viewBoard', io: 'viewIO', tools: 'viewTools', galle
   map: 'viewMap', system: 'viewSystem', blocks: 'viewBlocks' };
 function showView(v) {
   BV.view = v;
+  document.querySelector('footer.status').classList.toggle('noeditor', v !== 'code');   // the editor's facts only with the editor
   const tab = (v === 'radio' || v === 'ai') ? 'gallery' : v;   // project pages inside Projects
   document.querySelectorAll('.views button').forEach(b => b.classList.toggle('active', b.dataset.view === tab));
   for (const [k, id] of Object.entries(VIEW_PANES)) $(id).hidden = v !== k;
@@ -537,7 +538,10 @@ async function refreshIO() {
   if (!r.ok) {
     $('ioState').textContent = 'pin-control design not loaded';
     $('btnIoLoad').textContent = 'Load pin-control design';
+    if (!S.status) { const st = await api('/api/board/status'); if (st.ok) S.status = st.status; }   // (right after start)
+    const cur = S.status && S.status.current;
     $('ioBody').innerHTML = `<div class="dcard wide"><h3>${T('Pin control')}</h3><p>${esc(T(r.out))}.</p>
+      ${cur && cur !== 'ardzy_io' ? `<p class="io-now">${esc(TF('The FPGA now holds {0}. Loading the pin-control design replaces it; upload {0} again afterwards to get it back.', cur))}</p>` : ''}
       <p class="hint">${TF('The pin-control design (project {0}) connects every FPGA pin to registers, so this page can read and drive each pin, the LEDs and the fans. Press {1}. It replaces the current FPGA design until you upload another project.', '<b>ardzy_io</b>', '<b>' + T('Load pin-control design') + '</b>')}</p></div>`;
     BV.ioBuilt = false;
     return;

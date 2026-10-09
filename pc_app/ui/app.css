@@ -1024,3 +1024,11 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
 .ai-mine-counts span b { color: var(--text); }
 .ai-mine-counts em { font-style: normal; color: var(--muted); margin-left: 6px; }
 @media (max-width: 1180px) { .ai-mine { grid-column: auto; } }
+
+/* the status bar: the board's state; the editor's facts only in the Code view */
+.status.noeditor #stSaved, .status.noeditor #stCursor, .status.noeditor #stLang, .status.noeditor #stInfo { display: none; }
+#stBoard { color: var(--muted); }
+#stBoard.warn { color: var(--warn); }
+/* the bottom panel: a little lower by default (it can be dragged; the size is remembered) */
+.bottom { height: 30%; min-height: 150px; }
+.io-now { padding: 8px 10px; border-left: 3px solid var(--warn); background: var(--hover); border-radius: 4px; }

@@ -1,7 +1,7 @@
 {
   "id": "NNET",
   "title": "AI in the FPGA: a neural network that reads handwritten digits",
-  "category": "Computing",
+  "category": "AI",
   "level": "intermediate",
   "summary": "A real neural network inside the FPGA: 64 multipliers work at the same time and read a handwritten digit in 10 microseconds, far faster than the ARM. Draw digits in your browser or on your phone and watch the FPGA read them, see what the network sees and its 64 hidden neurons, and train your own network on the PC.",
   "slots": {
