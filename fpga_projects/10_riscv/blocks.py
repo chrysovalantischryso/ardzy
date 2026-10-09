@@ -1504,3 +1504,137 @@ class MLP(Block):
 
     def count(self):
         return self.r(5)
+
+
+# ---------------------------------------------------------------------------------------- AI: the DDR engine (19)
+def ddr_layout(layers, ports=4):
+    """A network as the DDR engine streams it: one byte stream per HP port (port p carries lanes
+    p * 16 / ports ..), each a multiple of 128 bytes, and the layer settings. Per layer and group of 16 neurons:
+    one bias row, then one row per 4 inputs; a row is 64 / ports bytes per port."""
+    import numpy as np
+    L = mlp_pad(layers)
+    lpp = 16 // ports
+    parts = [[] for _ in range(ports)]
+    cfg = []
+    for l in L:
+        W, B = l['w'], np.asarray(l['b'], dtype='<i4')
+        og, in4 = W.shape[0] // 16, W.shape[1] // 4
+        w = W.reshape(og, 16, in4, 4).transpose(0, 2, 1, 3)          # (group, input word, lane, byte)
+        b = B.reshape(og, 16).view(np.uint8).reshape(og, 16, 4)     # (group, lane, byte)
+        for p in range(ports):
+            rows = np.concatenate([b[:, None, lpp * p:lpp * (p + 1), :].view(np.int8),
+                                   w[:, :, lpp * p:lpp * (p + 1), :]], axis=1)   # (group, 1 + in4, lanes, 4 bytes)
+            parts[p].append(rows.reshape(-1).view(np.uint8))
+        cfg.append((in4, og, l['shift'], l['act'], l['outs']))
+    streams = [np.concatenate(x) for x in parts]
+    n = -(-len(streams[0]) // 128) * 128
+    streams = [np.concatenate([s, np.zeros(n - len(s), np.uint8)]) for s in streams]
+    return streams, cfg
+
+
+class DDRStore:
+    """Memory of this program that the FPGA reads: locked (never swapped, never moved by the kernel), and the
+    physical page of every 4 KB. Four regions, one per HP port. Linux only; needs root."""
+
+    def __init__(self, region=4 << 20, ports=4):
+        import ctypes, mmap
+        import numpy as np
+        self.region, self.ports = region, ports
+        size = ports * region
+        self.buf = mmap.mmap(-1, size, flags=mmap.MAP_PRIVATE | mmap.MAP_ANONYMOUS)
+        self.a = np.frombuffer(self.buf, dtype=np.uint8)
+        self.a[::4096] = 0
+        self.libc = ctypes.CDLL('libc.so.6', use_errno=True)
+        self.addr = ctypes.addressof(ctypes.c_char.from_buffer(self.buf))
+        try:
+            open('/proc/sys/vm/compact_unevictable_allowed', 'w').write('0')     # locked pages stay put
+        except OSError:
+            pass
+        if self.libc.mlock(ctypes.c_void_p(self.addr), ctypes.c_size_t(size)) != 0:
+            raise OSError(ctypes.get_errno(), 'mlock failed (run as root)')
+        import struct
+        with open('/proc/self/pagemap', 'rb') as f:
+            f.seek(self.addr // 4096 * 8)
+            raw = f.read(size // 4096 * 8)
+        self.pages = [e & ((1 << 55) - 1) for (e,) in struct.iter_unpack('<Q', raw)]
+        if 0 in self.pages:
+            raise RuntimeError('could not read the physical pages (run as root)')
+        self.next = 0
+
+    def put(self, streams):
+        """Copy a network's 4 streams in; returns its offset in every region."""
+        n = len(streams[0])
+        if self.next + n > self.region:
+            raise ValueError('the networks do not fit in the DDR regions')
+        ofs = self.next
+        for p, s in enumerate(streams):
+            self.a[p * self.region + ofs:p * self.region + ofs + n] = s
+        self.next += n
+        return ofs
+
+    def flush(self):
+        """The HP ports read the DDR, not the ARM's caches: push the caches out (write 8 MB elsewhere)."""
+        import numpy as np
+        d = np.ones(8 << 20, dtype=np.uint8)
+        d += 1
+        return int(d[4321])
+
+
+class MLPDDR(Block):
+    """The DDR network engine (project 19): any number of networks, millions of weights, streamed from the DDR."""
+
+    def __init__(self, bus, slot=1, store=None):
+        super().__init__(bus, slot)
+        self.store = store
+        self.cur = None
+        self.ports = getattr(store, 'ports', 4)
+        if store is not None:
+            self.w(10, store.region)
+            self.w(12, 0)
+            for p in store.pages:
+                self.w(13, p)
+
+    def load(self, layers):
+        streams, cfg = ddr_layout(layers, self.ports)
+        ofs = self.store.put(streams)
+        return {'ofs': ofs, 'len': len(streams[0]), 'cfg': cfg}
+
+    def ready(self):
+        self.store.flush()
+
+    def use(self, h):
+        self.w(8, h['ofs'])
+        self.w(9, h['len'])
+        for k, c in enumerate(h['cfg']):
+            self.w(16 + 8 * k, c[0]); self.w(17 + 8 * k, c[1]); self.w(20 + 8 * k, c[2]); self.w(21 + 8 * k, c[3])
+        self.w(4, len(h['cfg']))
+        self.cur = h
+
+    def run(self, x, timeout=0.5):
+        import numpy as np
+        cfg = self.cur['cfg']
+        b = np.zeros(cfg[0][0] * 4, np.uint8)
+        x = np.asarray(x, dtype=np.uint8).ravel()
+        b[:len(x)] = x
+        for i, v in enumerate(b.view('<u4').tolist()):
+            self.w(256 + i, v)
+        self.w(0, 1)
+        t0 = time.time()
+        while self.r(1) & 1:
+            if time.time() - t0 > timeout:
+                raise RuntimeError('the DDR network engine does not finish (stalls %d)' % self.r(6))
+        last = cfg[-1]
+        if last[3] == 0:
+            return self.r(2), [self.rs(768 + j) for j in range(last[4])]
+        base = 512 if len(cfg) % 2 else 256
+        words = [self.r(base + i) for i in range((last[4] + 3) // 4)]
+        return None, list(np.array(words, dtype='<u4').view(np.uint8)[:last[4]])
+
+    def cycles(self):
+        return self.r(3)
+
+    def stalls(self):
+        return self.r(6)
+
+    def count(self):
+        return self.r(5)

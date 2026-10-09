@@ -23,9 +23,11 @@ print('The language model is in the FPGA: 16 letters -> 192 numbers -> 256 -> 25
 lock = threading.Lock()
 
 
+PAD = 'the ardzy board has an fpga and two arm cores that run linux.' + chr(10)   # what comes before your start
+
+
 def ids_of(text):
-    ids = [V.index(c) for c in text.lower() if c in V]
-    return [V.index(' ')] * tm.CTX + ids
+    return [V.index(c) for c in PAD + text.lower() if c in V]
 
 
 def scores(ids, fpga=True):

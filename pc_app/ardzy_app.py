@@ -1103,6 +1103,61 @@ def ai_call(path, data=None, timeout=5):
                 'current': board.info.get('current') if board.info else None}
 
 
+HANDWRITING = os.path.join(os.path.dirname(SETTINGS_FILE), 'handwriting.json')   # your drawings, for "Learn my handwriting"
+
+
+def ai_samples():
+    try:
+        return json.load(open(HANDWRITING))
+    except (OSError, ValueError):
+        return []
+
+
+def ai_sample_add(pixels, label):
+    s = ai_samples()
+    px = bytes(int(v) & 255 for v in pixels)
+    if len(px) != 784 or not 0 <= int(label) <= 9:
+        return {'ok': False, 'out': 'a drawing is 784 pixels and a digit 0 .. 9'}
+    s.append({'pixels': __import__('base64').b64encode(px).decode(), 'label': int(label)})
+    os.makedirs(os.path.dirname(HANDWRITING), exist_ok=True)
+    json.dump(s, open(HANDWRITING, 'w'))
+    return ai_sample_counts()
+
+
+def ai_sample_counts():
+    s = ai_samples()
+    counts = [0] * 10
+    for x in s:
+        counts[x['label']] += 1
+    return {'ok': True, 'counts': counts, 'total': len(s)}
+
+
+def ai_teach():
+    """Fine-tune project 19's big reader on your drawings (here on the PC), send it to the board, switch to it."""
+    import base64
+    s = ai_samples()
+    if len(s) < 10:
+        log('Draw and mark at least 10 digits first (you have %d).' % len(s), 'err')
+        return False
+    d = gallery_path('19_ai_studio')
+    if d not in sys.path:
+        sys.path.insert(0, d)
+    import numpy as np
+    import teach
+    out = os.path.join(os.path.dirname(SETTINGS_FILE), 'reader_mine.py')
+    log('Teaching the reader your handwriting (%d drawings) ...' % len(s), 'head')
+    samples = [(np.frombuffer(base64.b64decode(x['pixels']), np.uint8), x['label']) for x in s]
+    teach.teach(samples, out, log=lambda m: log('  ' + m))
+    if not board.host:
+        log('Saved %s; connect the board to use it.' % out, 'warn')
+        return True
+    board.call('PUT', '/api/upload?p=19_ai_studio&f=reader_mine.py', data=open(out, 'rb').read(), timeout=120)
+    r = ai_call('/reload_reader', {}, timeout=60)
+    log('The board now reads with your reader.' if r.get('ok') else
+        'Sent to the board; it is used the next time AI Studio starts (%s).' % r.get('out', ''), 'ok' if r.get('ok') else 'warn')
+    return True
+
+
 def radio_state(project):
     st = board_file(project, 'status.json')
     cfg = board_file(project, 'radio.json')
@@ -1425,6 +1480,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return ai_call('/guess', {'px': a.get('px', '')})
         if path == '/api/ai/example':
             return ai_call('/example')
+        if path == '/api/ai/sample':
+            return ai_sample_add(a.get('pixels', []), a.get('label', -1))
+        if path == '/api/ai/samples':
+            return ai_sample_counts()
+        if path == '/api/ai/samples_clear':
+            if os.path.exists(HANDWRITING):
+                os.remove(HANDWRITING)
+            return ai_sample_counts()
+        if path == '/api/ai/teach':
+            return run_job('Teach', ai_teach)
         if path in ('/api/ai/write', '/api/ai/next', '/api/ai/draw', '/api/ai/morph', '/api/ai/style'):
             return ai_call(path[7:], a, timeout=30)     # projects 17 (write, next) and 18 (draw, morph, style)
         if path == '/api/radio/state':

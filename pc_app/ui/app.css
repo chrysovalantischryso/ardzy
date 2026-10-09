@@ -1014,3 +1014,13 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
 @media (max-width: 1180px) { .ai-write, .ai-drawgen { grid-template-columns: minmax(0, 1fr); } }
 .ai-digits { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); width: 100%; }
 .ai-digits button { min-width: 0; padding: 6px 0; }
+
+/* AI Studio (19): the note, "My handwriting" */
+.ai-note { margin: -4px 0 10px; }
+.ai-mine { grid-column: 2 / span 2; }
+.ai-mine-counts { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; align-items: center; }
+.ai-mine-counts span { display: inline-flex; gap: 6px; align-items: baseline; padding: 3px 9px; border: 1px solid var(--line); border-radius: 6px;
+  font-variant-numeric: tabular-nums; color: var(--muted); }
+.ai-mine-counts span b { color: var(--text); }
+.ai-mine-counts em { font-style: normal; color: var(--muted); margin-left: 6px; }
+@media (max-width: 1180px) { .ai-mine { grid-column: auto; } }

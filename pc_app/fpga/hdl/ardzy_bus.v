@@ -90,7 +90,8 @@ endmodule
 //   0 MAGIC "ARDZ"   1 PROJECT (4 letters, e.g. "LEDS")   2 VERSION   3 SECONDS since the design started
 //   4 LEDS (write/read, bit n = LED n on; the LEDs are active low on the board, handled here)
 //   5 SCRATCH (write/read, free for tests)   6 CLOCK_HZ (100000000)
-module ardzy_info #(parameter [3:0] SLOT = 4'd0, parameter [31:0] PROJECT = "TEST", parameter [31:0] VERSION = 32'd1) (
+module ardzy_info #(parameter [3:0] SLOT = 4'd0, parameter [31:0] PROJECT = "TEST", parameter [31:0] VERSION = 32'd1,
+                    parameter [31:0] CLOCK_HZ = 32'd100_000_000) (
     input  wire        clk,
     input  wire        rstn,
     input  wire [15:0] bus_addr,
@@ -107,7 +108,7 @@ module ardzy_info #(parameter [3:0] SLOT = 4'd0, parameter [31:0] PROJECT = "TES
     reg [26:0] tick = 27'd0;
     assign leds_n = ~led;
     always @(posedge clk) begin
-        if (tick == 27'd99_999_999) begin tick <= 27'd0; seconds <= seconds + 1'b1; end
+        if (tick == CLOCK_HZ - 1) begin tick <= 27'd0; seconds <= seconds + 1'b1; end
         else tick <= tick + 1'b1;
         if (bus_we && sel) case (idx)
             10'd4: led <= bus_wdata[3:0];
@@ -123,7 +124,7 @@ module ardzy_info #(parameter [3:0] SLOT = 4'd0, parameter [31:0] PROJECT = "TES
                 10'd3: bus_rdata <= seconds;
                 10'd4: bus_rdata <= {28'd0, led};
                 10'd5: bus_rdata <= scratch;
-                10'd6: bus_rdata <= 32'd100_000_000;
+                10'd6: bus_rdata <= CLOCK_HZ;
                 default: bus_rdata <= 32'd0;
             endcase
         end

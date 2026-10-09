@@ -24,9 +24,10 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
   - **Simulation**: Verilog testbenches run on the PC (Icarus Verilog) with the waves drawn in the app.
   - **Blocks**: programs made by snapping blocks together, like Scratch, and **FPGA blocks** for hardware.
   - **Learn**: 10 FPGA lessons with interactive drawings, quizzes and a working project each.
-  - **Ready projects**: 18 FPGA projects (LED strips, VGA, audio, a RISC-V CPU, SHA-256, FM radio,
-    and three AI projects: a network that reads handwritten digits, a small language model that writes
-    text, and a network that draws new digits)
+  - **Ready projects**: 19 FPGA projects (LED strips, VGA, audio, a RISC-V CPU, SHA-256, FM radio,
+    and AI: a network that reads handwritten digits, a small language model that writes text, a network
+    that draws new digits, and AI Studio: all three much bigger, streamed from the board's DDR memory,
+    with a reader you can teach your own handwriting)
     with self-tests and guides.
   - **Instruments** in the FPGA: logic analyzer, PWM / signal generators, frequency meters, UART, I2C.
   - **Board, I/O, Map, System** views: every pin, the board drawn to scale, Linux processes, logs, updates.
@@ -105,7 +106,7 @@ port 41414, also over a direct cable). Everything is inside the app, nothing els
   (`pc_app\ui\fblocks.js`); Simulate and Build and run from the same view.
 - **Blocks**: programs made by snapping blocks together, like Scratch; they become an Arduino sketch
   (`pc_app\ui\blocks.js`, Blockly in `pc_app\ui\vendor\blockly`). **Learn**: 10 FPGA lessons and ideas.
-  **Ready projects**: 18 FPGA projects with self-tests and guides; the AI ones open in their own screen.
+  **Ready projects**: 19 FPGA projects with self-tests and guides; the AI ones open in their own screen.
 - **App settings** (gear): languages English / Greek / Russian (`pc_app\ui\i18n.js`, Blockly msg el/ru), look (accent, background
   palettes, size, font, density, corners, motion), text, behaviour, export / import / reset (`pc_app\ui\settings.js`).
 - **Simulation** (bottom tab, F6): Verilog testbenches run on the PC with Icarus Verilog (`pc_app\tools\icarus`, copied to

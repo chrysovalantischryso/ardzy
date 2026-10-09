@@ -36,8 +36,9 @@ function galleryRender() {
         ${p.name === '16_digit_ai' ? '<button class="primary small" data-a="ai" title="Draw digits and watch the FPGA read them">Open</button>' : ''}
         ${p.name === '17_text_ai' ? '<button class="primary small" data-a="aiw" title="Let the language model write">Open</button>' : ''}
         ${p.name === '18_image_ai' ? '<button class="primary small" data-a="aid" title="Let the FPGA draw digits">Open</button>' : ''}
+        ${p.name === '19_ai_studio' ? '<button class="primary small" data-a="ai" title="Read, Write and Draw with the big networks">Open</button>' : ''}
         ${p.guide ? '<button class="small" data-a="guide">Guide</button>' : ''}
-        <button class="${['12_fm_radio', '16_digit_ai', '17_text_ai', '18_image_ai'].includes(p.name) ? '' : 'primary '}small" data-a="run" ${p.bit ? '' : 'disabled title="no prebuilt design yet"'}>Upload and run</button>
+        <button class="${['12_fm_radio', '16_digit_ai', '17_text_ai', '18_image_ai', '19_ai_studio'].includes(p.name) ? '' : 'primary '}small" data-a="run" ${p.bit ? '' : 'disabled title="no prebuilt design yet"'}>Upload and run</button>
         ${p.test ? '<button class="small" data-a="test" title="Upload and run the self-test: every part is measured on your board">Self-test</button>' : ''}
         <button class="ghost small" data-a="copy" title="Copy into your projects to change the design or the program">Copy to my projects</button>
       </div>

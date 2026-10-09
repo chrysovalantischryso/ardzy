@@ -1,0 +1,27 @@
+{
+  "id": "AIST",
+  "title": "AI Studio: three neural networks, 2 MB of weights, streamed from the DDR",
+  "category": "Computing",
+  "level": "advanced",
+  "summary": "All three AIs in one FPGA design, and much bigger: the weights live in the board's 512 MB DDR memory and stream into the FPGA through two HP ports while a network runs, about 100 times faster than the ARM. Read digits with a reader 10 times bigger, let a text model with 32 letters of memory write, draw sharper digits, and teach the reader your own handwriting.",
+  "slots": {
+    "0": "Info",
+    "1": "DDR network engine (weights in the DDR, 2 HP ports, its own 75 MHz clock)"
+  },
+  "pins": {
+    "leds[0]": "leds[0]",
+    "leds[1]": "leds[1]",
+    "leds[2]": "leds[2]",
+    "leds[3]": "leds[3]"
+  },
+  "wiring": [],
+  "parts": [
+    "nothing: everything happens inside the FPGA and the board's memory"
+  ],
+  "extra_files": [
+    "mlp_ddr.v",
+    "mlp_sigmoid.v",
+    "nn_train.py"
+  ],
+  "tested": "the self-test passed 9 of 9 checks on the real board (October 2026): the reader, the text model and the drawer streamed from the DDR, every output equal to the Python integer math, no DDR errors, 50 of 50 test digits; about 100 times faster than numpy on the ARM. Learn my handwriting tried end to end."
+}
