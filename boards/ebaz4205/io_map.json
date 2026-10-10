@@ -1,0 +1,296 @@
+[
+ {
+  "port": "gpio1",
+  "bit": 0,
+  "name": "DATA1-5",
+  "pin": "A20"
+ },
+ {
+  "port": "gpio1",
+  "bit": 1,
+  "name": "DATA1-6",
+  "pin": "H16"
+ },
+ {
+  "port": "gpio1",
+  "bit": 2,
+  "name": "DATA1-7",
+  "pin": "B19"
+ },
+ {
+  "port": "gpio1",
+  "bit": 3,
+  "name": "DATA1-8",
+  "pin": "B20"
+ },
+ {
+  "port": "gpio1",
+  "bit": 4,
+  "name": "DATA1-9",
+  "pin": "C20"
+ },
+ {
+  "port": "gpio1",
+  "bit": 5,
+  "name": "DATA1-11",
+  "pin": "H17"
+ },
+ {
+  "port": "gpio1",
+  "bit": 6,
+  "name": "DATA1-13",
+  "pin": "D20"
+ },
+ {
+  "port": "gpio1",
+  "bit": 7,
+  "name": "DATA1-14",
+  "pin": "D18"
+ },
+ {
+  "port": "gpio1",
+  "bit": 8,
+  "name": "DATA1-15",
+  "pin": "H18"
+ },
+ {
+  "port": "gpio1",
+  "bit": 9,
+  "name": "DATA1-16",
+  "pin": "D19"
+ },
+ {
+  "port": "gpio1",
+  "bit": 10,
+  "name": "DATA1-17",
+  "pin": "F20"
+ },
+ {
+  "port": "gpio1",
+  "bit": 11,
+  "name": "DATA1-18",
+  "pin": "E19"
+ },
+ {
+  "port": "gpio1",
+  "bit": 12,
+  "name": "DATA1-19",
+  "pin": "F19"
+ },
+ {
+  "port": "gpio1",
+  "bit": 13,
+  "name": "DATA1-20",
+  "pin": "K17"
+ },
+ {
+  "port": "gpio1",
+  "bit": 14,
+  "name": "DATA2-5",
+  "pin": "G20"
+ },
+ {
+  "port": "gpio1",
+  "bit": 15,
+  "name": "DATA2-6",
+  "pin": "J18"
+ },
+ {
+  "port": "gpio1",
+  "bit": 16,
+  "name": "DATA2-7",
+  "pin": "G19"
+ },
+ {
+  "port": "gpio1",
+  "bit": 17,
+  "name": "DATA2-8",
+  "pin": "H20"
+ },
+ {
+  "port": "gpio1",
+  "bit": 18,
+  "name": "DATA2-9",
+  "pin": "J19"
+ },
+ {
+  "port": "gpio1",
+  "bit": 19,
+  "name": "DATA2-11",
+  "pin": "K18"
+ },
+ {
+  "port": "gpio1",
+  "bit": 20,
+  "name": "DATA2-13",
+  "pin": "K19"
+ },
+ {
+  "port": "gpio1",
+  "bit": 21,
+  "name": "DATA2-14",
+  "pin": "J20"
+ },
+ {
+  "port": "gpio1",
+  "bit": 22,
+  "name": "DATA2-15",
+  "pin": "L16"
+ },
+ {
+  "port": "gpio1",
+  "bit": 23,
+  "name": "DATA2-16",
+  "pin": "L19"
+ },
+ {
+  "port": "gpio1",
+  "bit": 24,
+  "name": "DATA2-17",
+  "pin": "M18"
+ },
+ {
+  "port": "gpio1",
+  "bit": 25,
+  "name": "DATA2-18",
+  "pin": "L20"
+ },
+ {
+  "port": "gpio1",
+  "bit": 26,
+  "name": "DATA2-19",
+  "pin": "M20"
+ },
+ {
+  "port": "gpio1",
+  "bit": 27,
+  "name": "DATA2-20",
+  "pin": "L17"
+ },
+ {
+  "port": "gpio1",
+  "bit": 28,
+  "name": "DATA3-5",
+  "pin": "M19"
+ },
+ {
+  "port": "gpio1",
+  "bit": 29,
+  "name": "DATA3-6",
+  "pin": "N20"
+ },
+ {
+  "port": "gpio1",
+  "bit": 30,
+  "name": "DATA3-7",
+  "pin": "P18"
+ },
+ {
+  "port": "gpio1",
+  "bit": 31,
+  "name": "DATA3-8",
+  "pin": "M17"
+ },
+ {
+  "port": "gpio2",
+  "bit": 0,
+  "name": "DATA3-9",
+  "pin": "N17"
+ },
+ {
+  "port": "gpio2",
+  "bit": 1,
+  "name": "DATA3-11",
+  "pin": "P20"
+ },
+ {
+  "port": "gpio2",
+  "bit": 2,
+  "name": "DATA3-13",
+  "pin": "R18"
+ },
+ {
+  "port": "gpio2",
+  "bit": 3,
+  "name": "DATA3-14",
+  "pin": "R19"
+ },
+ {
+  "port": "gpio2",
+  "bit": 4,
+  "name": "DATA3-15",
+  "pin": "P19"
+ },
+ {
+  "port": "gpio2",
+  "bit": 5,
+  "name": "DATA3-16",
+  "pin": "T20"
+ },
+ {
+  "port": "gpio2",
+  "bit": 6,
+  "name": "DATA3-17",
+  "pin": "U20"
+ },
+ {
+  "port": "gpio2",
+  "bit": 7,
+  "name": "DATA3-18",
+  "pin": "T19"
+ },
+ {
+  "port": "gpio2",
+  "bit": 8,
+  "name": "DATA3-19",
+  "pin": "V20"
+ },
+ {
+  "port": "gpio2",
+  "bit": 9,
+  "name": "nc41",
+  "pin": ""
+ },
+ {
+  "port": "gpio2",
+  "bit": 10,
+  "name": "nc42",
+  "pin": ""
+ },
+ {
+  "port": "gpio2",
+  "bit": 11,
+  "name": "nc43",
+  "pin": ""
+ },
+ {
+  "port": "gpio2",
+  "bit": 12,
+  "name": "nc44",
+  "pin": ""
+ },
+ {
+  "port": "gpio2",
+  "bit": 13,
+  "name": "DATA3-20",
+  "pin": "U19"
+ },
+ {
+  "port": "gpio2",
+  "bit": 14,
+  "name": "J5-PWM",
+  "pin": "V12"
+ },
+ {
+  "port": "gpio2",
+  "bit": 15,
+  "name": "nc47",
+  "pin": ""
+ },
+ {
+  "port": "gpio2",
+  "bit": 16,
+  "name": "nc48",
+  "pin": ""
+ }
+]

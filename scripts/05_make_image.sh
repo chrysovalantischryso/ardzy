@@ -1,11 +1,27 @@
 #!/bin/bash
 # Step 5: SD card image = FAT boot partition + ext4 root partition
+#   BOARD=s9 (default) or BOARD=ebaz4205 (boot files from out/boot_ebaz4205: steps 2 and 3b with BOARD=ebaz4205).
+#   The root file system is the same for every board; the Ardzy tools find out at boot which board they run on.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
+BOARD="${BOARD:-s9}"
 WORK=/root/s9v2
 ROOTFS=$WORK/rootfs
 B="$HERE/out/boot"
 IMG=ardzy_debian13.img
+FATLABEL=S9BOOT
+BOARD_NAME="Antminer S9 board, XC7Z010, 512 MB"
+if [ "$BOARD" != s9 ]; then
+  B="$HERE/out/boot_$BOARD"
+  IMG=ardzy_debian13_$BOARD.img
+  FATLABEL=ARDZYBOOT
+  BOARD_NAME="$(python3 -c "import json,sys; b=json.load(open(sys.argv[1])); print('%s board, %s, %d MB' % (b['name'], b['chip'], b['ram_mb']))" "$HERE/boards/$BOARD/board.json")"
+  for f in BOOT.bin u-boot.img system.dtb zImage; do
+    [ -f "$B/$f" ] || { echo "$B/$f missing: run 02_build_uboot.sh and 03b_board_dtb.sh with BOARD=$BOARD"; exit 1; }
+  done
+  [ -f "$HERE/boards/$BOARD/fpga/ardzy_io.bit" ] || { echo "the base FPGA design is missing (boards/$BOARD/fpga/make_pin_control.py)"; exit 1; }
+  cp "$HERE/boards/$BOARD/fpga/ardzy_io.bit" "$B/base.bit"
+fi
 IMG_MB=2560
 BOOT_MB=256
 BOOT_START_MB=4
@@ -43,6 +59,16 @@ if test "${ardzy_tried}" = "1"; then
   reset
 fi
 EOF
+if [ "$BOARD" != s9 ]; then
+  # this board's Ethernet goes through the FPGA (EMIO): the base design must be in it before Linux starts
+  cat > $WORK/base.cmd <<'EOF'
+echo "Ardzy: loading the base FPGA design (the Ethernet goes through the FPGA)"
+if load mmc 0:1 0x1000000 base.bit; then fpga loadb 0 0x1000000 ${filesize}; else echo "Ardzy: base.bit missing: no network"; fi
+EOF
+  awk -v f=$WORK/base.cmd '/^setenv bootargs/ { while ((getline l < f) > 0) print l } { print }' $WORK/boot.cmd > $WORK/boot.cmd.new
+  mv $WORK/boot.cmd.new $WORK/boot.cmd
+  grep -q "fpga loadb" $WORK/boot.cmd || { echo "base design not in boot.cmd"; exit 1; }
+fi
 mkimage -A arm -O linux -T script -C none -n "Ardzy boot" -d $WORK/boot.cmd "$B/boot.scr" >/dev/null
 
 # U-Boot settings file, read by BOTH the new U-Boot and the fallback one (same 128 KB format).
@@ -76,7 +102,12 @@ EOF
 rm -rf $ROOTFS/opt/ardzy/projects/* && mkdir -p $ROOTFS/opt/ardzy/projects
 # Only the built-in examples go on the card (your own projects in projects/ stay on the PC);
 # ARDZY_EXAMPLES="all" takes every project, or give your own list.
-EXAMPLES="${ARDZY_EXAMPLES:-ardzy_io blink board_hello fpga_ramtest fpga_selftest leds_python}"
+# (other boards: only the board-independent ones; their pin-control project is made below)
+if [ "$BOARD" = s9 ]; then
+  EXAMPLES="${ARDZY_EXAMPLES:-ardzy_io blink board_hello fpga_ramtest fpga_selftest leds_python}"
+else
+  EXAMPLES="${ARDZY_EXAMPLES:-board_hello}"
+fi
 for p in "$HERE"/projects/*/; do
   [ -d "$p" ] || continue
   n=$(basename "$p")
@@ -89,13 +120,20 @@ for p in "$HERE"/projects/*/; do
   find $ROOTFS/opt/ardzy/projects/$n -type f ! -name '*.bit' -exec sed -i 's/\r$//' {} +
   echo "example project: $n ($(ls $ROOTFS/opt/ardzy/projects/$n | tr '\n' ' '))"
 done
-# refresh the S9 tools too (so tool fixes don't need a full rootfs rebuild)
+if [ "$BOARD" != s9 ]; then
+  mkdir -p $ROOTFS/opt/ardzy/projects/ardzy_io
+  cp "$HERE/boards/$BOARD/fpga/ardzy_io.bit" $ROOTFS/opt/ardzy/projects/ardzy_io/ardzy_io.bit
+  echo "example project: ardzy_io (the $BOARD pin-control design)"
+fi
+# refresh the board tools too (so tool fixes don't need a full rootfs rebuild)
 bash "$HERE/scripts/install_board_files.sh" $ROOTFS
+sed -i "s|^  ARDZY .*Zynq like an Arduino .*|  ARDZY ${ARDZY_VERSION:-0.2} BETA  -  Zynq like an Arduino  ($BOARD_NAME, Debian 13)|" $ROOTFS/etc/motd
 
 # release stamp: which Ardzy image is this (shown by the app and "cat /etc/ardzy-release")
 KREL=$(ls /root/s9v2/out/modules/lib/modules/)
 cat > $ROOTFS/etc/ardzy-release <<EOF
 ARDZY_VERSION=${ARDZY_VERSION:-0.2}
+BOARD=$BOARD
 BUILD_DATE=$(date +%Y-%m-%d)
 UBOOT=2026.07
 KERNEL=$KREL
@@ -104,12 +142,13 @@ EOF
 
 cd $WORK
 rm -f boot.vfat root.ext4 $IMG
-mkfs.vfat -F 32 -n S9BOOT -C boot.vfat $((BOOT_MB * 1024)) >/dev/null
+mkfs.vfat -F 32 -n $FATLABEL -C boot.vfat $((BOOT_MB * 1024)) >/dev/null
 for f in BOOT.bin u-boot.img zImage system.dtb boot.scr uboot.env; do mcopy -i boot.vfat "$B/$f" ::/$f; done
+if [ "$BOARD" != s9 ]; then mcopy -i boot.vfat "$B/base.bit" ::/base.bit; fi
 # The fallback boot loader comes from the board's original card (Bitmain), so it is not part of the
 # public repository or images: it is added only when you have it in fallback/ (ARDZY_FALLBACK=0: never,
 # use that for images you share).
-if [ "${ARDZY_FALLBACK:-1}" = 1 ] && [ -f "$HERE/fallback/BOOT_fallback.bin" ]; then
+if [ "$BOARD" = s9 ] && [ "${ARDZY_FALLBACK:-1}" = 1 ] && [ -f "$HERE/fallback/BOOT_fallback.bin" ]; then
   mcopy -i boot.vfat "$HERE/fallback/BOOT_fallback.bin" ::/BOOT_fallback.bin
   mcopy -i boot.vfat FALLBACK.txt ::/FALLBACK.txt
 fi

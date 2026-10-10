@@ -1,8 +1,8 @@
 //! ardzy.rs: the Ardzy board from Rust.   Use it with:  mod ardzy;  (in main.rs)
 //!
-//!     ardzy::led("green", true);          // status LED: "green", "red" or "ps"
+//!     ardzy::led("green", true);          // status LED: "green", "red" (S9 also "ps")
 //!     ardzy::beep(0.1);                   // buzzer, seconds
-//!     if ardzy::button("ip") { ... }      // true while pressed: "ip" (S2) or "reset" (S1)
+//!     if ardzy::button("ip") { ... }      // true while pressed: "ip" or "reset" (EBAZ4205: also "s2", "s3")
 //!     let v = ardzy::peek(0x41200000);    // 32-bit FPGA register at an address (Vivado's Address Editor)
 //!     ardzy::poke(0x41200000, 5);
 //!     ardzy::reg(1, 3); ardzy::reg_write(1, 3, 42);   // word 3 of slot 1 of an Ardzy FPGA project
@@ -32,29 +32,57 @@ fn gpio_get(n: u32) -> bool {
     s.starts_with('1')
 }
 
-/// Switch a board LED: "green", "red" or "ps".
+/// The board's LEDs, buttons and buzzer: name -> (Linux GPIO, the level that means on / pressed), from
+/// /run/ardzy/board-io.txt (written at boot; every Ardzy board has its own). Without it: the Antminer S9.
+fn board_io() -> &'static HashMap<String, (u32, bool)> {
+    static IO: std::sync::OnceLock<HashMap<String, (u32, bool)>> = std::sync::OnceLock::new();
+    IO.get_or_init(|| {
+        let mut io = HashMap::new();
+        if let Ok(text) = fs::read_to_string("/run/ardzy/board-io.txt") {
+            for line in text.lines() {
+                let f: Vec<&str> = line.split_whitespace().collect();
+                if f.len() == 3 && !f[0].starts_with('#') {
+                    if let Ok(g) = f[1].parse::<u32>() {
+                        io.insert(f[0].to_string(), (g, f[2] == "1"));
+                    }
+                }
+            }
+        }
+        if io.is_empty() {
+            for (n, g, on) in [("led_green", 38, true), ("led_red", 37, true), ("led_ps", 15, false), ("buzzer", 39, true),
+                               ("button_ip", 51, false), ("button_reset", 47, false)] {
+                io.insert(n.to_string(), (g, on));
+            }
+        }
+        io
+    })
+}
+
+/// Switch a board LED: "green", "red" (S9 also "ps").
 pub fn led(name: &str, on: bool) {
-    match name {
-        "green" => gpio_set(38, on),
-        "red" => gpio_set(37, on),
-        "ps" => gpio_set(15, !on), // the PS LED is on when the pin is low
-        _ => panic!("led: green, red or ps"),
+    match board_io().get(&format!("led_{}", name)) {
+        Some(&(g, level)) => gpio_set(g, on == level),
+        None => panic!("led: this board has no LED \"{}\" (see /run/ardzy/board-io.txt)", name),
     }
 }
 
-/// Sound the buzzer for a moment.
+/// Sound the buzzer for a moment (a board without a buzzer only waits).
 pub fn beep(seconds: f64) {
-    gpio_set(39, true);
+    let b = board_io().get("buzzer").copied();
+    if let Some((g, _)) = b {
+        gpio_set(g, true);
+    }
     thread::sleep(Duration::from_secs_f64(seconds));
-    gpio_set(39, false);
+    if let Some((g, _)) = b {
+        gpio_set(g, false);
+    }
 }
 
-/// True while the button is pressed: "ip" (S2) or "reset" (S1).
+/// True while the button is pressed: "ip" or "reset" (EBAZ4205: also "s2", "s3").
 pub fn button(name: &str) -> bool {
-    match name {
-        "ip" => !gpio_get(51),
-        "reset" => !gpio_get(47),
-        _ => panic!("button: ip or reset"),
+    match board_io().get(&format!("button_{}", name)) {
+        Some(&(g, level)) => gpio_get(g) == level,
+        None => panic!("button: this board has no button \"{}\"", name),
     }
 }
 

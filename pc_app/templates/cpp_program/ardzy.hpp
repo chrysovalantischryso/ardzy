@@ -1,8 +1,8 @@
 // ardzy.hpp: the Ardzy board from C++ (board LEDs, buzzer, buttons, FPGA registers, watch).
 //
-//   ardzy::led("green", true);          // status LED: "green", "red" or "ps"
-//   ardzy::beep(0.1);                   // buzzer, seconds
-//   if (ardzy::button("ip")) ...        // true while pressed: "ip" (S2) or "reset" (S1)
+//   ardzy::led("green", true);          // status LED: "green", "red" (S9 also "ps")
+//   ardzy::beep(0.1);                   // buzzer, seconds (a board without one only waits)
+//   if (ardzy::button("ip")) ...        // true while pressed: "ip" or "reset" (EBAZ4205: also "s2", "s3")
 //   uint32_t v = ardzy::peek(0x41200000);   // 32-bit FPGA register at an address (Vivado's Address Editor)
 //   ardzy::poke(0x41200000, 5);
 //   ardzy::reg(1, 3);  ardzy::reg_write(1, 3, 42);   // word 3 of slot 1 of an Ardzy FPGA project
@@ -46,26 +46,47 @@ inline bool gpio_get(int n)
     return c == '1';
 }
 
+// The board's LEDs, buttons and buzzer: name -> (Linux GPIO, the level that means on / pressed), from
+// /run/ardzy/board-io.txt (written at boot; every Ardzy board has its own). Without it: the Antminer S9.
+inline const std::map<std::string, std::pair<int, int>> &board_io()
+{
+    static std::map<std::string, std::pair<int, int>> io;
+    if (io.empty()) {
+        if (FILE *f = std::fopen("/run/ardzy/board-io.txt", "r")) {
+            char name[64];
+            int g, on;
+            char line[160];
+            while (std::fgets(line, sizeof line, f))
+                if (line[0] != '#' && std::sscanf(line, "%63s %d %d", name, &g, &on) == 3) io[name] = {g, on};
+            std::fclose(f);
+        }
+        if (io.empty())
+            io = {{"led_green", {38, 1}}, {"led_red", {37, 1}}, {"led_ps", {15, 0}}, {"buzzer", {39, 1}},
+                  {"button_ip", {51, 0}}, {"button_reset", {47, 0}}};
+    }
+    return io;
+}
+
 inline void led(const std::string &name, bool on = true)
 {
-    if (name == "green") gpio_set(38, on);
-    else if (name == "red") gpio_set(37, on);
-    else if (name == "ps") gpio_set(15, !on);          // the PS LED is on when the pin is low
-    else throw std::invalid_argument("led: green, red or ps");
+    auto it = board_io().find("led_" + name);
+    if (it == board_io().end()) throw std::invalid_argument("led: this board has no LED \"" + name + "\" (see /run/ardzy/board-io.txt)");
+    gpio_set(it->second.first, on ? it->second.second : !it->second.second);
 }
 
 inline void beep(double seconds = 0.1)
 {
-    gpio_set(39, true);
+    auto it = board_io().find("buzzer");
+    if (it != board_io().end()) gpio_set(it->second.first, true);       // (a board without a buzzer only waits)
     std::this_thread::sleep_for(std::chrono::duration<double>(seconds));
-    gpio_set(39, false);
+    if (it != board_io().end()) gpio_set(it->second.first, false);
 }
 
 inline bool button(const std::string &name = "ip")
 {
-    if (name == "ip") return !gpio_get(51);
-    if (name == "reset") return !gpio_get(47);
-    throw std::invalid_argument("button: ip or reset");
+    auto it = board_io().find("button_" + name);
+    if (it == board_io().end()) throw std::invalid_argument("button: this board has no button \"" + name + "\"");
+    return gpio_get(it->second.first) == (it->second.second == 1);
 }
 
 inline volatile uint32_t *reg_ptr(uint32_t addr)

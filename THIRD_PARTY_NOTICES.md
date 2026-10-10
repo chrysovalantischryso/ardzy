@@ -12,6 +12,9 @@ written for Ardzy.
 | CodeMirror 5 (Marijn Haverbeke and others) | `pc_app/ui/vendor/codemirror.min.*`, `addon_*`, `mode_*` | MIT |
 | ArduinoCore-API (Arduino) | `arduino/core/api` | LGPL-2.1 (`LICENSE.txt` next to it) |
 | Zynq PS7 init for U-Boot | `uboot/ps7_init_gpl.c` | GPL-2.0 (as in U-Boot) |
+| EBAZ4205 PS7 init (Xilinx Vivado output, from KeitetsuWorks/EBAZ4205, MIT) | `boards/ebaz4205/uboot/vivado_ps7_init_gpl.c`, `ps7_init_gpl.c` | GPL-2.0-or-later (Xilinx) |
+| EBAZ4205 device trees, based on Linux's zynq-ebaz4205.dts (Michael Walle) | `boards/ebaz4205/kernel`, `boards/ebaz4205/uboot/*.dts` | GPL-2.0 |
+| EBAZ4205 pin map (facts from KeitetsuWorks/EBAZ4205, xjtuecho/EBAZ4205 and Michael Walle's pinout) | `boards/ebaz4205/board.json` | written for Ardzy |
 | nextpnr patch | `pc_app/fpga/nextpnr_ardzy.patch` | ISC (as nextpnr) |
 
 ## Inside the Windows app (Release zip)

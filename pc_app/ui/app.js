@@ -17,9 +17,13 @@ const TEMPLATES = {
   lua_script: ['Lua program', 'Lua 5.4, small and fast to start. Install it once: Settings, Languages.'],
   go_program: ['Go program', 'Go 1.24, compiled on the board. Install it once: Settings, Languages.'],
   rust_program: ['Rust program', 'Rust 1.85, compiled on the board (slow: up to a minute). Install it once: Settings, Languages.'],
+  ebaz_fpga_blink: ['FPGA: blink the LEDs (EBAZ4205)', 'The two LEDs blink, made by the FPGA. The Ethernet is kept by the build.'],
+  ebaz_fpga_python: ['FPGA + Python (EBAZ4205)', 'Python sets the LEDs and a header pin through FPGA registers.'],
   fpga_blink: ['FPGA: blink LEDs', 'Verilog counter on the 4 LEDs. Shows the FPGA flow.'],
   fpga_python_leds: ['FPGA + Python', 'AXI GPIO in the FPGA, LEDs driven from Python.'],
 };
+// FPGA templates that use one board's pins: shown only for that board (the others run on every board)
+const TEMPLATE_BOARD = { fpga_blink: 's9', fpga_python_leds: 's9', blocks_fpga: 's9', ebaz_fpga_blink: 'ebaz4205', ebaz_fpga_python: 'ebaz4205' };
 const EDITABLE = /\.(py|c|h|v|sv|vhd|xdc|tcl|sh|txt|json|md|dtsi|dts|csv|ino|cpp|hpp|pl|pm|lua|js|mjs|go|rs|s|S)$|^Makefile$/;
 
 const S = {
@@ -108,7 +112,9 @@ function setBoard(info, host) {
   // the name on the button; the address (often a long IPv6 link-local one) in the tooltip
   const kind = !host ? '' : /^fe80:/i.test(host) ? T('IPv6 link-local') : host.includes(':') ? 'IPv6' : /^[\d.]+$/.test(host) ? 'IPv4' : T('name');
   $('boardName').textContent = info ? info.hostname : T('No board');
-  $('boardPill').title = info ? TF('Board {0} at {1} ({2}). Click to choose another board.', info.hostname, host, kind) : T('Board connection: click to choose');
+  $('boardPill').title = info ? TF('Board {0} ({1}) at {2} ({3}). Click to choose another board.', info.hostname,
+    info.board_name || (/ebaz/i.test(info.model || '') ? 'EBAZ4205' : 'Antminer S9'), host, kind) : T('Board connection: click to choose');
+  if (typeof BP !== 'undefined') BP.profile = null;            // (another board: its pins are read again)
   $('stConn').textContent = info ? TF('connected: {0}', info.hostname) : T('offline');
   $('stConn').title = info ? host : '';
   S.monCursor = null;
@@ -144,6 +150,8 @@ async function refreshApp() {
   const host = r.board.host || null, cur = S.board ? S.board.host : null;
   if (host !== cur || !S.board && host) { if (host) setBoard(r.board.info, host); else setBoard(null); }
   S.settings = r.settings;
+  S.targetBoard = r.target_board;
+  S.boards = r.boards || [];
 }
 async function scan(showDialog) {
   out('Scanning the network for Ardzy boards ...', 'head');
@@ -491,7 +499,10 @@ function filterPins() {
 /* ---------- dialogs ---------- */
 function openNew() {
   $('newName').value = '';
-  $('newTemplates').innerHTML = Object.entries(TEMPLATES).map(([k, [t, d]]) =>
+  const bid = typeof boardId === 'function' ? boardId() : 's9';
+  const tpls = Object.entries(TEMPLATES).filter(([k]) => !TEMPLATE_BOARD[k] || TEMPLATE_BOARD[k] === bid);
+  if (!tpls.some(([k]) => k === S.newTpl)) S.newTpl = tpls[0][0];
+  $('newTemplates').innerHTML = tpls.map(([k, [t, d]]) =>
     `<div class="tpl ${k === S.newTpl ? 'active' : ''}" data-t="${k}"><b>${t}</b><small>${d}</small></div>`).join('');
   $('newTemplates').querySelectorAll('.tpl').forEach(el => el.onclick = () => {
     S.newTpl = el.dataset.t; $('newTemplates').querySelectorAll('.tpl').forEach(x => x.classList.toggle('active', x === el));

@@ -7,7 +7,9 @@ Safety    : pins used by NAND / Ethernet / SD / UART can not be changed; FPGA re
             touched while the ardzy_io design is loaded (an empty FPGA address would freeze the bus);
             board-ID straps are never driven; the NAND is mounted read-only by the kernel.
 """
-import glob, json, mmap, os, re, struct, subprocess, threading, time
+import glob, json, mmap, os, re, struct, subprocess, sys, threading, time
+sys.path.insert(0, '/usr/lib/python3/dist-packages')
+import ardzy_board  # noqa: E402
 
 STATE = '/var/lib/ardzy'
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -398,7 +400,7 @@ def nand_backup_cmd(raw):
 
 # ------------------------------------------------------------------ FPGA pins + fans (ardzy_io design)
 def io_map():
-    return json.load(open(os.path.join(HERE, 'io_map.json')))
+    return json.load(open(ardzy_board.io_map_path(os.path.join(HERE, 'io_map.json'))))
 
 
 def io_ready():

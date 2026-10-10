@@ -1,0 +1,32 @@
+{
+ "id": "s9",
+ "name": "Antminer S9",
+ "long_name": "Antminer S9 control board",
+ "compatible": "bitmain,antminer-s9",
+ "chip": "XC7Z010",
+ "part": "xc7z010clg400-1",
+ "ram_mb": 512,
+ "nand_mb": 256,
+ "hardware_tested": true,
+ "boot": {
+  "uboot_dts": "bitmain-antminer-s9",
+  "kernel_dts": "zynq-antminer-s9",
+  "base_bit": null,
+  "notes": [
+   "Boot jumpers on SD card: JP2 = 1, JP4 = 1.",
+   "12 V power, Ethernet cable; the board appears as ardzy.local after about 2 minutes."
+  ]
+ },
+ "ethernet": {"via": "PS RGMII (MIO), PHY at address 1, 100 Mbit/s", "pins": {}},
+ "leds": {
+  "green": {"mio": 38, "gpio": 38, "active_low": false},
+  "red": {"mio": 37, "gpio": 37, "active_low": false},
+  "ps": {"mio": 15, "gpio": 15, "active_low": true}
+ },
+ "buttons": {
+  "ip": {"mio": 51, "gpio": 51, "active_low": true},
+  "reset": {"mio": 47, "gpio": 47, "active_low": true}
+ },
+ "buzzer": {"mio": 39, "gpio": 39},
+ "headers": "see pc_app/ui/pins.json (J1..J9, 49 FPGA pins)"
+}

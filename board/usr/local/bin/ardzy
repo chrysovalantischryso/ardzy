@@ -34,13 +34,15 @@ Commands:
   ardzy buttons [-w]             state of the IP / Reset buttons (-w = watch)
 """
 import os, sys, struct, subprocess, shutil, time, json, re, glob
+sys.path.insert(0, '/usr/lib/python3/dist-packages')
+import ardzy_board  # noqa: E402  (which board: Antminer S9, EBAZ4205, ...)
 
 PROJ = '/opt/ardzy/projects'
 STATE = '/var/lib/ardzy'
 FW_DIR = '/lib/firmware/ardzy'
 OVL = '/sys/kernel/config/device-tree/overlays/ardzy'
 FPGA = '/sys/class/fpga_manager/fpga0'
-PIN_CONTROL_BIT = '/usr/lib/ardzy/fpga/ardzy_io.bit'   # the pin-control design (Arduino sketches, I/O view)
+PIN_CONTROL_BIT = ardzy_board.pin_control_bit()   # this board's pin-control design (Arduino sketches, I/O view)
 ARDUINO_BUILD = '/usr/lib/ardzy/arduino/build.py'
 CHIP_IDCODE = 0x03722093          # XC7Z010 (the S9 chip)
 CHIP_PART = '7z010'
@@ -468,8 +470,9 @@ def cmd_beep(args):
 
 def cmd_led(args):
     from ardzy import led
-    if not args or args[0] not in ('green', 'red', 'ps'):
-        die('usage: ardzy led green|red|ps [on|off]')
+    from ardzy import _LEDS
+    if not args or args[0] not in _LEDS:
+        die('usage: ardzy led %s [on|off]' % '|'.join(sorted(_LEDS)))
     led(args[0], (args[1] if len(args) > 1 else 'on') != 'off')
 
 def cmd_buttons(args):

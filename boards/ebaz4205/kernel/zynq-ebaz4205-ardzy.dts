@@ -1,0 +1,96 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * EBAZ4205 (ex Ebang miner control board): Zynq XC7Z010-CLG400, 256 MB DDR3, for Ardzy.
+ * Clean base device tree: only the ARM side (PS); FPGA designs add their own devices at runtime with
+ * device-tree overlays applied to the fpga_full region (like the Antminer S9 tree).
+ * Based on Linux's zynq-ebaz4205.dts (Michael Walle) and KeitetsuWorks/EBAZ4205.
+ *
+ * The Ethernet PHY (IP101GA, MII) is wired to FPGA pins: the GEM reaches it over EMIO, so the network
+ * only works while an FPGA design with the Ethernet connection is loaded. U-Boot loads the Ardzy base
+ * design (base.bit) before Linux starts, and every design the Ardzy app builds for this board keeps it.
+ * The PHY's 25 MHz clock is FCLK3 (pin U18), for the boards without their own crystal.
+ */
+/dts-v1/;
+#include "zynq-7000.dtsi"
+
+/ {
+	model = "EBAZ4205 (Zynq-7010, 256 MB)";
+	compatible = "ebang,ebaz4205", "xlnx,zynq-7000";
+
+	aliases {
+		ethernet0 = &gem0;
+		serial0 = &uart1;
+		mmc0 = &sdhci0;
+		gpio0 = &gpio0;
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x10000000>;
+	};
+
+	chosen {
+		bootargs = "console=ttyPS0,115200 root=/dev/mmcblk0p2 rw rootwait earlycon";
+		stdout-path = "serial0:115200n8";
+	};
+};
+
+&clkc {
+	ps-clk-frequency = <33333333>;
+	/* keep FCLK0..3 running: FCLK0 for FPGA designs, FCLK3 = the PHY clock */
+	fclk-enable = <0xf>;
+	assigned-clocks = <&clkc 15>, <&clkc 18>;
+	assigned-clock-rates = <100000000>, <25000000>;
+};
+
+&gem0 {
+	status = "okay";
+	phy-mode = "mii";
+	phy-handle = <&ethernet_phy>;
+
+	ethernet_phy: ethernet-phy@0 {
+		reg = <0>;
+	};
+};
+
+&sdhci0 {
+	status = "okay";
+	disable-wp;
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&watchdog0 {
+	status = "okay";
+	reset-on-timeout;
+	timeout-sec = <60>;
+};
+
+/* On-board NAND (128 MB) with the original Ebang firmware: ONE READ-ONLY partition (inspect and back up,
+ * never written), and no on-flash bad block table (the kernel only reads the factory markers). */
+&smcc {
+	status = "okay";
+};
+
+&nfc0 {
+	status = "okay";
+	nand@0 {
+		reg = <0>;
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			partition@0 {
+				label = "ebang-nand";
+				reg = <0x0 0x8000000>;
+				read-only;
+			};
+		};
+	};
+};

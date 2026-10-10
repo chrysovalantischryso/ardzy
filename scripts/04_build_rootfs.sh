@@ -140,8 +140,8 @@ cp /usr/bin/qemu-arm-static $ROOTFS/usr/bin/
 cp --remove-destination /etc/resolv.conf $ROOTFS/etc/resolv.conf
 chroot $ROOTFS /bin/bash -e <<CHROOT
 # extra tools: NAND inspection/backup (nanddump, mtdinfo), Ethernet speed (ethtool),
-# Ardzy 0.2: compressed swap in RAM (zram generator), Python serial ports, rsync
-EXTRA="mtd-utils ethtool systemd-zram-generator python3-serial rsync"
+# Ardzy 0.2: compressed swap in RAM (zram generator), Python serial ports, rsync, the clock kept over power-off (fake-hwclock)
+EXTRA="mtd-utils ethtool systemd-zram-generator python3-serial rsync fake-hwclock ${ARDZY_EXTRA_PKGS:-}"   # + the packages chosen in the app
 if ! dpkg -s \$EXTRA >/dev/null 2>&1; then
   apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \$EXTRA >/dev/null
 fi

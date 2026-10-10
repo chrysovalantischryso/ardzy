@@ -29,6 +29,22 @@ module ardzy_ps7_ddr #(parameter CLK_DIV = 0) (
     output wire [4:0] dr_rlast, output wire [9:0] dr_rresp, input wire [4:0] dr_rready
 );
     wire [3:0] fclk, fclk_rstn;
+`ifdef ARDZY_EMIO_ENET0
+    // Boards whose Ethernet PHY hangs on FPGA pins (EBAZ4205): the Ardzy build (fpga/flow.py) connects these
+    // wires to the PHY's pins and the LEDs, so the network keeps working while this design is loaded.
+    (* keep *) wire [3:0] ardzy_eth_txd, ardzy_eth_rxd;
+    (* keep *) wire ardzy_eth_txen, ardzy_eth_txclk, ardzy_eth_rxclk, ardzy_eth_rxdv, ardzy_eth_mdc, ardzy_eth_mdio;
+    (* keep *) wire ardzy_eth_phyclk;           // FCLK3, 25 MHz: the PHY's clock
+    (* keep *) wire ardzy_led_red, ardzy_led_green;   // EMIO GPIO 0 / 1 = Linux GPIO 54 / 55: the board's LEDs
+    wire [7:0] ardzy_eth_txd8;
+    wire ardzy_eth_mdo, ardzy_eth_mdt;
+    wire [63:0] ardzy_gpio_o;
+    assign ardzy_eth_txd = ardzy_eth_txd8[3:0];
+    assign ardzy_eth_mdio = ardzy_eth_mdt ? 1'bz : ardzy_eth_mdo;
+    assign ardzy_eth_phyclk = fclk[3];
+    assign ardzy_led_red = ardzy_gpio_o[0];
+    assign ardzy_led_green = ardzy_gpio_o[1];
+`endif
     // CLK_DIV = 0: clk = FCLK0 (100 MHz). Otherwise the design makes its own clock, 900 MHz / CLK_DIV
     // (12: 75 MHz), with an MMCM from FCLK0; the PS's ports run on it too, so nothing crosses clocks.
     // FCLK0 itself is not changed: the next project finds it as it was.
@@ -49,6 +65,13 @@ module ardzy_ps7_ddr #(parameter CLK_DIV = 0) (
     assign rstn = rs[2];
 
     PS7 u_ps7 (
+`ifdef ARDZY_EMIO_ENET0
+        .EMIOENET0GMIITXD(ardzy_eth_txd8), .EMIOENET0GMIITXEN(ardzy_eth_txen), .EMIOENET0GMIITXCLK(ardzy_eth_txclk),
+        .EMIOENET0GMIIRXCLK(ardzy_eth_rxclk), .EMIOENET0GMIIRXD({4'b0000, ardzy_eth_rxd}), .EMIOENET0GMIIRXDV(ardzy_eth_rxdv),
+        .EMIOENET0GMIIRXER(1'b0), .EMIOENET0GMIICOL(1'b0), .EMIOENET0GMIICRS(1'b0),
+        .EMIOENET0MDIOMDC(ardzy_eth_mdc), .EMIOENET0MDIOO(ardzy_eth_mdo), .EMIOENET0MDIOTN(ardzy_eth_mdt),
+        .EMIOENET0MDIOI(ardzy_eth_mdio), .EMIOGPIOO(ardzy_gpio_o), .EMIOGPIOI(64'd0),
+`endif
         .FCLKCLK(fclk), .FCLKRESETN(fclk_rstn), .FCLKCLKTRIGN(4'b0000),
         .MAXIGP0ACLK(clk),
         .SAXIACPARVALID(1'b0), .SAXIACPAWVALID(1'b0), .SAXIACPWVALID(1'b0),

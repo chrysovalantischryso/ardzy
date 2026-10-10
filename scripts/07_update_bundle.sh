@@ -47,6 +47,18 @@ find $S/rootfs -name '__pycache__' -type d -prune -exec rm -rf {} +
 for f in etc/motd etc/systemd/zram-generator.conf etc/systemd/journald.conf.d/ardzy.conf; do
   [ -f $ROOTFS/$f ] && mkdir -p $S/rootfs/$(dirname $f) && cp $ROOTFS/$f $S/rootfs/$f
 done
+# (the root file system is shared by every board's image: this bundle is the S9's, so its welcome text says so)
+if [ -f $S/rootfs/etc/motd ]; then
+  sed -i "s|^  ARDZY .*Zynq like an Arduino .*|  ARDZY $VER BETA  -  Zynq like an Arduino  (Antminer S9 board, XC7Z010, 512 MB, Debian 13)|" $S/rootfs/etc/motd
+fi
+# the board profiles (the tools pick the one of the board they run on)
+for b in "$HERE"/boards/*/; do
+  id=$(basename "$b"); d=$S/rootfs/usr/lib/ardzy/boards/$id
+  mkdir -p $d
+  sed 's/\r$//' "$b/board.json" > $d/board.json
+  if [ -f "$b/io_map.json" ]; then sed 's/\r$//' "$b/io_map.json" > $d/io_map.json; fi
+  if [ -f "$b/fpga/ardzy_io.bit" ]; then cp "$b/fpga/ardzy_io.bit" $d/ardzy_io.bit; fi
+done
 find $S/rootfs -type l -delete                      # services are enabled by the manifest instead
 
 cat > $S/manifest.json <<EOF

@@ -204,7 +204,7 @@ static void *tone_worker(void *) {
 
 void tone(uint8_t p, unsigned int frequency, unsigned long duration) {
   PinInfo pi = pin(p);
-  if (pi.kind == PS_PIN && pi.index == 39) {      // the buzzer has its own sound: just switch it
+  if (pi.kind == PS_PIN && pi.index == 39) {      // the S9's buzzer has its own sound: just switch it
     psWrite(39, frequency > 0);
   } else if (pi.kind == FPGA_IO) {
     if (!frequency) { noTone(p); return; }
@@ -346,7 +346,11 @@ char *dtostrf(double val, signed char width, unsigned char prec, char *sout) {
 // ------------------------------------------------------------------ the board object
 ArdzyBoard Ardzy;
 
+#if defined(ARDZY_BOARD_EBAZ4205)
+void ArdzyBoard::beep(unsigned int ms) { delay(ms); }          // (no buzzer on this board: MIO 39 is a strapping pin)
+#else
 void ArdzyBoard::beep(unsigned int ms) { psWrite(39, true); delay(ms); psWrite(39, false); }
+#endif
 
 float ArdzyBoard::temperature() {
   long raw = read_long("/sys/bus/iio/devices/iio:device0/in_temp0_raw", 0);

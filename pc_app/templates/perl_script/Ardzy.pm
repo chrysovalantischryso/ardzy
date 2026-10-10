@@ -1,8 +1,8 @@
 # Ardzy.pm: the Ardzy board from Perl.   Use it with:  use Ardzy;
 #
-#   led('green', 1);                 # status LED: green, red or ps; 1 = on, 0 = off
-#   beep(0.1);                       # buzzer, seconds
-#   if (button('ip')) { ... }        # true while pressed: ip (S2) or reset (S1)
+#   led('green', 1);                 # status LED: green, red (S9 also ps); 1 = on, 0 = off
+#   beep(0.1);                       # buzzer, seconds (a board without one only waits)
+#   if (button('ip')) { ... }        # true while pressed: ip or reset (EBAZ4205: also s2, s3)
 #   my $v = peek(0x41200000);        # 32-bit FPGA register at an address (Vivado's Address Editor)
 #   poke(0x41200000, 5);
 #   my $w = reg(1, 3); reg_write(1, 3, 42);   # word 3 of slot 1 of an Ardzy FPGA project
@@ -19,8 +19,19 @@ use Time::HiRes ();
 
 our @EXPORT = qw(led beep button peek poke reg reg_write watch);
 our $BUS_BASE = 0x43C00000;
-my %LED = (green => [38, 1], red => [37, 1], ps => [15, 0]);    # GPIO number, on when high
-my %BUTTON = (ip => 51, reset => 47);
+# The board's LEDs, buttons and buzzer: name => [GPIO, the level that means on / pressed], from
+# /run/ardzy/board-io.txt (written at boot; every Ardzy board has its own). Without it: the Antminer S9.
+my %IO;
+if (open(my $f, '<', '/run/ardzy/board-io.txt')) {
+    while (my $line = <$f>) {
+        next if $line =~ /^\s*(#|$)/;
+        my ($n, $g, $on) = split ' ', $line;
+        $IO{$n} = [$g, $on] if defined $on;
+    }
+    close($f);
+}
+%IO = (led_green => [38, 1], led_red => [37, 1], led_ps => [15, 0], buzzer => [39, 1],
+       button_ip => [51, 0], button_reset => [47, 0]) unless %IO;
 
 $| = 1;     # print each line at once (the Monitor shows it immediately)
 
@@ -42,20 +53,22 @@ sub _gpio_get {
 sub led {
     my ($name, $on) = @_;
     $on = 1 unless defined $on;
-    my $l = $LED{$name} or die "led: green, red or ps\n";
-    _gpio_set($l->[0], ($on ? 1 : 0) == $l->[1]);
+    my $l = $IO{"led_$name"} or die "led: this board has no LED \"$name\" (see /run/ardzy/board-io.txt)\n";
+    _gpio_set($l->[0], $on ? $l->[1] : !$l->[1]);
 }
 
 sub beep {
     my ($s) = @_;
-    _gpio_set(39, 1);
+    my $b = $IO{buzzer};                  # (a board without a buzzer only waits)
+    _gpio_set($b->[0], 1) if $b;
     Time::HiRes::sleep($s // 0.1);
-    _gpio_set(39, 0);
+    _gpio_set($b->[0], 0) if $b;
 }
 
 sub button {
-    my $n = $BUTTON{$_[0] // 'ip'} // die "button: ip or reset\n";
-    return !_gpio_get($n);
+    my $name = $_[0] // 'ip';
+    my $b = $IO{"button_$name"} or die "button: this board has no button \"$name\"\n";
+    return (_gpio_get($b->[0]) ? 1 : 0) == $b->[1];
 }
 
 # FPGA registers: through the board's register helper (Perl cannot map memory by itself)

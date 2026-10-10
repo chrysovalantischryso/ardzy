@@ -10,7 +10,7 @@ python make_icon.py
 set OUT=%TEMP%\ardzy_dist
 if exist "%OUT%" rmdir /s /q "%OUT%"
 python -m PyInstaller --noconfirm --windowed --name Ardzy --icon "%~dp0ardzy.ico" ^
-  --add-data "%~dp0ui;ui" --add-data "%~dp0templates;templates" ^
+  --add-data "%~dp0ui;ui" --add-data "%~dp0templates;templates" --add-data "%~dp0..\boards;boards" ^
   --add-data "%~dp0fpga\hdl;fpga\hdl" --add-data "%~dp0tools\fpga;tools\fpga" ^
   --add-data "%~dp0board_packages.txt;." --add-data "%~dp0fpga\simlib;fpga\simlib" --add-data "%~dp0tools\icarus;tools\icarus" ^
   --add-data "%~dp0..\arduino\examples;arduino\examples" --add-data "%~dp0..\fpga_projects;fpga_projects" ^

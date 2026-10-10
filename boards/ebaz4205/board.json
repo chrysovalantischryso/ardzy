@@ -1,0 +1,59 @@
+{
+ "id": "ebaz4205",
+ "name": "EBAZ4205",
+ "long_name": "EBAZ4205 (ex Ebang miner control board)",
+ "compatible": "ebang,ebaz4205",
+ "chip": "XC7Z010",
+ "part": "xc7z010clg400-1",
+ "ram_mb": 256,
+ "nand_mb": 128,
+ "hardware_tested": false,
+ "sources": [
+  "Linux zynq-ebaz4205.dts (Michael Walle)",
+  "https://github.com/KeitetsuWorks/EBAZ4205 (MIT): Vivado PS7 settings, ps7_init_gpl.c, constraints",
+  "https://github.com/xjtuecho/EBAZ4205 and https://gist.github.com/mwalle/d8291e241075d82d1d420afa9302bd91: PL pin map (they agree on every pin)"
+ ],
+ "boot": {
+  "uboot_dts": "ebaz4205-ardzy",
+  "kernel_dts": "zynq-ebaz4205-ardzy",
+  "base_bit": "base.bit",
+  "notes": [
+   "SD card boot needs the microSD slot (U7) mounted and resistor R2577 shorted (boot mode SD instead of NAND).",
+   "Power: 12 V on the J4 connector needs diode D24 shorted (or feed 12 V on the data connector).",
+   "Serial console: UART1 on MIO 24 (TX) / 25 (RX), 3.3 V, 115200 baud.",
+   "The Ethernet works after U-Boot has loaded the Ardzy base design (base.bit on the card)."
+  ]
+ },
+ "ethernet": {
+  "via": "EMIO MII, PHY IP101GA at MDIO address 0, 100 Mbit/s",
+  "pins": {
+   "eth_txd[0]": "W18", "eth_txd[1]": "Y18", "eth_txd[2]": "V18", "eth_txd[3]": "Y19", "eth_txen": "W19",
+   "eth_txclk": "U15", "eth_rxclk": "U14",
+   "eth_rxd[0]": "Y16", "eth_rxd[1]": "V16", "eth_rxd[2]": "V17", "eth_rxd[3]": "Y17", "eth_rxdv": "W16",
+   "eth_mdc": "W15", "eth_mdio": "Y14", "eth_phyclk": "U18"
+  }
+ },
+ "leds": {
+  "red": {"pin": "W14", "gpio": 54, "active_low": true, "pl": true},
+  "green": {"pin": "W13", "gpio": 55, "active_low": true, "pl": true}
+ },
+ "buttons": {
+  "s2": {"mio": 20, "gpio": 20, "active_low": true},
+  "s3": {"mio": 32, "gpio": 32, "active_low": true}
+ },
+ "buzzer": null,
+ "headers": {
+  "DATA1": {"5": "A20", "6": "H16", "7": "B19", "8": "B20", "9": "C20", "11": "H17", "13": "D20", "14": "D18",
+            "15": "H18", "16": "D19", "17": "F20", "18": "E19", "19": "F19", "20": "K17"},
+  "DATA2": {"5": "G20", "6": "J18", "7": "G19", "8": "H20", "9": "J19", "11": "K18", "13": "K19", "14": "J20",
+            "15": "L16", "16": "L19", "17": "M18", "18": "L20", "19": "M20", "20": "L17"},
+  "DATA3": {"5": "M19", "6": "N20", "7": "P18", "8": "M17", "9": "N17", "11": "P20", "13": "R18", "14": "R19",
+            "15": "P19", "16": "T20", "17": "U20", "18": "T19", "19": "V20", "20": "U19"}
+ },
+ "header_notes": "DATA1/2/3: 2x10 pin headers, 3.3 V FPGA pins with no protection. Pins 1-4 are power and ground, 10 and 12 ground (check your board).",
+ "fans": {
+  "J3": {"pwm": "U12", "tach": "V13"},
+  "J5": {"pwm": "V12", "tach": "V15"}
+ },
+ "clock_pin": {"pin": "N18", "note": "only if the X5 oscillator is mounted"}
+}

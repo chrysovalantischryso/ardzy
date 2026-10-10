@@ -359,8 +359,11 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
   <form method="dialog">
     <h2>Write an SD card</h2>
     <p class="hint">Puts the Ardzy system on a microSD card for the board, with your settings. Windows asks for administrator permission.</p>
-    <div class="sdstep"><b>1. System image</b>
-      <div class="row"><select id="sdImg" class="grow"></select><button class="ghost small" id="sdImgPick">Choose file</button></div></div>
+    <div class="sdstep"><b>1. Board and system image</b>
+      <div class="row"><label class="inl">Board <select id="sdBoard"></select></label>
+        <select id="sdImg" class="grow"></select><button class="ghost small" id="sdImgPick">Choose file</button>
+        <button class="ghost small" id="sdBuild" title="Make an image from the Ardzy sources (WSL): your own packages, examples, version">Build an image ...</button></div>
+      <div id="sdBoardNotes" class="hint"></div></div>
     <div class="sdstep"><b>2. microSD card</b> <button class="ghost small" id="sdDiskRefresh">Refresh</button>
       <div id="sdDisks" class="sddisks"></div></div>
     <div class="sdstep"><b>3. Board settings</b> (written to ardzy.txt on the card)
@@ -376,11 +379,37 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
       <label>At power-on <input data-sd="at_boot" list="atBootList" placeholder="pin-control" spellcheck="false"><small>pin-control, none, or a project name</small></label>
     </div>
       <label class="check"><input type="checkbox" id="sdVerify" checked> check the card after writing (recommended)</label></div>
+    <div class="sdstep"><b>4. After the first start</b> (the app does it when it finds the board the first time)
+      <div class="sdfirst">
+        <div><small>Languages to install</small><div id="sdLangs" class="sdchecks"></div></div>
+        <div><small>Your projects to send to the board</small><div id="sdProjects" class="sdchecks sdscroll"></div></div>
+        <label>Start project (also at every power-on) <select id="sdStart"></select></label>
+      </div></div>
     <div id="sdProg" class="sdprog" hidden><div class="bar"><i id="sdBar" style="width:0%"></i></div><div id="sdText" class="hint"></div></div>
     <div class="row end"><button value="cancel" class="ghost" id="sdClose">Close</button><button id="sdGo" class="primary" value="go">Write card</button></div>
   </form>
 </dialog>
 <datalist id="atBootList"><option>pin-control</option><option>none</option></datalist>
+
+<dialog id="dlgBuild" class="wide">
+  <form method="dialog">
+    <h2>Build an SD card image</h2>
+    <p class="hint">Makes an Ardzy image from the sources with the same scripts as the released ones, in WSL (the Linux inside Windows).
+      The first build downloads and compiles everything: about an hour; later builds take minutes.</p>
+    <div id="ibState" class="ibstate"></div>
+    <div class="setgrid">
+      <label>Board <select id="ibBoard"></select></label>
+      <label>What to build <select id="ibSteps">
+        <option value="image">only the card image (fast: the parts already built)</option>
+        <option value="boot" selected>boot loader + card image (a few minutes)</option>
+        <option value="all">everything again: kernel, Debian, boot loader, image (about an hour)</option></select></label>
+      <label>Extra Debian packages <input id="ibPkgs" placeholder="for example: htop vim i2c-tools" spellcheck="false"><small>installed into the image (Debian 13 names)</small></label>
+      <label>Example projects on the card <input id="ibEx" placeholder="(the board's usual ones)" spellcheck="false"><small>project names from the sources' projects folder, or "all"</small></label>
+      <label>Version <input id="ibVer" placeholder="0.2" spellcheck="false"><small>written into the image (/etc/ardzy-release)</small></label>
+    </div>
+    <div class="row end"><button value="cancel" class="ghost">Close</button><button class="ghost" id="ibStop">Stop</button><button id="ibGo" class="primary" value="go">Build image</button></div>
+  </form>
+</dialog>
 
 <dialog id="dlgExamples" class="wide">
   <form method="dialog">
@@ -514,6 +543,7 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
 <script src="studio.js"></script>
 <script src="radio.js"></script>
 <script src="ai.js"></script>
+<script src="boardprofile.js"></script>
 <script src="vendor/blockly/blockly_compressed.js"></script>
 <script src="vendor/blockly/blocks_compressed.js"></script>
 <script src="vendor/blockly/en.js"></script>

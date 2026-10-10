@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * EBAZ4205 (ex Ebang miner control board): Zynq XC7Z010-CLG400, 256 MB DDR3, for the Ardzy U-Boot.
+ * Based on U-Boot's bitmain-antminer-s9.dts (Michal Simek) and Linux's zynq-ebaz4205.dts (Michael Walle).
+ * The SD card (MIO 40-45, card detect MIO 34) and UART1 (MIO 24/25) are what the boot loader needs;
+ * the Ethernet goes through the FPGA (EMIO), so U-Boot does not use it.
+ */
+/dts-v1/;
+#include "zynq-7000.dtsi"
+
+/ {
+	model = "EBAZ4205 (Zynq-7010, 256 MB)";
+	compatible = "ebang,ebaz4205", "xlnx,zynq-7000";
+
+	aliases {
+		serial0 = &uart1;
+		mmc0 = &sdhci0;
+		gpio0 = &gpio0;
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x10000000>;
+	};
+
+	chosen {
+		bootargs = "earlycon";
+		stdout-path = "serial0:115200n8";
+	};
+};
+
+&clkc {
+	ps-clk-frequency = <33333333>;
+};
+
+&sdhci0 {
+	bootph-all;
+	status = "okay";
+	disable-wp;
+};
+
+&uart1 {
+	bootph-all;
+	status = "okay";
+};
+
+&watchdog0 {
+	reset-on-timeout;
+	timeout-sec = <200>;
+};

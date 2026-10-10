@@ -135,7 +135,10 @@ function appRender() {
       </div>
       ${chk('tips', 'Show tooltips (help when pointing at a button)')}${chk('sound', 'Sound when a job ends (upload, build, simulation)')}`;
   } else if (appSection === 'board') {
-    h = `<label>${T('FPGA build tool')} <select id="appTool">${opt('builtin', T('Built-in (Yosys + nextpnr, no Vivado needed)'), set.fpga_tool || 'builtin')}${opt('vivado', 'Vivado (build.tcl)', set.fpga_tool)}</select></label>
+    const bl = appEngine.boards || [];
+    h = `<label>${T('Board for FPGA builds when none is connected')} <select id="appBoard">${bl.map(b => opt(b.id, b.name + (b.hardware_tested ? '' : ' (' + T('not yet tested on a real board') + ')'), set.board || 's9')).join('')}</select></label>
+      <p class="hint">${T('With a board connected, designs are always built for that board. A project can name its board in fpga.json: {"board": "ebaz4205"}.')}</p>
+      <label>${T('FPGA build tool')} <select id="appTool">${opt('builtin', T('Built-in (Yosys + nextpnr, no Vivado needed)'), set.fpga_tool || 'builtin')}${opt('vivado', 'Vivado (build.tcl)', set.fpga_tool)}</select></label>
       <p class="hint">${esc(appEngine.toolInfo)}</p>
       <label>Vivado (vivado.bat) <input id="appViv" value="${esc(set.vivado || '')}" spellcheck="false"></label>
       <div class="row"><button class="primary small" id="appSaveEngine">${T('Save')}</button><span class="hint" id="appSaved"></span></div>`;
@@ -174,6 +177,7 @@ function appRender() {
     if ($('appHosts')) body.manual_hosts = $('appHosts').value.split(',').map(x => x.trim()).filter(Boolean);
     if ($('appViv')) body.vivado = $('appViv').value.trim();
     if ($('appTool')) body.fpga_tool = $('appTool').value;
+    if ($('appBoard')) body.board = $('appBoard').value;
     const r = await api('/api/settings', body);
     $('appSaved').textContent = r.ok === false ? r.out : T('Saved.');
     appEngine = await api('/api/app');

@@ -42,6 +42,8 @@ sys.path.insert(0, getattr(sys, '_MEIPASS', APP_DIR))
 import arduino_support                     # noqa: E402  (sketches, Library Manager, examples)
 import sdflash                             # noqa: E402  (SD card writer)
 import langs                               # noqa: E402  (C++, Shell, Perl, assembly, JavaScript, Lua, Go, Rust)
+import boards as board_profiles            # noqa: E402  (Antminer S9, EBAZ4205: boards/<id>/board.json)
+import imagebuild                          # noqa: E402  (build an SD card image from source, in WSL)
 from fpga import flow as fpga_flow          # noqa: E402  (built-in FPGA toolchain, no Vivado)
 from fpga import sim as fpga_sim            # noqa: E402  (Verilog simulation with Icarus)
 
@@ -89,6 +91,27 @@ def pick_file(kind='All files (*.*)'):
         root.attributes('-topmost', True)
         ext = re.findall(r'\(([^)]*)\)', kind)
         path = tkinter.filedialog.askopenfilename(filetypes=[(kind, ext[0] if ext else '*.*'), ('All files', '*.*')])
+        root.destroy()
+        return path or None
+    except Exception:
+        return None
+
+
+def pick_folder():
+    """A Windows folder dialog."""
+    try:
+        import webview
+        if webview.windows:
+            r = webview.windows[0].create_file_dialog(webview.FOLDER_DIALOG)
+            return r[0] if r else None
+    except Exception:
+        pass
+    try:
+        import tkinter, tkinter.filedialog
+        root = tkinter.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        path = tkinter.filedialog.askdirectory()
         root.destroy()
         return path or None
     except Exception:
@@ -534,9 +557,17 @@ def upload_sketch(name, run=True, default=False):
 def release_dirs():
     """Where Ardzy images and update bundles can be: next to the app, the build folder, Downloads."""
     out = [os.path.join(APP_DIR, 'images'), os.path.normpath(os.path.join(APP_DIR, '..', 'out', 'release')),
+           os.path.normpath(os.path.join(APP_DIR, '..', 'out')),
+           os.path.join(settings.get('sources_dir') or os.path.join(APP_DIR, '..'), 'out'),
            os.path.normpath(os.path.join(APP_DIR, '..', '..', '..', 'out', 'release')),
            os.path.join(os.path.expanduser('~'), 'Downloads')]
-    return [d for d in out if os.path.isdir(d)]
+    seen, dirs = set(), []
+    for d in out:                          # (each folder once: several of them can be the same one)
+        k = os.path.normcase(os.path.normpath(d))
+        if os.path.isdir(d) and k not in seen:
+            seen.add(k)
+            dirs.append(d)
+    return dirs
 
 
 def find_bundles():
@@ -753,6 +784,76 @@ def verify_lang(d, lang):
     return ok
 
 
+def connected_board():
+    """The id of the connected board (s9, ebaz4205, ...); None when no board is connected."""
+    if not board.host:
+        return None
+    info = board.info or {}
+    return info.get('board') or board_profiles.from_model(info.get('model', '')) or 's9'
+
+
+def target_board():
+    """The board FPGA designs are built for: the connected one, else the one chosen in Settings."""
+    return connected_board() or settings.get('board') or 's9'
+
+
+def board_name(board_id):
+    try:
+        return board_profiles.load(board_id)['name']
+    except Exception:
+        return board_id
+
+
+def first_start_check(st=None):
+    """A board found for the first time after its card was written here: run the setup chosen then
+    (languages, projects, the start project). Called with every status poll. Only a board that started
+    AFTER the card was written gets it (an older board with the same name is left alone)."""
+    plans = settings.get('firstrun') or {}
+    name = (board.info or {}).get('hostname')
+    if not board.host or not name or name not in plans or events.busy:
+        return
+    if st is None:
+        try:
+            st = board.call('GET', '/api/status', timeout=4)
+        except Exception:
+            return
+    up = 0
+    for n, unit in re.findall(r'(\d+)\s*([dhms])', str(st.get('uptime', ''))):
+        up += int(n) * {'d': 86400, 'h': 3600, 'm': 60, 's': 1}[unit]
+    if not up or time.time() - up < plans[name].get('created_ts', 0):
+        return                            # (this board was already running when the card was written)
+    run_job('First start setup', first_start, name)
+
+
+def first_start(name):
+    plan = (settings.get('firstrun') or {}).pop(name, None)
+    settings.save()                       # (once: also when a step fails, it is not repeated at every poll)
+    if not plan:
+        return True
+    log('First start of %s: the setup chosen when its SD card was written (%s)' % (name, plan.get('created', '')), 'head')
+    ok = True
+    here = connected_board()
+    if plan.get('board') and here and plan['board'] != here:
+        log('  the card was written for the %s, this board is the %s: the projects are not sent'
+            % (board_name(plan['board']), board_name(here)), 'warn')
+        plan['projects'], plan['start'] = [], ''
+    for lang in plan.get('languages', []):
+        if lang in langs.INSTALLABLE:
+            ok = install_language(lang) and ok
+    for p in plan.get('projects', []):
+        if os.path.isdir(proj_path(p)):
+            ok = upload(p, run=False) and ok
+        else:
+            log('  project %s is no longer in the projects folder' % p, 'warn')
+    if plan.get('start'):
+        r = board.call('POST', '/api/load?p=%s&default=1' % urllib.parse.quote(plan['start']), timeout=300)
+        log('  start project %s (also at every power-on): %s' % (plan['start'], r.get('out', '').strip()[-200:]),
+            'ok' if r.get('ok') else 'err')
+        ok = r.get('ok') and ok
+    log('First start setup %s.' % ('done' if ok else 'done with problems (see above)'), 'ok' if ok else 'warn')
+    return ok
+
+
 def install_language(lang):
     """Install a language on the board: Debian packages fetched by this PC, sent as an update bundle."""
     L = langs.LANGS[lang]
@@ -832,6 +933,14 @@ def verify(name):
             if os.path.getmtime(src) > os.path.getmtime(bit) + 2:
                 log('  note: %s changed after the bitstream was built: build again (Build FPGA)'
                     % os.path.basename(src), 'warn')
+        made_for, here = fpga_flow.bit_board(d, bit), connected_board()
+        if here and made_for != here:
+            # another board's design drives the wrong pins (and on the EBAZ4205 it would cut the network)
+            log('  board check: this design was built for the %s, the connected board is the %s. Press Build FPGA: '
+                'it builds for the connected board.' % (board_name(made_for), board_name(here)), 'err')
+            ok = False
+        else:
+            log('  board check: OK, made for the %s' % board_name(made_for), 'ok')
     elif glob.glob(os.path.join(d, '*.v')) or glob.glob(os.path.join(d, '*.sv')):
         # Verilog but no bitstream: the program would talk to FPGA registers that are not there (an access to an
         # empty FPGA address can hang the board's bus until it is reset), so stop here
@@ -1019,6 +1128,8 @@ def load_io_design():
     local = find_bit(proj_path('ardzy_io')) if os.path.isdir(proj_path('ardzy_io')) else None
     key = board.info.get('mac') or board.host
     sent = settings.get('io_bit_sent', {})
+    if local and connected_board() != 's9':
+        local = None                 # (the projects folder's ardzy_io is the S9's: other boards load their own)
     if local:
         sha = hashlib.sha256(open(local, 'rb').read()).hexdigest()
         if sent.get(key) != sha:
@@ -1050,11 +1161,15 @@ def build_fpga(name):
                 'err')
             return False
         try:
-            fpga_flow.build(d, log=lambda t, c=None: log(t, c or 'out'), out_name=name)
+            fpga_flow.build(d, log=lambda t, c=None: log(t, c or 'out'), out_name=name, board=target_board())
             return True
         except Exception as e:
             log('FPGA build FAILED: %s' % e, 'err')
             return False
+    if target_board() != 's9':
+        log('Vivado builds (build.tcl) are made for the Antminer S9. For the %s use the built-in toolchain '
+            '(Settings, Board and FPGA): it keeps the board\'s Ethernet in every design.' % board_name(target_board()), 'err')
+        return False
     return build_vivado(name)
 
 
@@ -1167,6 +1282,12 @@ def gallery_upload(name, test=False, boot=False):
     d = gallery_path(name)
     if not board.host:
         log('No board connected: click Scan, then choose your board.', 'err')
+        return False
+    here = connected_board()
+    if here != 's9' and glob.glob(os.path.join(d, '*.bit')):
+        log('%s is made for the Antminer S9 (its pins and its network). The connected board is the %s: '
+            'copy it to your projects (Copy to my projects), change the pins in its .xdc for this board and press '
+            'Build FPGA.' % (name, board_name(here)), 'err')
         return False
     q = urllib.parse.quote
     files = [f for f in sorted(os.listdir(d)) if os.path.isfile(os.path.join(d, f)) and f not in GALLERY_SKIP
@@ -1553,6 +1674,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == '/api/app':
             return {'version': APP_VERSION, 'stage': APP_STAGE, 'settings': settings, 'busy': events.busy,
                     'board': {'host': board.host, 'port': board.port, 'info': board.info},
+                    'board_id': connected_board(), 'target_board': target_board(),
+                    'boards': [{k: b.get(k) for k in ('id', 'name', 'long_name', 'chip', 'ram_mb', 'hardware_tested')}
+                               for b in board_profiles.all_boards()],
                     'templates': sorted(os.listdir(TEMPLATES_DIR)) if os.path.isdir(TEMPLATES_DIR) else []}
         if path == '/api/events':
             return {'events': events.since(int(a.get('since', 0))), 'busy': events.busy}
@@ -1563,6 +1687,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return {'ok': True, 'boards': boards}
         if path == '/api/connect':
             info = board.connect(a['host'], a.get('port', 80))
+            threading.Timer(3, first_start_check).start()   # (a newly written card: its setup)
             threading.Thread(target=sync_time, daemon=True).start()
             log('Connected to %s (%s), %s, kernel %s' % (info.get('hostname'), board.host, info.get('os'),
                                                         info.get('kernel')), 'ok')
@@ -1570,8 +1695,42 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == '/api/disconnect':
             board.host, board.info = '', {}
             return {'ok': True}
+        if path == '/api/imagebuild/status':
+            return dict(ok=True, **imagebuild.status(APP_DIR, settings.get('sources_dir'), settings.get('wsl_distro')),
+                        boards=[{'id': b['id'], 'name': b['name']} for b in board_profiles.all_boards()])
+        if path == '/api/imagebuild/start':
+            opts = {k: str(a.get(k, '') or '') for k in ('board', 'steps', 'packages', 'examples', 'version')}
+            if opts['steps'] not in ('image', 'boot', 'all'):
+                opts['steps'] = 'boot'
+            return run_job('Build image', imagebuild.build, opts, APP_DIR, settings, log)
+        if path == '/api/imagebuild/stop':
+            return {'ok': imagebuild.stop()}
+        if path == '/api/imagebuild/sources':
+            if a.get('pick'):
+                d = pick_folder()
+                if not d:
+                    return {'ok': False, 'out': 'no folder chosen'}
+                if not imagebuild.is_sources(d):
+                    return {'ok': False, 'out': 'that folder has no Ardzy sources (scripts/05_make_image.sh, boards/)'}
+                settings['sources_dir'] = d
+                settings.save()
+                return {'ok': True, 'sources': d}
+            dest = os.path.join(os.path.expanduser('~'), 'Documents', 'Ardzy-sources')
+
+            def get():
+                d = imagebuild.get_sources(dest, log)
+                if d:
+                    settings['sources_dir'] = d
+                    settings.save()
+                return bool(d)
+            return run_job('Get the sources', get)
+        if path == '/api/board/profile':           # what the board has (pins, LEDs, how it boots): boards/<id>/board.json
+            b = dict(board_profiles.load(a.get('id') or target_board()))
+            b.pop('dir', None)
+            return {'ok': True, 'profile': b, 'connected': connected_board()}
         if path == '/api/board/status':
             st = board.call('GET', '/api/status', timeout=4)
+            first_start_check(st)
             if isinstance(st.get('projects'), list):     # (.lang-* = the language installer's marks, not projects)
                 st['projects'] = [p for p in st['projects'] if not str(p.get('name', '')).startswith('.')]
             return {'ok': True, 'status': st}
@@ -1790,6 +1949,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if not os.path.isfile(img) or not img.lower().endswith(('.img', '.img.xz')):
                 raise ValueError('choose an Ardzy image file (.img.xz)')
             tag = time.strftime('%Y%m%d_%H%M%S')
+            fr = a.get('firstrun') or {}
+            host = ((a.get('settings') or {}).get('hostname') or 'ardzy').strip()
+            if fr.get('languages') or fr.get('projects') or fr.get('start'):
+                plans = settings.get('firstrun') or {}
+                plans[host] = {'languages': [x for x in fr.get('languages', []) if x in langs.INSTALLABLE],
+                               'projects': [p for p in fr.get('projects', []) if NAME_RE.match(p)],
+                               'start': fr.get('start', '') if NAME_RE.match(fr.get('start', '') or 'x') else '',
+                               'board': a.get('board') or '', 'created': time.strftime('%Y-%m-%d %H:%M'),
+                               'created_ts': time.time()}
+                settings['firstrun'] = plans
+                settings.save()
+                log('After its first start, %s.local gets: %s' % (host, ', '.join(
+                    filter(None, [' '.join(plans[host]['languages']), ' '.join(plans[host]['projects']),
+                                  plans[host]['start'] and 'start project ' + plans[host]['start']]))))
             job = {'disk': disk['number'], 'name': disk['name'], 'size': disk['size'], 'serial': disk['serial'],
                    'image': os.path.abspath(img), 'verify': bool(a.get('verify', True)), 'settings': a.get('settings') or {},
                    'progress': os.path.join(tempfile.gettempdir(), 'ardzy_flash_%s.json' % tag)}
@@ -1839,6 +2012,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == '/api/settings':
             if a.get('fpga_tool') in ('builtin', 'vivado'):
                 settings['fpga_tool'] = a['fpga_tool']
+            if a.get('board') in board_profiles.ids():
+                settings['board'] = a['board']
             for k in ('workspace', 'vivado'):
                 if a.get(k):
                     settings[k] = a[k]

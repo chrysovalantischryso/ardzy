@@ -1,10 +1,14 @@
-"""Ardzy built-in FPGA build: Verilog -> .bit for the S9's XC7Z010, no Vivado needed.
+"""Ardzy built-in FPGA build: Verilog -> .bit for the XC7Z010 of an Ardzy board, no Vivado needed.
 
     Yosys (synthesis)  ->  nextpnr-himbaechel (place and route)  ->  fasm2bit (bitstream)
 
 A project is a folder with Verilog files (*.v, *.sv) and constraints (*.xdc). The Ardzy library
 (fpga/hdl: PS7 link, AXI bridge, GPIO, register bus) is always available. The top module is
 taken from fpga.json {"top": "..."}, else a module called "top", else the one no other module uses.
+
+The board (fpga.json {"board": "ebaz4205"}, else the one asked for, else the S9) gives the chip and what every
+design must keep: on the EBAZ4205 the Ethernet PHY hangs on FPGA pins, so the build adds the Ethernet
+connection (and the two LEDs, when the design does not use their pins) to every design by itself.
 """
 import json, os, re, shutil, subprocess, sys, tempfile, time
 
@@ -12,6 +16,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 import fasm2bit  # noqa: E402
+sys.path.insert(0, os.path.dirname(HERE))
+import boards  # noqa: E402
 
 PART = 'xc7z010clg400-1'
 
@@ -144,6 +150,47 @@ def clean_xdc(src_files, out, ports=None):
     return len(lines), sorted(unknown)
 
 
+# ---------------------------------------------------------------- boards with the Ethernet on FPGA pins
+ETH_PORTS = [   # (port, direction, width, the library's wire)
+    ('eth_txd', 'output', 4, 'ardzy_eth_txd'), ('eth_txen', 'output', 1, 'ardzy_eth_txen'),
+    ('eth_txclk', 'input', 1, 'ardzy_eth_txclk'), ('eth_rxclk', 'input', 1, 'ardzy_eth_rxclk'),
+    ('eth_rxd', 'input', 4, 'ardzy_eth_rxd'), ('eth_rxdv', 'input', 1, 'ardzy_eth_rxdv'),
+    ('eth_mdc', 'output', 1, 'ardzy_eth_mdc'), ('eth_mdio', 'inout', 1, 'ardzy_eth_mdio'),
+    ('eth_phyclk', 'output', 1, 'ardzy_eth_phyclk')]
+
+
+def xdc_pins(xdcs):
+    """{package pin: port} of the constraints (to see which board pins a design uses)."""
+    out = {}
+    for f in xdcs:
+        for line in open(f, encoding='utf-8', errors='replace'):
+            line = line.split('#')[0]
+            m = re.search(r'PACKAGE_PIN\s+(\w+)', line)
+            p = re.search(r'get_ports\s+\{?\s*([^}\]]+?)\s*\}?\s*\]', line)
+            if m and p:
+                out[m.group(1).upper()] = p.group(1).strip()
+    return out
+
+
+def _wrapper(pre_json, top):
+    """A top module around a design without the ARM side: the design + the library's PS7 (for the Ethernet)."""
+    mod = json.load(open(pre_json))['modules'][top]
+    decl, conn = [], []
+    for name, port in mod.get('ports', {}).items():
+        n, off = len(port['bits']), port.get('offset', 0)
+        rng = '' if n == 1 and 'offset' not in port and not port.get('upto') else \
+            ('[%d:%d] ' % (off, off + n - 1) if port.get('upto') else '[%d:%d] ' % (off + n - 1, off))
+        decl.append('    %s wire %s%s' % (port['direction'], rng, name))
+        conn.append('.%s(%s)' % (name, name))
+    # (the ARM side's outputs stay open: only its Ethernet and LED wires are used)
+    return ('module ardzy_board_top (\n%s\n);\n    %s u_design (%s);\n'
+            '    ardzy_ps7 u_ardzy_ps7 (.clk(), .rstn(), .awaddr(), .awlen(), .awsize(), .awburst(), .awid(), .awvalid(),\n'
+            '        .awready(1\'b0), .wdata(), .wstrb(), .wlast(), .wvalid(), .wready(1\'b0), .bid(12\'d0), .bresp(2\'d0),\n'
+            '        .bvalid(1\'b0), .bready(), .araddr(), .arlen(), .arsize(), .arburst(), .arid(), .arvalid(),\n'
+            '        .arready(1\'b0), .rid(12\'d0), .rdata(32\'d0), .rresp(2\'d0), .rlast(1\'b0), .rvalid(1\'b0), .rready());\n'
+            'endmodule\n') % (',\n'.join(decl), top, ', '.join(conn))
+
+
 def _run(cmd, cwd, log, prefix, keep=None):
     flags = 0x08000000 if os.name == 'nt' else 0          # CREATE_NO_WINDOW
     p = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
@@ -160,8 +207,8 @@ def _run(cmd, cwd, log, prefix, keep=None):
         raise RuntimeError('%s failed (exit code %d)' % (os.path.basename(cmd[0]), p.returncode))
 
 
-def build(proj, log=print, freq_mhz=100, out_name=None):
-    """Build the project's FPGA design. Returns the path of the .bit (inside the project)."""
+def build(proj, log=print, freq_mhz=100, out_name=None, board=None):
+    """Build the project's FPGA design for a board. Returns the path of the .bit (inside the project)."""
     t0 = time.time()
     tdir = tools_dir()
     if not tdir:
@@ -178,6 +225,9 @@ def build(proj, log=print, freq_mhz=100, out_name=None):
         raise ValueError('no pin constraints (*.xdc) in the project: copy ardzy_pins.xdc and uncomment your pins')
     lib = library_files()
     top = find_top(srcs + lib, cfg.get('top'), own=srcs)
+    prof = boards.load(cfg.get('board') or board)
+    part = prof.get('part', PART)
+    eth = (prof.get('ethernet') or {}).get('pins') or {}
     work = os.path.join(tempfile.gettempdir(), 'ardzy_fpga', re.sub(r'[^\w.-]', '_', name))
     shutil.rmtree(work, ignore_errors=True)
     os.makedirs(work)
@@ -186,25 +236,64 @@ def build(proj, log=print, freq_mhz=100, out_name=None):
         dst = os.path.join(work, os.path.basename(f))
         shutil.copy(f, dst)
         files.append(os.path.basename(f))
-    log('FPGA build (built-in toolchain): top "%s", %d Verilog files + Ardzy library' % (top, len(srcs)), 'head')
+    log('FPGA build (built-in toolchain) for the %s: top "%s", %d Verilog files + Ardzy library'
+        % (prof['name'], top, len(srcs)), 'head')
     bindir = os.path.join(tdir, 'bin')
     freq = float(cfg.get('clock_mhz', freq_mhz))
+    yosys = os.path.join(bindir, 'yosys.exe')
 
     log('1/3  Synthesis (Yosys) ...')
     t = time.time()
-    reads = '; '.join('read_verilog %s"%s"' % ('-sv ' if f.endswith('.sv') else '', f) for f in files)
-    script = '%s; synth_xilinx -flatten -abc9 -arch xc7 -top %s; stat; write_json design.json' % (reads, top)
-    _run([os.path.join(bindir, 'yosys.exe'), '-q', '-l', 'yosys.log', '-p', script], work, log, '     ',
+    defines = '-D ARDZY_EMIO_ENET0 ' if eth else ''
+    reads = '; '.join('read_verilog %s%s"%s"' % (defines, '-sv ' if f.endswith('.sv') else '', f) for f in files)
+    synth_top, extra, board_xdc = top, '', []
+    if eth:
+        # 1. where the design's ARM side (PS7) is: its Ethernet wires get connected to the PHY's pins
+        _run([yosys, '-q', '-p', '%s; hierarchy -top %s; proc; flatten; tee -q -o ps7.txt select -list w:*ardzy_eth_txd'
+              % (reads, top)], work, log, '     ', keep=lambda l: l.startswith('ERROR'))
+        found = [l.strip().split('/', 1)[1] for l in open(os.path.join(work, 'ps7.txt')) if '/' in l]
+        if len(found) > 1:
+            raise ValueError('the design has %d ARM sides (PS7): a design can only have one' % len(found))
+        if found:
+            prefix = found[0][:-len('ardzy_eth_txd')]
+        else:                            # a design without the ARM side: one is added, only for the Ethernet
+            _run([yosys, '-q', '-p', '%s; hierarchy -top %s; write_json pre.json' % (reads, top)], work, log, '     ',
+                 keep=lambda l: l.startswith('ERROR'))
+            open(os.path.join(work, 'ardzy_board_top.v'), 'w').write(_wrapper(os.path.join(work, 'pre.json'), top))
+            reads += '; read_verilog %s"ardzy_board_top.v"' % defines
+            synth_top, prefix = 'ardzy_board_top', 'u_ardzy_ps7.'
+        used = xdc_pins(xdcs)
+        clash = sorted('%s (%s)' % (pin, used[pin]) for pin in set(eth.values()) if pin in used)
+        if clash:
+            raise ValueError('on the %s these pins belong to the Ethernet: %s. Use other pins.' % (prof['name'], ', '.join(clash)))
+        cmds = []
+        for port, direction, width, wire in ETH_PORTS:
+            cmds.append('add -%s %s %d' % (direction, port, width))
+            lhs, rhs = (port, '\\' + prefix + wire) if direction != 'input' else ('\\' + prefix + wire, port)
+            cmds.append('connect -set %s %s' % (lhs, rhs))
+        xdc = ['set_property -dict {PACKAGE_PIN %s IOSTANDARD LVCMOS33} [get_ports {%s}]' % (pin, port)
+               for port, pin in sorted(eth.items())]
+        for lname, led in sorted((prof.get('leds') or {}).items()):
+            if led.get('pl') and led['pin'] not in used:      # the board's LED, unless the design drives it itself
+                cmds += ['add -output led_%s 1' % lname, 'connect -set led_%s \\%sardzy_led_%s' % (lname, prefix, lname)]
+                xdc.append('set_property -dict {PACKAGE_PIN %s IOSTANDARD LVCMOS33} [get_ports {led_%s}]' % (led['pin'], lname))
+        extra = 'hierarchy -top %s; proc; flatten; %s; ' % (synth_top, '; '.join(cmds))
+        board_xdc = [os.path.join(work, 'board_pins.xdc')]
+        open(board_xdc[0], 'w').write('\n'.join(xdc) + '\n')
+        log('     the %s: the Ethernet (and the free LEDs) are connected to this design, so the network stays up'
+            % prof['name'])
+    script = '%s; %ssynth_xilinx -flatten -abc9 -arch xc7 -top %s; stat; write_json design.json' % (reads, extra, synth_top)
+    _run([yosys, '-q', '-l', 'yosys.log', '-p', script], work, log, '     ',
          keep=lambda l: (l.startswith(('ERROR', 'Warning: Replacing', 'Warning: Wire', 'Warning: Driver-driver conflict',
                                        'Warning: multiple conflicting drivers'))
                          and 'Replacing memory' not in l and 'floating point parameter' not in l))
     stats = _yosys_stats(os.path.join(work, 'yosys.log'))
     log('     done in %.0f s: %s' % (time.time() - t, ', '.join('%s %s' % (v, k) for k, v in stats.items()) or 'ok'))
 
-    for w in check_cells(os.path.join(work, 'design.json'), top):
+    for w in check_cells(os.path.join(work, 'design.json'), synth_top):
         log('     WARNING: ' + w, 'warn')
-    ports = design_ports(os.path.join(work, 'design.json'), top)
-    n, unknown = clean_xdc(xdcs, os.path.join(work, 'pins.xdc'), ports)
+    ports = design_ports(os.path.join(work, 'design.json'), synth_top)
+    n, unknown = clean_xdc(xdcs + board_xdc, os.path.join(work, 'pins.xdc'), ports)
     log('     %d pins in the design, %d constraint lines%s' % (
         len(ports), n, ('; constraints for ports not in the design (ignored): ' + ', '.join(unknown[:8])) if unknown else ''))
     log('2/3  Place and route (nextpnr) ...')
@@ -214,7 +303,7 @@ def build(proj, log=print, freq_mhz=100, out_name=None):
     for seed in (1, 2, 3, 4, 5):
         t = time.time()
         fasm = 'design_%d.fasm' % seed
-        _run([os.path.join(bindir, 'nextpnr-himbaechel.exe'), '--device', PART, '--json', 'design.json',
+        _run([os.path.join(bindir, 'nextpnr-himbaechel.exe'), '--device', part, '--json', 'design.json',
               '-o', 'xdc=pins.xdc', '-o', 'fasm=' + fasm, '--router', 'router2', '--freq', '%g' % freq,
               '--seed', str(seed), '--timing-allow-fail', '-l', 'nextpnr.log', '--quiet'], work, log, '     ',
              keep=lambda l: l.startswith('ERROR') and 'time violation' not in l)
@@ -224,10 +313,10 @@ def build(proj, log=print, freq_mhz=100, out_name=None):
         for m in re.finditer(r"Max frequency for clock\s+'([^']+)': ([\d.]+) MHz \((PASS|FAIL) at ([\d.]+) MHz\)", text):
             clocks[m.group(1)] = (float(m.group(2)), m.group(3), float(m.group(4)))
         summary = ', '.join("clock '%s' %.1f MHz (%s at %g MHz)" % (k, f, r, need) for k, (f, r, need) in clocks.items()) \
-            or 'no clock found'
+            or 'no clock in the design (only logic between pins: nothing to time)'
         hold = len(re.findall(r'ERROR: Hold/min time violation', text))
-        fmax = min([f / need for f, r, need in clocks.values()] or [0])     # the tightest margin
-        ok = bool(clocks) and all(r == 'PASS' for f, r, need in clocks.values()) and not hold
+        fmax = min([f / need for f, r, need in clocks.values()] or [1])     # the tightest margin
+        ok = all(r == 'PASS' for f, r, need in clocks.values()) and not hold
         log('     try %d done in %.0f s: %s%s' % (seed, time.time() - t, summary,
                                                   ', %d hold-time problem(s)' % hold if hold else ''),
             None if ok else 'warn')
@@ -245,12 +334,44 @@ def build(proj, log=print, freq_mhz=100, out_name=None):
 
     log('3/3  Bitstream (fasm2bit) ...')
     bit = os.path.join(work, name + '.bit')
-    fasm2bit.assemble(os.path.join(tdir, 'db', 'zynq7'), PART, os.path.join(work, 'design.fasm'), bit,
+    fasm2bit.assemble(os.path.join(tdir, 'db', 'zynq7'), part, os.path.join(work, 'design.fasm'), bit,
                       log=lambda s: log('     ' + s))
     dst = os.path.join(proj, name + '.bit')
     shutil.copy(bit, dst)
+    write_build_info(proj, dst, prof['id'])
     log('FPGA build done in %.0f s: %s' % (time.time() - t0, dst), 'ok')
     return dst
+
+
+BUILD_INFO = '.ardzy_build.json'       # which board each bitstream of the project was built for
+
+
+def write_build_info(proj, bit, board_id):
+    import hashlib
+    p = os.path.join(proj, BUILD_INFO)
+    try:
+        info = json.load(open(p))
+    except (OSError, ValueError):
+        info = {}
+    info[os.path.basename(bit)] = {'board': board_id, 'sha256': hashlib.sha256(open(bit, 'rb').read()).hexdigest(),
+                                   'date': time.strftime('%Y-%m-%d %H:%M')}
+    json.dump(info, open(p, 'w'), indent=1)
+
+
+def bit_board(proj, bit):
+    """The board a bitstream was built for: from the project's build record, else the project's fpga.json,
+    else the S9 (every design made before Ardzy knew other boards, Vivado builds, the ready projects)."""
+    import hashlib
+    try:
+        rec = json.load(open(os.path.join(proj, BUILD_INFO))).get(os.path.basename(bit))
+        if rec and rec.get('sha256') == hashlib.sha256(open(bit, 'rb').read()).hexdigest():
+            return rec['board']
+    except (OSError, ValueError):
+        pass
+    try:
+        return json.load(open(os.path.join(proj, 'fpga.json'))).get('board') or 's9'
+    except (OSError, ValueError):
+        return 's9'
 
 
 def _yosys_stats(path):

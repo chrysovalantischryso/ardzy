@@ -47,6 +47,11 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
   library in its new projects: LEDs, buzzer, buttons, FPGA registers and `watch()`.
 - Clearer app: the status bar shows what the board runs, the FPGA design and its temperature; the AI screen
   shows the real engine clock.
+- **A second board: the EBAZ4205** (the control board of Ebang miners, also a Zynq XC7Z010, 256 MB). Same app,
+  same tools, its own SD card image. See [Other boards](#other-boards-ebaz4205) below.
+- **Make your SD card image in the app**: choose the board, the settings, the languages and projects the board
+  gets after its first start; or build a whole image from the sources (in WSL) with your own Debian packages,
+  example projects and version.
 
 ## Quick start
 
@@ -64,6 +69,27 @@ an Ethernet cable and a Windows PC.
 
 The default login is **root / root**: change it (App: System, Settings; or `passwd` over SSH, or
 `password = ...` in `ardzy.txt` on the card) before you connect the board to a network you share.
+
+## Other boards: EBAZ4205
+
+The EBAZ4205 (from Ebang miners) has the same chip as the S9, 256 MB DDR3, Ethernet, two LEDs, two buttons
+and three 2x10 headers (DATA1, DATA2, DATA3) with 42 FPGA pins. Ardzy supports it from its published pin maps
+and has tested it in the emulator; **it has not been tested on a real EBAZ4205 yet**: please report how it goes.
+
+- **Hardware**: the board boots from NAND as it comes. For the SD card, mount the microSD slot (U7) and
+  short resistor R2577 (boot mode SD); to power it from the J4 connector, short diode D24.
+- **SD card**: in the app, SD card, Board EBAZ4205. Build its image with **Build an image ...** (WSL), or
+  from the sources: `BOARD=ebaz4205 bash scripts/02_build_uboot.sh`, `03b_board_dtb.sh`, `05_make_image.sh`.
+- **The Ethernet goes through the FPGA** (EMIO, MII PHY IP101GA): U-Boot loads the Ardzy base design
+  (`base.bit` on the card) before Linux, and **the built-in FPGA build adds the Ethernet connection (and the
+  two LEDs, when your design does not use their pins) to every design** for this board, so the network stays
+  up whatever you load. Designs built for another board (or with Vivado) are refused at upload.
+- **What works the same**: Python, C, C++, every language, Arduino sketches (pins `DATA1_5` .. `DATA3_20`,
+  `LED_BUILTIN` = the green LED, `BUTTON_S2` / `BUTTON_S3`), the I/O and Tools views (the same pin-control
+  design, with this board's pins), the simulation. The ready projects are made for the S9's pins: copy one
+  and change its `.xdc`.
+- Its profile (every pin, LED, button, how it boots) is `boards/ebaz4205/board.json`; the app's Pins tab and
+  Map view show it. New boards are added the same way: a folder in `boards/`.
 
 ## Documentation
 
@@ -214,6 +240,12 @@ A USB-serial adapter on the UART header (115200) shows where a boot stops.
 03_build_kernel.sh kernel + dtb         04_build_rootfs.sh Debian 13 + ardzy tools
 05_make_image.sh  SD image -> out/      06_release.sh      out/release/*.img.xz
 07_update_bundle.sh update bundle       test_os2_qemu.sh   emulator test of OS 0.2
+03b_board_dtb.sh  device tree of another board (BOARD=ebaz4205)
+test_board_qemu.sh  emulator test of a board's image (BOARD=s9 or BOARD=ebaz4205)
 test_uboot_for_qemu.sh  U-Boot for the emulator tests (keeps uboot.env like the board)
 test_legacy_update_qemu.sh  emulator test of the 0.1 -> 0.2 update
 ```
+BOARD=ebaz4205 before 02, 03b and 05 makes the EBAZ4205's boot loader, device tree and image
+(`out/ardzy_debian13_ebaz4205.img`); the kernel and the Debian root file system are the same for every board.
+ARDZY_EXTRA_PKGS="htop vim" before 04 adds Debian packages, ARDZY_EXAMPLES="..." before 05 chooses the
+example projects. The app's **Build an image** runs these steps for you.

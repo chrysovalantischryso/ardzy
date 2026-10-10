@@ -1039,3 +1039,17 @@ body.calm *, body.calm *::before, body.calm *::after { animation: none !importan
 /* the bottom panel: a little lower by default (it can be dragged; the size is remembered) */
 .bottom { height: 30%; min-height: 150px; }
 .io-now { padding: 8px 10px; border-left: 3px solid var(--warn); background: var(--hover); border-radius: 4px; }
+
+/* SD card: board, first start; Build an image */
+label.inl { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+#sdBoardNotes { margin-top: 6px; }
+#sdBoardNotes li { margin: 2px 0; }
+.sdfirst { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+.sdfirst > label { grid-column: 1 / -1; }
+.sdchecks { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
+.sdchecks label { display: inline-flex; align-items: center; gap: 5px; margin: 0; font-size: 13px; }
+.sdscroll { max-height: 120px; overflow-y: auto; }
+.ibstate { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; margin: 8px 0 12px; font-size: 13px; line-height: 1.6; }
+.ibstate .ok { color: var(--ok); font-weight: 600; }
+.ibstate .no { color: var(--err, #d04040); font-weight: 600; }
+@media (max-width: 760px) { .sdfirst { grid-template-columns: 1fr; } }

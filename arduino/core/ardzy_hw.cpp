@@ -71,6 +71,20 @@ volatile uint32_t *ctl() { return g_ctl; }
 volatile uint32_t *psgpio() { return g_ps; }
 
 PinInfo pin(int p) {
+#if defined(ARDZY_BOARD_EBAZ4205)
+  // EBAZ4205: places 0..40, 45, 46 have pins; 49, 50 = fan speed J3, J5; 55 = fan PWM J3 (see pins_ardzy.h)
+  if ((p >= 0 && p <= 40) || p == 45 || p == 46) return {FPGA_IO, p, false};
+  if (p == 49 || p == 50) return {FPGA_IN, p, false};
+  if (p == 55) return {FAN_OUT, 55, false};
+  switch (p) {
+    case 60: return {PS_PIN, 55, true};    // green LED (EMIO GPIO 1, through the FPGA), on when low
+    case 61: return {PS_PIN, 54, true};    // red LED (EMIO GPIO 0)
+    case 64: return {PS_PIN, 20, false};   // button S2 (pressed = LOW)
+    case 65: return {PS_PIN, 32, false};   // button S3 (pressed = LOW)
+  }
+  if (p >= 100 && p <= 106) return {ANALOG, p - 100, false};
+  return {NONE, -1, false};
+#endif
   if (p >= 0 && p <= 35) return {FPGA_IO, p, false};
   if (p >= 36 && p <= 39) return {FPGA_IO, p, true};            // LEDs are active low
   if (p == 40) return {FPGA_IO, 40, false};
@@ -142,15 +156,25 @@ bool fpgaRead(int sig) {
   return (g_ctl[0x12C >> 2] >> (sig - 32)) & 1;
 }
 
+// Linux GPIO number -> the GPIO block's bank and bit: MIO 0..31 bank 0, MIO 32..53 bank 1,
+// EMIO 0..31 (GPIO 54..85) bank 2, EMIO 32..63 bank 3
+static void psBank(int n, int &bank, int &bit) {
+  if (n < 54) { bank = n / 32; bit = n % 32; }
+  else { bank = 2 + (n - 54) / 32; bit = (n - 54) % 32; }
+}
+
 void psWrite(int mio, bool v) {
-  int bank = mio / 32, bit = mio % 32;
+  int bank, bit;
+  psBank(mio, bank, bit);
   uint32_t off = bank * 8 + (bit >= 16 ? 4 : 0);
   int b = bit % 16;
   g_ps[off >> 2] = ((~(1u << b) & 0xFFFFu) << 16) | ((v ? 1u : 0u) << b);
 }
 
 bool psRead(int mio) {
-  return (g_ps[(0x60 >> 2) + mio / 32] >> (mio % 32)) & 1;
+  int bank, bit;
+  psBank(mio, bank, bit);
+  return (g_ps[(0x60 >> 2) + bank] >> bit) & 1;
 }
 
 double fclk() {

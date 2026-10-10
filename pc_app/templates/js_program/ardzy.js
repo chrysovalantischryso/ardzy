@@ -1,8 +1,8 @@
 // ardzy.js: the Ardzy board from JavaScript (Node.js).   Use it with:  const ardzy = require('./ardzy');
 //
-//   ardzy.led('green', true);           // status LED: 'green', 'red' or 'ps'
+//   ardzy.led('green', true);           // status LED: 'green', 'red' (S9 also 'ps')
 //   ardzy.beep(0.1);                    // buzzer, seconds
-//   if (ardzy.button('ip')) ...         // true while pressed: 'ip' (S2) or 'reset' (S1)
+//   if (ardzy.button('ip')) ...         // true while pressed: 'ip' or 'reset' (EBAZ4205: also 's2', 's3')
 //   const v = ardzy.peek(0x41200000);   // 32-bit FPGA register at an address (Vivado's Address Editor)
 //   ardzy.poke(0x41200000, 5);
 //   ardzy.reg(1, 3); ardzy.regWrite(1, 3, 42);   // word 3 of slot 1 of an Ardzy FPGA project
@@ -16,8 +16,19 @@ const fs = require('fs');
 const { spawn, execFileSync } = require('child_process');
 
 const BUS_BASE = 0x43C00000;
-const LEDS = { green: [38, true], red: [37, true], ps: [15, false] };   // GPIO number, on when high
-const BUTTONS = { ip: 51, reset: 47 };
+// The board's LEDs, buttons and buzzer: name -> [GPIO, the level that means on / pressed], from
+// /run/ardzy/board-io.txt (written at boot; every Ardzy board has its own). Without it: the Antminer S9.
+const IO = (() => {
+  const io = {};
+  try {
+    for (const line of fs.readFileSync('/run/ardzy/board-io.txt', 'utf8').split('\n')) {
+      const f = line.trim().split(/\s+/);
+      if (f.length === 3 && !f[0].startsWith('#')) io[f[0]] = [+f[1], +f[2]];
+    }
+  } catch (e) { /* an older card */ }
+  return Object.keys(io).length ? io : { led_green: [38, 1], led_red: [37, 1], led_ps: [15, 0], buzzer: [39, 1],
+    button_ip: [51, 0], button_reset: [47, 0] };
+})();
 
 const gpioSet = (n, v) => fs.writeFileSync(`/sys/class/gpio/gpio${n}/value`, v ? '1' : '0');
 const gpioGet = n => fs.readFileSync(`/sys/class/gpio/gpio${n}/value`, 'utf8')[0] === '1';
@@ -27,16 +38,22 @@ function sleep(seconds) {
 }
 
 function led(name, on = true) {
-  const l = LEDS[name];
-  if (!l) throw new Error('led: green, red or ps');
-  gpioSet(l[0], !!on === l[1]);
+  const l = IO['led_' + name];
+  if (!l) throw new Error(`led: this board has no LED "${name}" (see /run/ardzy/board-io.txt)`);
+  gpioSet(l[0], on ? l[1] === 1 : l[1] === 0);
 }
 
-function beep(seconds = 0.1) { gpioSet(39, true); sleep(seconds); gpioSet(39, false); }
+function beep(seconds = 0.1) {                   // (a board without a buzzer only waits)
+  const b = IO.buzzer;
+  if (b) gpioSet(b[0], true);
+  sleep(seconds);
+  if (b) gpioSet(b[0], false);
+}
 
 function button(name = 'ip') {
-  if (!(name in BUTTONS)) throw new Error('button: ip or reset');
-  return !gpioGet(BUTTONS[name]);
+  const b = IO['button_' + name];
+  if (!b) throw new Error(`button: this board has no button "${name}"`);
+  return gpioGet(b[0]) === (b[1] === 1);
 }
 
 // FPGA registers: through the board's register helper (Node.js cannot map memory by itself).

@@ -40,7 +40,9 @@
 //   0x128/0x12C    LIVE lo/hi: all 56 signals now
 //   0x8000 + 8i    analyzer sample i, bits 31:0 (+4: bits 63:32)
 `timescale 1ns / 1ps
-module ardzy_ctl #(parameter LA_AW = 12, parameter DNA_CLK_MODE = 1) (
+// PIN_MASK: the places that have a pin on this board (other boards than the S9 use fewer; a place without a
+// pin reads 0 and drives nothing).
+module ardzy_ctl #(parameter LA_AW = 12, parameter DNA_CLK_MODE = 1, parameter [48:0] PIN_MASK = {49{1'b1}}) (
     input  wire        s_axi_aclk,
     input  wire        s_axi_aresetn,
     input  wire [15:0] s_axi_awaddr,
@@ -104,7 +106,11 @@ module ardzy_ctl #(parameter LA_AW = 12, parameter DNA_CLK_MODE = 1) (
     // ------------------------------------------------------------ pins: buffers, synchronizers
     wire [NP-1:0] pin_o, pin_t, pin_i;
     generate for (g = 0; g < NP; g = g + 1) begin : io
-        IOBUF u_buf (.IO(pins[g]), .I(pin_o[g]), .T(pin_t[g]), .O(pin_i[g]));
+        if (PIN_MASK[g]) begin : on
+            IOBUF u_buf (.IO(pins[g]), .I(pin_o[g]), .T(pin_t[g]), .O(pin_i[g]));
+        end else begin : off
+            assign pin_i[g] = 1'b0;
+        end
     end endgenerate
 
     reg [NP-1:0] pin_s1, pin_s2;

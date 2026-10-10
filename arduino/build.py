@@ -18,7 +18,18 @@ CACHE = '/var/cache/ardzy/arduino'
 JOBS = 2
 
 ARCH = ['-mcpu=cortex-a9', '-mfpu=neon-vfpv3', '-mfloat-abi=hard']
-DEFS = ['-DARDUINO=10819', '-DARDUINO_ARDZY_S9', '-DARDUINO_ARCH_ARDZY', '-DHOST', '-D__ARDZY__']
+def _board():
+    try:
+        sys.path.insert(0, '/usr/lib/python3/dist-packages')
+        import ardzy_board
+        return ardzy_board.board_id()
+    except ImportError:
+        return 's9'
+
+
+BOARD = _board()          # s9, ebaz4205, ...: pins_ardzy.h has the pin names of each
+DEFS = ['-DARDUINO=10819', '-DARDUINO_ARDZY_%s' % BOARD.upper(), '-DARDZY_BOARD_%s' % BOARD.upper(),
+        '-DARDUINO_ARCH_ARDZY', '-DHOST', '-D__ARDZY__']
 CXXFLAGS = ['-O2', '-std=gnu++17', '-pthread', '-fno-exceptions'] + ARCH + DEFS
 CFLAGS = ['-O2', '-std=gnu11', '-pthread'] + ARCH + DEFS
 SRC_EXT = ('.c', '.cpp', '.cc', '.cxx', '.S')

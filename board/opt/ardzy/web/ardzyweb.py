@@ -29,6 +29,23 @@ def read(p):
         return ''
 
 
+def board_id():
+    """s9, ebaz4205, ... (an older card without ardzy_board.py is an S9)."""
+    try:
+        import ardzy_board
+        return ardzy_board.board_id()
+    except ImportError:
+        return 's9'
+
+
+def board_name():
+    try:
+        import ardzy_board
+        return ardzy_board.profile().get('name', board_id())
+    except ImportError:
+        return 'Antminer S9'
+
+
 def status():
     projects = []
     if os.path.isdir(PROJ):
@@ -80,6 +97,7 @@ def info():
         'mac': read('/sys/class/net/end0/address') or
         read('/sys/class/net/eth0/address'),
         'chip': 'XC7Z010', 'fpga': read('/sys/class/fpga_manager/fpga0/state'),
+        'board': board_id(), 'board_name': board_name(),
         'current': read(STATE + '/current'),
         'image': dict(l.split('=', 1) for l in read('/etc/ardzy-release').splitlines() if '=' in l),
     }

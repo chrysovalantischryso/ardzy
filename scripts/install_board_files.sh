@@ -7,7 +7,7 @@ R=$1
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 cp -r "$HERE/board/." "$R/"
 FILES="$R/usr/local/bin/ardzy $R/usr/local/sbin/ardzy-board-init $R/usr/local/sbin/ardzy-config $R/usr/local/sbin/ardzy-update
-       $R/usr/lib/python3/dist-packages/ardzy.py $R/usr/lib/python3/dist-packages/ardzy_env.py
+       $R/usr/lib/python3/dist-packages/ardzy.py $R/usr/lib/python3/dist-packages/ardzy_env.py $R/usr/lib/python3/dist-packages/ardzy_board.py
        $R/opt/ardzy/web/ardzyweb.py $R/opt/ardzy/web/hwapi.py $R/opt/ardzy/web/iotools.py $R/opt/ardzy/web/sysinfo.py $R/opt/ardzy/web/io_map.json $R/opt/ardzy/web/index.html"
 UNITS="$(ls $R/etc/systemd/system/ardzy-* $R/etc/systemd/system.conf.d/*.conf)"
 sed -i 's/\r$//' $FILES $UNITS                      # Windows line endings off
@@ -19,6 +19,16 @@ mkdir -p $R/opt/ardzy/projects $R/var/lib/ardzy $R/lib/firmware/ardzy
 rm -rf $R/usr/lib/ardzy/arduino && mkdir -p $R/usr/lib/ardzy && cp -r "$HERE/arduino" $R/usr/lib/ardzy/
 find $R/usr/lib/ardzy $R/opt/ardzy $R/usr/local/bin $R/usr/local/sbin -name '__pycache__' -type d -prune -exec rm -rf {} +
 find $R/usr/lib/ardzy/arduino -type f -regex '.*[.]\(py\|h\|hpp\|c\|cpp\|ino\|txt\|properties\)' -exec sed -i 's/\r$//' {} +
+# the board profiles (one root file system runs on every board Ardzy knows; the tools pick the profile at boot):
+# board.json, the pin list and the pin-control design of each board
+rm -rf $R/usr/lib/ardzy/boards && mkdir -p $R/usr/lib/ardzy/boards
+for b in "$HERE"/boards/*/; do
+  id=$(basename "$b"); d=$R/usr/lib/ardzy/boards/$id
+  mkdir -p $d
+  sed 's/\r$//' "$b/board.json" > $d/board.json
+  if [ -f "$b/io_map.json" ]; then sed 's/\r$//' "$b/io_map.json" > $d/io_map.json; fi
+  if [ -f "$b/fpga/ardzy_io.bit" ]; then cp "$b/fpga/ardzy_io.bit" $d/ardzy_io.bit; fi
+done
 chmod -R u=rwX,go=rX $R/usr/lib/ardzy
 chmod 755 $R/usr/lib/ardzy/arduino/build.py
 # services switched on (same as "systemctl enable", without needing a chroot)

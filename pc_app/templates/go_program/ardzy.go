@@ -1,8 +1,8 @@
 // ardzy.go: the Ardzy board from Go. It is part of your program (package main), nothing to import.
 //
-//	Led("green", true)            // status LED: "green", "red" or "ps"
+//	Led("green", true)            // status LED: "green", "red" (S9 also "ps")
 //	Beep(0.1)                     // buzzer, seconds
-//	if Button("ip") { ... }       // true while pressed: "ip" (S2) or "reset" (S1)
+//	if Button("ip") { ... }       // true while pressed: "ip" or "reset" (EBAZ4205: also "s2", "s3")
 //	v := Peek(0x41200000)         // 32-bit FPGA register at an address (Vivado's Address Editor)
 //	Poke(0x41200000, 5)
 //	Reg(1, 3); RegWrite(1, 3, 42) // word 3 of slot 1 of an Ardzy FPGA project
@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -24,11 +25,31 @@ import (
 
 const BusBase = 0x43C00000 // the register window of Ardzy FPGA projects (16 slots of 4 KB)
 
-var ledPins = map[string]struct {
-	n      int
-	onHigh bool
-}{"green": {38, true}, "red": {37, true}, "ps": {15, false}}
-var buttonPins = map[string]int{"ip": 51, "reset": 47}
+type ioPin struct {
+	n  int  // Linux GPIO
+	on bool // the level that means on / pressed
+}
+
+// boardIO: the board's LEDs, buttons and buzzer, from /run/ardzy/board-io.txt (written at boot; every
+// Ardzy board has its own). Without it: the Antminer S9.
+var boardIO = func() map[string]ioPin {
+	io := map[string]ioPin{}
+	if b, err := os.ReadFile("/run/ardzy/board-io.txt"); err == nil {
+		for _, line := range strings.Split(string(b), "\n") {
+			f := strings.Fields(line)
+			if len(f) == 3 && !strings.HasPrefix(f[0], "#") {
+				if g, err := strconv.Atoi(f[1]); err == nil {
+					io[f[0]] = ioPin{g, f[2] == "1"}
+				}
+			}
+		}
+	}
+	if len(io) == 0 {
+		io = map[string]ioPin{"led_green": {38, true}, "led_red": {37, true}, "led_ps": {15, false}, "buzzer": {39, true},
+			"button_ip": {51, false}, "button_reset": {47, false}}
+	}
+	return io
+}()
 
 func gpioSet(n int, v bool) {
 	s := "0"
@@ -48,29 +69,34 @@ func gpioGet(n int) bool {
 	return len(b) > 0 && b[0] == '1'
 }
 
-// Led switches a board LED: "green", "red" or "ps".
+// Led switches a board LED: "green", "red" (S9 also "ps").
 func Led(name string, on bool) {
-	l, ok := ledPins[name]
+	l, ok := boardIO["led_"+name]
 	if !ok {
-		panic("Led: green, red or ps")
+		panic("Led: this board has no LED \"" + name + "\" (see /run/ardzy/board-io.txt)")
 	}
-	gpioSet(l.n, on == l.onHigh)
+	gpioSet(l.n, on == l.on)
 }
 
-// Beep sounds the buzzer for a moment.
+// Beep sounds the buzzer for a moment (a board without a buzzer only waits).
 func Beep(seconds float64) {
-	gpioSet(39, true)
+	b, ok := boardIO["buzzer"]
+	if ok {
+		gpioSet(b.n, true)
+	}
 	time.Sleep(time.Duration(seconds * float64(time.Second)))
-	gpioSet(39, false)
+	if ok {
+		gpioSet(b.n, false)
+	}
 }
 
-// Button is true while the button is pressed: "ip" (S2) or "reset" (S1).
+// Button is true while the button is pressed: "ip" or "reset" (EBAZ4205: also "s2", "s3").
 func Button(name string) bool {
-	n, ok := buttonPins[name]
+	b, ok := boardIO["button_"+name]
 	if !ok {
-		panic("Button: ip or reset")
+		panic("Button: this board has no button \"" + name + "\"")
 	}
-	return !gpioGet(n)
+	return gpioGet(b.n) == b.on
 }
 
 var memFd = -1

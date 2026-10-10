@@ -33,7 +33,7 @@ module ardzy_io_top (
 endmodule
 
 // everything except the PS7 (so it can be simulated with an AXI3 test master)
-module ardzy_io_core (
+module ardzy_io_core #(parameter [48:0] PIN_MASK = {49{1'b1}}) (
     input wire clk, input wire rstn,
     input wire [31:0] awaddr, input wire [3:0] awlen, input wire [1:0] awsize, input wire [1:0] awburst,
     input wire [11:0] awid, input wire awvalid, output wire awready,
@@ -98,7 +98,7 @@ module ardzy_io_core (
         .gpio1_o(g1_o), .gpio1_t(g1_t), .gpio1_i(g1_i), .gpio2_o(g2_o), .gpio2_t(g2_t), .gpio2_i(g2_i));
 
     wire [1:0] c_bresp, c_rresp;
-    ardzy_ctl #(.DNA_CLK_MODE(0)) u_ctl (
+    ardzy_ctl #(.DNA_CLK_MODE(0), .PIN_MASK(PIN_MASK)) u_ctl (
         .s_axi_aclk(clk), .s_axi_aresetn(rstn),
         .s_axi_awaddr(c_awaddr[15:0]), .s_axi_awprot(3'd0), .s_axi_awvalid(c_awvalid), .s_axi_awready(c_awready),
         .s_axi_wdata(c_wdata), .s_axi_wstrb(c_wstrb), .s_axi_wvalid(c_wvalid), .s_axi_wready(c_wready),

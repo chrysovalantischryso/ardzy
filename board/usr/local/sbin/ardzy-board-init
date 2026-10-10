@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Set up the ARM-side (PS) extras of the Antminer S9 control board at boot.
+"""Set up the board's LEDs, buttons and buzzer at boot (Antminer S9; other boards from their profile).
+Also writes /run/ardzy/board-io.txt: which GPIO is which, for the Ardzy libraries of every language.
+
+Antminer S9:
 
 From the board schematic (AntMiner_ControlBoard_XC7010 V1.0):
   MIO15  D2  green LED            active LOW   bank 500 (3.3 V)
@@ -13,6 +16,8 @@ so the pin settings are written here (SLCR MIO_PIN registers), then the lines ar
 to /sys/class/gpio/gpioN (Linux GPIO number = MIO number on this kernel).
 """
 import mmap, os, struct, sys, time
+sys.path.insert(0, '/usr/lib/python3/dist-packages')
+import ardzy_board  # noqa: E402
 
 SLCR = 0xF8000000
 UNLOCK, KEY_UNLOCK = 0x008, 0xDF0D
@@ -54,9 +59,50 @@ def gpio(n, direction, value=None):
         f.write('high' if direction == 'out' and value else ('low' if direction == 'out' else 'in'))
 
 
+def write_io_file():
+    os.makedirs(os.path.dirname(ardzy_board.IO_FILE), exist_ok=True)
+    with open(ardzy_board.IO_FILE, 'w') as f:
+        f.write('# %s: name, Linux GPIO, the level that means on / pressed (made by ardzy-board-init)\n'
+                % ardzy_board.profile().get('name', ardzy_board.board_id()))
+        for name, g, on in ardzy_board.board_io():
+            f.write('%s %d %d\n' % (name, g, on))
+
+
+def other_board():
+    """A board other than the S9: its LEDs (often FPGA pins over EMIO), buttons and buzzer, from its profile."""
+    bad = []
+    io = ardzy_board.board_io()
+    for name, g, on in io:
+        try:
+            if name.startswith('button_'):
+                gpio(g, 'in')
+            else:
+                gpio(g, 'out', 1 - on)                     # off
+        except OSError as e:
+            bad.append('%s: %s' % (name, e))
+    safe = os.path.exists('/var/lib/ardzy/safemode')
+    want = 'led_red' if safe else 'led_green'
+    for name, g, on in io:
+        if name == want:
+            try:
+                with open('/sys/class/gpio/gpio%d/value' % g, 'w') as f:
+                    f.write(str(on))
+            except OSError as e:
+                bad.append('status LED: %s' % e)
+    print('%s: LEDs and buttons ready%s%s' % (ardzy_board.profile().get('name', '?'), ' - SAFE MODE' if safe else '',
+                                              ('; problems: ' + '; '.join(bad)) if bad else ''))
+
+
 def main():
     if not os.path.exists('/sys/class/gpio/export'):
         print('no GPIO interface: board extras skipped')
+        return 0
+    try:
+        write_io_file()
+    except OSError as e:
+        print('board-io.txt not written: %s' % e)
+    if ardzy_board.board_id() != 's9':
+        other_board()
         return 0
     slcr_write({mio: v for mio, (v, _, _) in PINS.items()})
     bad = []

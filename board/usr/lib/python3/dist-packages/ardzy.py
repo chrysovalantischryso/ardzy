@@ -100,9 +100,41 @@ class UIO:
 #   led('green' | 'red' | 'ps', on)   bicolor status LED (red/green) and the small PS LED
 #   beep(seconds)                       buzzer
 #   button('ip' | 'reset') -> True while pressed
-_LEDS = {'green': (38, True), 'red': (37, True), 'ps': (15, False)}   # (MIO/GPIO, active high)
-_BUTTONS = {'ip': 51, 'reset': 47}
+# Other boards (EBAZ4205: LEDs red / green, buttons s2 / s3 = ip / reset, no buzzer) from /run/ardzy/board-io.txt.
+_LEDS = {'green': (38, True), 'red': (37, True), 'ps': (15, False)}   # (MIO/GPIO, active high): the S9
+_BUTTONS = {'ip': (51, False), 'reset': (47, False)}                  # (GPIO, high = pressed)
 _BUZZER = 39
+
+
+def _board_io():
+    """The GPIOs of the board this runs on, from /run/ardzy/board-io.txt (written at boot by ardzy-board-init).
+    Without the file (an older card) the S9's numbers above stay."""
+    global _BUZZER
+    try:
+        lines = open('/run/ardzy/board-io.txt').read().splitlines()
+    except OSError:
+        return
+    leds, buttons, buzzer = {}, {}, None
+    for line in lines:
+        f = line.split('#')[0].split()
+        if len(f) != 3:
+            continue
+        name, g, on = f[0], int(f[1]), f[2] == '1'
+        if name.startswith('led_'):
+            leds[name[4:]] = (g, on)
+        elif name.startswith('button_'):
+            buttons[name[7:]] = (g, on)
+        elif name == 'buzzer':
+            buzzer = g
+    if leds or buttons:
+        _LEDS.clear()
+        _LEDS.update(leds)
+        _BUTTONS.clear()
+        _BUTTONS.update(buttons)
+        _BUZZER = buzzer
+
+
+_board_io()
 
 
 def _gpio_set(n, value):
@@ -122,8 +154,11 @@ def led(name, on=True):
 
 
 def beep(seconds=0.1):
-    """Sound the buzzer for a moment."""
+    """Sound the buzzer for a moment (a board without a buzzer just waits)."""
     import time
+    if _BUZZER is None:
+        time.sleep(seconds)
+        return
     _gpio_set(_BUZZER, 1)
     try:
         time.sleep(seconds)
@@ -132,8 +167,9 @@ def beep(seconds=0.1):
 
 
 def button(name='ip'):
-    """True while the button is pressed: button('ip') (S2) or button('reset') (S1)."""
-    return not _gpio_get(_BUTTONS[name])
+    """True while the button is pressed: button('ip') (S2) or button('reset') (S1); on the EBAZ4205 also 's2', 's3'."""
+    n, pressed_high = _BUTTONS[name]
+    return _gpio_get(n) == pressed_high
 
 
 def fpga_state():
