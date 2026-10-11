@@ -39,9 +39,12 @@ def library_files():
     return sorted(os.path.join(d, f) for f in os.listdir(d) if f.endswith(('.v', '.sv')))
 
 
+_TESTBENCH = re.compile(r'(^tb[_.]|_tb\.|^testbench|^test_)', re.I)     # (the names Simulate takes as testbenches)
+
+
 def project_sources(proj):
     return sorted(os.path.join(proj, f) for f in os.listdir(proj)
-                  if f.endswith(('.v', '.sv')) and not f.startswith(('tb_', 'test_')) and os.path.isfile(os.path.join(proj, f)))
+                  if f.endswith(('.v', '.sv')) and not _TESTBENCH.search(f) and os.path.isfile(os.path.join(proj, f)))
 
 
 _COMMENTS = re.compile(r'//[^\n]*|/\*.*?\*/', re.S)
@@ -204,8 +207,9 @@ def xdc_pins(xdcs):
     return out
 
 
-def _wrapper(pre_json, top):
-    """A top module around a design without the ARM side: the design + the library's PS7 (for the Ethernet)."""
+def _wrapper(pre_json, top, ps7=True, ila=None):
+    """A top module around the design: + the library's PS7 when the design has no ARM side (for the Ethernet or the
+    analyzer), + the signal analyzer (ila = (width, log2 depth)). Their wires are connected after flatten."""
     mod = json.load(open(pre_json))['modules'][top]
     decl, conn = [], []
     for name, port in mod.get('ports', {}).items():
@@ -214,13 +218,62 @@ def _wrapper(pre_json, top):
             ('[%d:%d] ' % (off, off + n - 1) if port.get('upto') else '[%d:%d] ' % (off + n - 1, off))
         decl.append('    %s wire %s%s' % (port['direction'], rng, name))
         conn.append('.%s(%s)' % (name, name))
-    # (the ARM side's outputs stay open: only its Ethernet and LED wires are used)
-    return ('module ardzy_board_top (\n%s\n);\n    %s u_design (%s);\n'
-            '    ardzy_ps7 u_ardzy_ps7 (.clk(), .rstn(), .awaddr(), .awlen(), .awsize(), .awburst(), .awid(), .awvalid(),\n'
-            '        .awready(1\'b0), .wdata(), .wstrb(), .wlast(), .wvalid(), .wready(1\'b0), .bid(12\'d0), .bresp(2\'d0),\n'
-            '        .bvalid(1\'b0), .bready(), .araddr(), .arlen(), .arsize(), .arburst(), .arid(), .arvalid(),\n'
-            '        .arready(1\'b0), .rid(12\'d0), .rdata(32\'d0), .rresp(2\'d0), .rlast(1\'b0), .rvalid(1\'b0), .rready());\n'
-            'endmodule\n') % (',\n'.join(decl), top, ', '.join(conn))
+    # (the ARM side's outputs stay open: only its Ethernet, LED, clock and analyzer wires are used)
+    text = 'module ardzy_board_top (\n%s\n);\n    %s u_design (%s);\n' % (',\n'.join(decl), top, ', '.join(conn))
+    if ps7:
+        text += ('    ardzy_ps7 u_ardzy_ps7 (.clk(), .rstn(), .awaddr(), .awlen(), .awsize(), .awburst(), .awid(), .awvalid(),\n'
+                 '        .awready(1\'b0), .wdata(), .wstrb(), .wlast(), .wvalid(), .wready(1\'b0), .bid(12\'d0), .bresp(2\'d0),\n'
+                 '        .bvalid(1\'b0), .bready(), .araddr(), .arlen(), .arsize(), .arburst(), .arid(), .arvalid(),\n'
+                 '        .arready(1\'b0), .rid(12\'d0), .rdata(32\'d0), .rresp(2\'d0), .rlast(1\'b0), .rvalid(1\'b0), .rready());\n')
+    if ila:
+        text += '    ardzy_ila #(.W(%d), .AW(%d)) u_ila (.sclk(), .probe(), .fclk(), .ctl(), .dout());\n' % ila
+    return text + 'endmodule\n'
+
+
+ILA_MAX_WIDTH = 217          # 7 words of 31 bits (bit 31 is the answer's tag; word 7 is the status)
+ILA_MAX_BITS = 16 * 36864    # at most 16 block RAMs for the samples
+
+
+def debug_config(proj, cfg, srcs):
+    """The analyzer's settings: fpga.json "debug" (a list of names, or {"signals": [...], "clock": name, "depth": n}),
+    and whether any source marks signals with (* mark_debug *). None when nothing asks for it."""
+    d = cfg.get('debug') or {}
+    if isinstance(d, list):
+        d = {'signals': d}
+    marked = any(re.search(r'\bmark_debug\b', open(f, encoding='utf-8', errors='replace').read()) for f in srcs)
+    if not d.get('signals') and not marked:
+        return None
+    return {'signals': [str(x) for x in d.get('signals', [])], 'clock': d.get('clock'), 'depth': int(d.get('depth', 1024))}
+
+
+def debug_signals(flat_json, top, dbg):
+    """The signals to watch, from the flattened design: [(name, width)] (the marked ones, then the listed ones)."""
+    nets = json.load(open(flat_json))['modules'][top]['netnames']
+    out, seen = [], set()
+    for name, n in nets.items():
+        a = n.get('attributes', {}).get('mark_debug')
+        if a is not None and str(a).strip('0') not in ('', 'false') and '$' not in name:
+            out.append((name, len(n['bits'])))
+            seen.add(name)
+    missing = []
+    for name in dbg['signals']:
+        name = name.lstrip('\\')
+        if name in seen:
+            continue
+        if name in nets:
+            out.append((name, len(nets[name]['bits'])))
+            seen.add(name)
+        else:
+            missing.append(name)
+    if missing:
+        close = [n for n in nets if '$' not in n and any(m.split('.')[-1] == n.split('.')[-1] for m in missing)]
+        raise ValueError('fpga.json "debug": no signal called %s in the design%s' % (
+            ', '.join(missing), ' (did you mean %s?)' % ', '.join(sorted(close)[:6]) if close else ''))
+    bad = [n for n, w in out if re.search(r'[\s\[\]{}]', n)]
+    if bad:
+        raise ValueError('the analyzer can not watch %s (a memory or a name with brackets): watch a plain reg or wire'
+                         % ', '.join(bad))
+    return out, nets
 
 
 def _run(cmd, cwd, log, prefix, keep=None):
@@ -277,29 +330,65 @@ def build(proj, log=print, freq_mhz=100, out_name=None, board=None):
 
     log('1/3  Synthesis (Yosys) ...')
     t = time.time()
-    defines = '-D ARDZY_EMIO_ENET0 ' if eth else ''
+    dbg = debug_config(proj, cfg, srcs)
+    defines = ('-D ARDZY_EMIO_ENET0 ' if eth else '') + ('-D ARDZY_ILA ' if dbg else '')
     reads = '; '.join('read_verilog %s%s"%s"' % (defines, '-sv ' if f.endswith('.sv') else '', f) for f in files)
-    synth_top, extra, board_xdc = top, '', []
-    if eth:
-        # 1. where the design's ARM side (PS7) is: its Ethernet wires get connected to the PHY's pins
-        _run([yosys, '-q', '-p', '%s; hierarchy -top %s; proc; flatten; tee -q -o ps7.txt select -list w:*ardzy_eth_txd'
-              % (reads, top)], work, log, '     ', keep=lambda l: l.startswith('ERROR'))
+    synth_top, extra, board_xdc, cmds, debug_info = top, '', [], [], None
+    if eth or dbg:
+        # 1. where the design's ARM side (PS7) is: the Ethernet and the analyzer hang on it
+        _run([yosys, '-q', '-p', '%s; hierarchy -top %s; proc; flatten; tee -q -o ps7.txt select -list w:*ardzy_fclk%s'
+              % (reads, top, '; write_json flat.json' if dbg else '')], work, log, '     ', keep=lambda l: l.startswith('ERROR'))
         found = [l.strip().split('/', 1)[1] for l in open(os.path.join(work, 'ps7.txt')) if '/' in l]
         if len(found) > 1:
             raise ValueError('the design has %d ARM sides (PS7): a design can only have one' % len(found))
-        if found:
-            prefix = found[0][:-len('ardzy_eth_txd')]
-        else:                            # a design without the ARM side: one is added, only for the Ethernet
-            _run([yosys, '-q', '-p', '%s; hierarchy -top %s; write_json pre.json' % (reads, top)], work, log, '     ',
+        ila = None
+        if dbg:
+            sigs, nets = debug_signals(os.path.join(work, 'flat.json'), top, dbg)
+            if not sigs:
+                raise ValueError('the analyzer has no signals: mark them with (* mark_debug *) or list them in fpga.json "debug"')
+            width = sum(w for _, w in sigs)
+            if width > ILA_MAX_WIDTH:
+                raise ValueError('the analyzer can watch %d bits at most, the marked signals have %d (%s)' % (
+                    ILA_MAX_WIDTH, width, ', '.join('%s %d' % x for x in sigs)))
+            depth = max(64, min(4096, dbg['depth']))
+            aw = depth.bit_length() - 1
+            while width * (1 << aw) > ILA_MAX_BITS and aw > 6:
+                aw -= 1
+            ila = (width, aw)
+            clock = dbg['clock'] or ('clk' if 'clk' in nets else None)
+            if clock and clock not in nets:
+                raise ValueError('fpga.json "debug": no clock called %s in the design' % clock)
+        if found and not dbg:
+            prefix = found[0][:-len('ardzy_fclk')]
+        else:                            # a top around the design: the analyzer, and the ARM side when it has none
+            _run([yosys, '-q', '-p', '%s; hierarchy -top %s; proc; write_json pre.json' % (reads, top)], work, log, '     ',
                  keep=lambda l: l.startswith('ERROR'))
-            open(os.path.join(work, 'ardzy_board_top.v'), 'w').write(_wrapper(os.path.join(work, 'pre.json'), top))
+            open(os.path.join(work, 'ardzy_board_top.v'), 'w').write(
+                _wrapper(os.path.join(work, 'pre.json'), top, ps7=not found, ila=ila))
             reads += '; read_verilog %s"ardzy_board_top.v"' % defines
-            synth_top, prefix = 'ardzy_board_top', 'u_ardzy_ps7.'
+            synth_top = 'ardzy_board_top'
+            prefix = 'u_design.' + found[0][:-len('ardzy_fclk')] if found else 'u_ardzy_ps7.'
+        if dbg:
+            lsb, layout = 0, []
+            for sname, w in sigs:
+                layout.append({'name': sname, 'width': w, 'lsb': lsb})
+                lsb += w
+            sclk = '\\u_design.' + clock if clock else '\\' + prefix + 'ardzy_fclk'
+            cmds += ['connect -set \\u_ila.probe[%d:%d] \\u_design.%s' % (x['lsb'] + x['width'] - 1, x['lsb'], x['name'])
+                     for x in layout]
+            cmds += ['connect -set \\u_ila.sclk %s' % sclk,
+                     'connect -set \\u_ila.fclk \\%sardzy_fclk' % prefix,
+                     'connect -set \\u_ila.ctl \\%sardzy_ila_ctl' % prefix,
+                     'connect -set \\%sardzy_ila_dout \\u_ila.dout' % prefix]
+            debug_info = {'signals': layout, 'width': ila[0], 'depth': 1 << ila[1],
+                          'clock': clock or 'FCLK0 (the ARM clock)', 'clock_mhz': freq if clock else None}
+            log('     signal analyzer: %d signals, %d bits x %d samples, clock %s: %s' % (
+                len(sigs), ila[0], 1 << ila[1], debug_info['clock'], ', '.join(n for n, _ in sigs[:8]) + (' ...' if len(sigs) > 8 else '')))
+    if eth:
         used = xdc_pins(xdcs)
         clash = sorted('%s (%s)' % (pin, used[pin]) for pin in set(eth.values()) if pin in used)
         if clash:
             raise ValueError('on the %s these pins belong to the Ethernet: %s. Use other pins.' % (prof['name'], ', '.join(clash)))
-        cmds = []
         for port, direction, width, wire in ETH_PORTS:
             cmds.append('add -%s %s %d' % (direction, port, width))
             lhs, rhs = (port, '\\' + prefix + wire) if direction != 'input' else ('\\' + prefix + wire, port)
@@ -310,11 +399,12 @@ def build(proj, log=print, freq_mhz=100, out_name=None, board=None):
             if led.get('pl') and led['pin'] not in used:      # the board's LED, unless the design drives it itself
                 cmds += ['add -output led_%s 1' % lname, 'connect -set led_%s \\%sardzy_led_%s' % (lname, prefix, lname)]
                 xdc.append('set_property -dict {PACKAGE_PIN %s IOSTANDARD LVCMOS33} [get_ports {led_%s}]' % (led['pin'], lname))
-        extra = 'hierarchy -top %s; proc; flatten; %s; ' % (synth_top, '; '.join(cmds))
         board_xdc = [os.path.join(work, 'board_pins.xdc')]
         open(board_xdc[0], 'w').write('\n'.join(xdc) + '\n')
         log('     the %s: the Ethernet (and the free LEDs) are connected to this design, so the network stays up'
             % prof['name'])
+    if cmds:
+        extra = 'hierarchy -top %s; proc; flatten; %s; ' % (synth_top, '; '.join(cmds))
     script = '%s; %ssynth_xilinx -flatten -abc9 -arch xc7 -top %s; stat; write_json design.json' % (reads, extra, synth_top)
     _run([yosys, '-q', '-l', 'yosys.log', '-p', script], work, log, '     ',
          keep=lambda l: (l.startswith(('ERROR', 'Warning: Replacing', 'Warning: Wire', 'Warning: Driver-driver conflict',
@@ -358,10 +448,10 @@ def build(proj, log=print, freq_mhz=100, out_name=None, board=None):
         shutil.copy(os.path.join(work, 'nextpnr.log'), os.path.join(work, 'nextpnr_%d.log' % seed))
         score = (ok, -hold, fmax)
         if best is None or score > best[0]:
-            best = (score, fasm, seed, dict(clocks), hold)
+            best = (score, fasm, seed, dict(clocks), hold, critical_paths(text))
         if ok:
             break
-    (ok, _, _), fasm, seed, best_clocks, best_hold = best
+    (ok, _, _), fasm, seed, best_clocks, best_hold, best_paths = best
     shutil.copy(os.path.join(work, fasm), os.path.join(work, 'design.fasm'))
     if not ok:
         log('     No try met the clock speed without timing problems: the design may not work reliably. '
@@ -374,10 +464,16 @@ def build(proj, log=print, freq_mhz=100, out_name=None, board=None):
     dst = os.path.join(proj, name + '.bit')
     shutil.copy(bit, dst)
     cells = cell_counts(os.path.join(work, 'yosys.log'))
+    def own(n):                      # names inside the top the build put around the design: as the design calls them
+        return re.sub(r'(^|(?<=[\s(]))u_design\.', '', n) if synth_top == 'ardzy_board_top' else n
+    for p in best_paths:
+        p['clock'], p['start'], p['end'] = own(p['clock']), own(p['start']), own(p['end'])
+        for st in p['steps']:
+            st['net'] = own(st['net'])
     report = {'board': prof['id'], 'board_name': prof['name'], 'part': part, 'top': top, 'seconds': round(time.time() - t0),
               'date': time.strftime('%Y-%m-%d %H:%M'), 'used': cells, 'max': CHIP_MAX, 'pins': len(ports),
-              'clocks': {k: {'fmax': f, 'need': need, 'pass': r == 'PASS'} for k, (f, r, need) in best_clocks.items()},
-              'hold_problems': best_hold, 'timing_ok': ok, 'seed': seed, 'ethernet_added': bool(eth)}
+              'clocks': {own(k): {'fmax': f, 'need': need, 'pass': r == 'PASS'} for k, (f, r, need) in best_clocks.items()},
+              'hold_problems': best_hold, 'timing_ok': ok, 'paths': best_paths, 'debug': debug_info, 'seed': seed, 'ethernet_added': bool(eth)}
     write_build_info(proj, dst, prof['id'], report)
     log('     used: %s' % ', '.join('%s %d of %d (%.0f %%)' % (k, v, CHIP_MAX[k], 100.0 * v / CHIP_MAX[k])
                                     for k, v in cells.items() if k in CHIP_MAX))
@@ -408,6 +504,65 @@ def cell_counts(yosys_log):
 
 
 BUILD_INFO = '.ardzy_build.json'       # which board each bitstream of the project was built for
+
+
+_CRIT_HEAD = re.compile(r"^Info: Critical path report for (?:clock '([^']+)'|cross-domain path '([^']+)' -> '([^']+)')")
+_CRIT_STEP = re.compile(r'^Info:\s+(clk-to-q|routing|logic|setup|hold|source|sink)\s+([\d.-]+)\s+([\d.-]+)\s+(Source|Net)\s+(\S+)')
+_CRIT_DEF = re.compile(r'^Info:\s+(\S+?):(\d+)\.\d+-\d+\.\d+\s*$')
+
+
+def _cell_name(n):
+    """A readable name for a nextpnr cell or net: yosys makes names like $abc$123$lut... for logic it made."""
+    if n.startswith('$'):
+        m = re.search(r'flatten\\([\w.]+)\.\$', n)
+        return (m.group(1) + ' (logic)') if m else '(logic)'
+    return n
+
+
+def critical_paths(log_text, keep=12):
+    """The slowest path of each clock (and between clocks) from the last report in a nextpnr log: where it starts
+    and ends, its delay, how many logic levels, and the nets of your own source files it goes through."""
+    paths, cur = {}, None
+    for line in log_text.splitlines():
+        h = _CRIT_HEAD.match(line)
+        if h:
+            key = h.group(1) or '%s -> %s' % (h.group(2), h.group(3))
+            cur = {'clock': key, 'cross': h.group(1) is None, 'start': '', 'end': '', 'delay': 0.0,
+                   'levels': 0, 'logic_ns': 0.0, 'route_ns': 0.0, 'steps': []}
+            paths[key] = cur
+            continue
+        if cur is None:
+            continue
+        m = _CRIT_STEP.match(line)
+        if m:
+            kind, curr, total, what, name = m.group(1), float(m.group(2)), float(m.group(3)), m.group(4), m.group(5)
+            cur['delay'] = total
+            if kind == 'logic':
+                cur['levels'] += 1
+            if kind == 'routing':
+                cur['route_ns'] += curr
+            else:
+                cur['logic_ns'] += curr
+            if kind == 'routing' and what == 'Net':
+                cur['steps'].append({'net': _cell_name(name), 'ns': curr, 'src': ''})
+            continue
+        m = _CRIT_DEF.match(line)
+        if m and cur['steps'] and not cur['steps'][-1]['src']:
+            f = m.group(1).replace('\\', '/')
+            if '/share/yosys/' not in f:            # the tool's own cell library is not your code
+                cur['steps'][-1]['src'] = '%s:%s' % (os.path.basename(f), m.group(2))
+            continue
+        if line.startswith('Info: ') and re.match(r'^Info: [\d.]+ ns logic, [\d.]+ ns routing', line):
+            cur = None
+    out = []
+    for p in paths.values():
+        for k in ('delay', 'logic_ns', 'route_ns'):
+            p[k] = round(p[k], 2)
+        nets = [x['net'] for x in p['steps'] if x['net'] != '(logic)']
+        p['start'], p['end'] = (nets[0], nets[-1]) if nets else ('', '')     # the first and the last signal
+        p['steps'] = [x for x in p['steps'] if x['src'] or not x['net'].startswith('(')][:keep]
+        out.append(p)
+    return out
 
 
 def write_build_info(proj, bit, board_id, report=None):

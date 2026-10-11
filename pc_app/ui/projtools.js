@@ -98,6 +98,7 @@ function projectMenu(name, x, y) {
     '-',
     { label: T('I/O planning (pins) ...'), disabled: !fpga, run: () => ioPlan(name) },
     { label: T('Build report ...'), disabled: !fpga, run: () => buildReport(name) },
+    { label: T('Schematic ...'), disabled: !fpga, run: () => scOpen(name) },
     '-',
     { label: T('Delete (to the trash folder)'), run: async () => {
       if (!confirm(TF('Delete the project {0}? It goes to the _trash folder of your projects folder, so it can be taken back.', name))) return;
@@ -127,6 +128,7 @@ function ptDialog(id, title) {
 /* ---------------- the build report (like Vivado's utilisation and timing summary) ---------------- */
 async function buildReport(name) {
   const r = await api('/api/fpga/report', { project: name });
+  PT.reportProject = name;
   const d = ptDialog('dlgReport', TF('Build report: {0}', name));
   const body = d.querySelector('.ptbody');
   if (!r.ok) {
@@ -142,7 +144,7 @@ async function buildReport(name) {
     const extra = [['LUT_RAM', T('LUT memory')], ['SRL', T('shift registers')], ['CARRY', T('carry chains')], ['BUFG', T('clock buffers')], ['MMCM_PLL', T('clock makers (MMCM / PLL)')]]
       .filter(([k]) => p.used[k]).map(([k, t]) => `${esc(t)} ${p.used[k]}`).join(' &middot; ');
     const clocks = Object.entries(p.clocks || {}).map(([c, v]) => `<tr><td class="mono">${esc(c)}</td><td class="num">${v.fmax.toFixed(1)} MHz</td>
-        <td class="num">${v.need} MHz</td><td class="${v.pass ? 'l-ok' : 'l-err'}">${v.pass ? TF('meets it ({0} % to spare)', (v.fmax / v.need * 100 - 100).toFixed(0)) : TF('too slow ({0} % short)', (100 - v.fmax / v.need * 100).toFixed(0))}</td></tr>`).join('');
+        <td class="num">${v.need} MHz</td><td class="${v.pass ? 'l-ok' : 'l-err'}">${v.pass ? TF('meets it ({0} % to spare)', (v.fmax / v.need * 100 - 100).toFixed(v.fmax / v.need < 1.1 ? 1 : 0)) : TF('too slow ({0} % short)', (100 - v.fmax / v.need * 100).toFixed(0))}</td></tr>`).join('');
     body.innerHTML = `<p class="hint">${esc(TF('{0}, top {1}, built {2} in {3} s for the {4} ({5}).', p.bit, p.top, p.date, p.seconds, p.board_name, p.part))}</p>
       <h4>${T('Utilisation')}</h4><table class="rtable"><tr><th></th><th>${T('used')}</th><th>${T('on the chip')}</th><th></th></tr>${rows}</table>
       ${extra ? `<p class="hint">${extra}</p>` : ''}
@@ -150,11 +152,40 @@ async function buildReport(name) {
         : `<p class="hint">${T('No clock in the design: only logic between pins, nothing to time.')}</p>`}
       <p class="${p.hold_problems ? 'l-err' : 'hint'}">${p.hold_problems ? TF('{0} hold-time problems: the design may not work reliably.', p.hold_problems) : T('No hold-time problems.')}
         ${p.timing_ok ? '' : ' ' + T('Make the slow paths shorter (a register stage) or use a slower clock.')}</p>
+      ${reportPaths(p)}
       ${p.ethernet_added ? `<p class="hint">${esc(TF('The Ethernet of the {0} was added to this design by the build (it counts in the numbers above).', p.board_name))}</p>` : ''}`;
   }
   d.querySelector('.ptfoot').innerHTML = `<button value="close" class="primary">${T('Close')}</button>`;
   d.showModal();
 }
+
+// the slowest path of each clock: where it starts and ends, how long it takes, and the lines of your files on it
+function reportPaths(p) {
+  const ps = (p.paths || []).filter(x => x.delay > 0);
+  if (!ps.length) return '';
+  const rows = ps.map(x => {
+    const lg = x.logic_ns / (x.logic_ns + x.route_ns || 1) * 100;
+    const srcs = x.steps.filter(s => s.src).map(s => `<span class="csrc mono" data-src="${esc(s.src)}" title="${esc(T('Open this line'))}">${esc(s.net)} (${esc(s.src)})</span>`).join(' &rarr; ');
+    return `<div class="cpath"><div><b class="mono">${esc(x.clock)}</b>${x.cross ? ` <span class="hint">${T('(between two clocks)')}</span>` : ''}:
+        ${esc(TF('{0} ns, {1} logic levels', x.delay.toFixed(2), x.levels))}
+        <span class="bar2" title="${esc(TF('{0} ns in logic, {1} ns in wires', x.logic_ns.toFixed(2), x.route_ns.toFixed(2)))}"><i class="lg" style="width:${lg.toFixed(0)}%"></i><i class="rt" style="width:${(100 - lg).toFixed(0)}%"></i></span>
+        <span class="hint">${esc(TF('{0} ns in logic, {1} ns in wires', x.logic_ns.toFixed(2), x.route_ns.toFixed(2)))}</span></div>
+      <div class="hint">${esc(TF('from {0} to {1}', x.start || '?', x.end || '?'))}</div>
+      ${srcs ? `<div class="hint">${T('Through:')} ${srcs}</div>` : ''}</div>`;
+  }).join('');
+  return `<h4>${T('Slowest paths')}</h4><p class="hint">${T('The longest way a signal travels between two flip-flops in one clock tick. Fewer logic levels (a register stage in the middle) make it faster; many ns in wires means the parts are far apart.')}</p>${rows}`;
+}
+// a click on file:line in the report opens the file there
+document.addEventListener('click', e => {
+  const s = e.target.closest('.cpath .csrc');
+  if (!s) return;
+  const [file, line] = s.dataset.src.split(':');
+  const pn = PT.reportProject || S.project, proj = S.projects.find(p => p.name === pn);
+  if (!proj || !proj.files.includes(file)) return out(TF('{0} is not a file of this project (it is part of the Ardzy library).', file), 'warn');
+  const d = s.closest('dialog'); if (d) d.close();
+  if (pn !== S.project && typeof selectProject === 'function') selectProject(pn);
+  openFile(pn, file).then(() => setTimeout(() => cpJump(+line - 1), 30));
+});
 
 /* ---------------- I/O planning (like Vivado's I/O Planning) ---------------- */
 async function ioPlan(name) {

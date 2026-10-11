@@ -8,7 +8,7 @@ HERE="$(cd "$(dirname "$0")/.." && pwd)"
 cp -r "$HERE/board/." "$R/"
 FILES="$R/usr/local/bin/ardzy $R/usr/local/sbin/ardzy-board-init $R/usr/local/sbin/ardzy-config $R/usr/local/sbin/ardzy-update
        $R/usr/lib/python3/dist-packages/ardzy.py $R/usr/lib/python3/dist-packages/ardzy_env.py $R/usr/lib/python3/dist-packages/ardzy_board.py
-       $R/opt/ardzy/web/ardzyweb.py $R/opt/ardzy/web/hwapi.py $R/opt/ardzy/web/iotools.py $R/opt/ardzy/web/sysinfo.py $R/opt/ardzy/web/io_map.json $R/opt/ardzy/web/index.html"
+       $R/opt/ardzy/web/ardzyweb.py $R/opt/ardzy/web/hwapi.py $R/opt/ardzy/web/iotools.py $R/opt/ardzy/web/sysinfo.py $R/opt/ardzy/web/datalog.py $R/opt/ardzy/web/ila.py $R/opt/ardzy/web/io_map.json $R/opt/ardzy/web/index.html"
 UNITS="$(ls $R/etc/systemd/system/ardzy-* $R/etc/systemd/system.conf.d/*.conf)"
 sed -i 's/\r$//' $FILES $UNITS                      # Windows line endings off
 chmod 644 $FILES $UNITS                             # files copied from Windows are 777

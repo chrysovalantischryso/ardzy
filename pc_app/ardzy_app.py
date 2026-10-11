@@ -47,6 +47,8 @@ import imagebuild                          # noqa: E402  (build an SD card image
 from fpga import flow as fpga_flow          # noqa: E402  (built-in FPGA toolchain, no Vivado)
 from fpga import sim as fpga_sim            # noqa: E402  (Verilog simulation with Icarus)
 from fpga import ioplan as fpga_ioplan      # noqa: E402  (I/O planning: ports to pins)
+from fpga import ila as fpga_ila            # noqa: E402  (the signal analyzer inside the FPGA)
+from fpga import schematic as fpga_schem    # noqa: E402  (the design drawn as a schematic)
 
 
 class child_safe:
@@ -687,6 +689,59 @@ def system_update(path):
 
 
 SIM_LAST = {}          # project -> the waves of its last simulation (for the viewer)
+
+
+def ila_debug(name):
+    """The analyzer of the project's newest build (its signals), else a ValueError that says what to do."""
+    r = fpga_flow.build_report(proj_path(name))
+    if not r or not r.get('debug'):
+        raise ValueError('%s has no signal analyzer: mark signals in your Verilog with (* mark_debug *) '
+                         '(for example  (* mark_debug *) reg [7:0] state;), then Build FPGA and Upload' % name)
+    return r['debug']
+
+
+def ila_board(debug):
+    """The board's analyzer, checked against the project's (the FPGA must hold this project's design)."""
+    try:
+        st = board.call('GET', '/api/ila', timeout=10)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            raise ValueError('the board system is older than the signal analyzer: update the board system')
+        raise
+    if not st.get('present'):
+        raise ValueError('the FPGA on the board has no signal analyzer now: Upload this project first (its new .bit)')
+    if st.get('width') != debug['width'] or st.get('depth') != debug['depth']:
+        raise ValueError('the FPGA holds the analyzer of another design (%s bits x %s, this project: %d x %d): Upload this project first'
+                         % (st.get('width'), st.get('depth'), debug['width'], debug['depth']))
+    return st
+
+
+def ila_capture(name, signal, cond, value, pre_pct, wait):
+    debug = ila_debug(name)
+    ila_board(debug)
+    tr = fpga_ila.trigger(debug, signal, cond, value)
+    pre = max(0, min(debug['depth'] - 2, int(debug['depth'] * float(pre_pct) / 100)))
+    q = urllib.parse.urlencode(dict(tr, pre=pre))
+    r = board.call('POST', '/api/ila/arm?' + q, data=b'', timeout=20)
+    if not r.get('ok', True):
+        raise ValueError(r.get('out'))
+    return ila_read(name, wait, pre)
+
+
+def ila_read(name, wait, pre):
+    debug = ila_debug(name)
+    r = board.call('POST', '/api/ila/read?' + urllib.parse.urlencode({'wait': wait, 'pre': pre}), data=b'', timeout=60)
+    if not r.get('ok', True):
+        raise ValueError(r.get('out'))
+    if not r.get('samples'):
+        return {'ok': True, 'waiting': True, 'armed': r.get('armed'), 'pre': pre}
+    w = fpga_ila.to_waves(debug, r['samples'], r.get('trigger', pre), name)
+    path = os.path.join(proj_path(name), 'analyzer.vcd')
+    fpga_ila.write_vcd(path, w)
+    w['file'] = 'analyzer.vcd'
+    log('Signal analyzer: %d samples of %d signals, trigger at sample %d (saved %s)' % (
+        len(r['samples']), len(debug['signals']), w['trigger'], path), 'ok')
+    return w
 
 
 def simulate(name, tb, ns):
@@ -1939,6 +1994,24 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == '/api/fpga/report':
             r = fpga_flow.build_report(proj_path(a['project']))
             return {'ok': bool(r), 'report': r, 'out': '' if r else 'no build report yet: press Build FPGA'}
+        if path == '/api/fpga/schematic':
+            return dict(ok=True, **fpga_schem.netlist(proj_path(a['project'])))
+        if path == '/api/ila/info':
+            debug = ila_debug(a['project'])
+            st = None
+            if board.host:
+                try:
+                    st = board.call('GET', '/api/ila', timeout=10)
+                except Exception as e:
+                    st = {'ok': False, 'out': str(e)}
+            return {'ok': True, 'debug': debug, 'board': st}
+        if path == '/api/ila/capture':
+            return ila_capture(a['project'], a.get('signal', ''), a.get('cond', 'now'), a.get('value', ''),
+                               a.get('pre', 50), min(30, float(a.get('wait', 5))))
+        if path == '/api/ila/read':
+            return ila_read(a['project'], min(30, float(a.get('wait', 5))), int(a.get('pre', 0)))
+        if path in ('/api/ila/now', '/api/ila/stop'):
+            return board.call('POST', path, data=b'', timeout=10)
         if path == '/api/fpga/ioplan':
             prof = board_profiles.load(fpga_flow.project_board(proj_path(a['project'])) or target_board())
             return dict(ok=True, **fpga_ioplan.plan(proj_path(a['project']), prof, UI_DIR))

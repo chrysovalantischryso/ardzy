@@ -142,7 +142,7 @@ def discovery_responder(family):
             print('discovery:', e, flush=True)
 
 
-import hwapi, iotools, sysinfo, datalog
+import hwapi, iotools, sysinfo, datalog, ila
 
 HW_GET = {   # GET /api/...  -> function(query) ; all read-only
     '/api/hw': lambda q: hwapi.hw(),
@@ -170,6 +170,7 @@ HW_GET = {   # GET /api/...  -> function(query) ; all read-only
     '/api/regs/block': lambda q: sysinfo.regs(q.get('b', '')),
     '/api/logger': lambda q: {'status': datalog.status(), 'logs': datalog.logs()},
     '/api/logger/csv': lambda q: {'csv': datalog.to_csv(q.get('name', ''))},
+    '/api/ila': lambda q: ila.info(),
 }
 HW_POST = {  # POST /api/...?args  -> changes something
     '/api/mio/set': lambda q: hwapi.mio_set(q.get('pin', ''), q.get('mode', '')),
@@ -198,6 +199,10 @@ HW_POST = {  # POST /api/...?args  -> changes something
     '/api/io/fan': lambda q: hwapi.io_fan(on=(q['on'] == '1') if 'on' in q else None,
                                           duty=q.get('duty'), hz=q.get('hz')),
     '/api/system': lambda q: hwapi.system(q.get('action', '')),
+    '/api/ila/arm': lambda q: ila.arm(q),
+    '/api/ila/now': lambda q: ila.trigger_now(),
+    '/api/ila/stop': lambda q: ila.stop(),
+    '/api/ila/read': lambda q: ila.read(q),
     '/api/logger/start': lambda q: datalog.start(q.get('name'), q.get('interval'), q.get('ch'), q.get('hours')),
     '/api/logger/stop': lambda q: datalog.stop(),
     '/api/logger/delete': lambda q: datalog.delete(q.get('name', '')),

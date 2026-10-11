@@ -26,6 +26,15 @@ module ardzy_ps7 (
     input wire rvalid, output wire rready
 );
     wire [3:0] fclk, fclk_rstn;
+    (* keep *) wire ardzy_fclk;                 // FCLK0 after its BUFG: the Ardzy build finds the ARM side by this name
+    assign ardzy_fclk = clk;
+    wire [63:0] ardzy_gpio_o;
+`ifdef ARDZY_ILA
+    // the signal analyzer (fpga/hdl/ardzy_ila.v), connected by the Ardzy build: EMIO GPIO 16..31 out, 32..63 in
+    (* keep *) wire [15:0] ardzy_ila_ctl;
+    (* keep *) wire [31:0] ardzy_ila_dout;
+    assign ardzy_ila_ctl = ardzy_gpio_o[31:16];
+`endif
 `ifdef ARDZY_EMIO_ENET0
     // Boards whose Ethernet PHY hangs on FPGA pins (EBAZ4205): the Ardzy build (fpga/flow.py) connects these
     // wires to the PHY's pins and the LEDs, so the network keeps working while this design is loaded.
@@ -35,7 +44,6 @@ module ardzy_ps7 (
     (* keep *) wire ardzy_led_red, ardzy_led_green;   // EMIO GPIO 0 / 1 = Linux GPIO 54 / 55: the board's LEDs
     wire [7:0] ardzy_eth_txd8;
     wire ardzy_eth_mdo, ardzy_eth_mdt;
-    wire [63:0] ardzy_gpio_o;
     assign ardzy_eth_txd = ardzy_eth_txd8[3:0];
     assign ardzy_eth_mdio = ardzy_eth_mdt ? 1'bz : ardzy_eth_mdo;
     assign ardzy_eth_phyclk = fclk[3];
@@ -53,7 +61,12 @@ module ardzy_ps7 (
         .EMIOENET0GMIIRXCLK(ardzy_eth_rxclk), .EMIOENET0GMIIRXD({4'b0000, ardzy_eth_rxd}), .EMIOENET0GMIIRXDV(ardzy_eth_rxdv),
         .EMIOENET0GMIIRXER(1'b0), .EMIOENET0GMIICOL(1'b0), .EMIOENET0GMIICRS(1'b0),
         .EMIOENET0MDIOMDC(ardzy_eth_mdc), .EMIOENET0MDIOO(ardzy_eth_mdo), .EMIOENET0MDIOTN(ardzy_eth_mdt),
-        .EMIOENET0MDIOI(ardzy_eth_mdio), .EMIOGPIOO(ardzy_gpio_o), .EMIOGPIOI(64'd0),
+        .EMIOENET0MDIOI(ardzy_eth_mdio),
+`endif
+`ifdef ARDZY_ILA
+        .EMIOGPIOO(ardzy_gpio_o), .EMIOGPIOI({ardzy_ila_dout, 32'd0}),
+`elsif ARDZY_EMIO_ENET0
+        .EMIOGPIOO(ardzy_gpio_o), .EMIOGPIOI(64'd0),
 `endif
         .FCLKCLK(fclk), .FCLKRESETN(fclk_rstn), .FCLKCLKTRIGN(4'b0000),
         .MAXIGP0ACLK(clk),

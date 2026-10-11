@@ -1121,3 +1121,53 @@ body.style-chryso :is(#projectList, .side, .sddisks) .item.active { background: 
 .iotable select.iopin { max-width: 420px; font-family: var(--mono); font-size: 13px; }
 .iotable select.dup { outline: 2px solid var(--err); }
 .app-foot { gap: 8px; margin-top: 10px; }
+
+/* go to definition / find uses / rename lists */
+.navlist { max-height: 52vh; overflow: auto; display: flex; flex-direction: column; gap: 2px; margin: 6px 0; min-width: min(640px, 80vw); }
+.navhit { display: flex; gap: 12px; align-items: baseline; text-align: left; background: none; border: 1px solid transparent; border-radius: 6px; padding: 6px 8px; color: var(--text); font: inherit; cursor: pointer; }
+div.navhit { cursor: default; }
+button.navhit:hover, button.navhit:focus-visible { background: var(--hover, rgba(127,127,127,.12)); border-color: var(--line, rgba(127,127,127,.25)); }
+.navhit .nf { flex: none; font-family: var(--mono, monospace); font-size: 12.5px; opacity: .8; min-width: 150px; }
+.navhit code { white-space: pre; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.navhit mark { background: var(--sel); color: inherit; border-radius: 2px; }
+#dlgRename input#navNew { font-family: var(--mono, monospace); width: 18em; }
+.cpath { margin: 4px 0 10px; }
+.cpath .csrc { cursor: pointer; text-decoration: underline dotted; color: var(--accent-text, var(--accent)); }
+.cpath .bar2 { display: inline-flex; height: 8px; width: 140px; border-radius: 4px; overflow: hidden; vertical-align: middle; background: rgba(127,127,127,.2); }
+.cpath .bar2 i { display: block; height: 100%; }
+.cpath .bar2 i.lg { background: var(--accent, #4a8); }
+.cpath .bar2 i.rt { background: rgba(127,127,127,.55); }
+
+/* the signal analyzer dialog */
+#dlgIla .ptbody { min-width: min(620px, 86vw); }
+.ila-sigs { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 4px 0 8px; font-size: 13px; }
+.ila-trig { gap: 8px; margin-bottom: 8px; }
+.ila-trig input { font-family: var(--mono); }
+.ila-ex { font-family: var(--mono); font-size: 13px; background: var(--code-bg); padding: 8px 10px; border-radius: var(--radius); }
+
+/* schematic */
+dialog.schem-dlg { width: 94vw; max-width: 94vw; }
+dialog.schem-dlg .ptbody { display: flex; flex-direction: column; gap: 6px; }
+.schem-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.schem-bar input { width: 200px; }
+.schem-crumbs { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.schem-view { height: 68vh; border: 1px solid var(--line); border-radius: var(--radius); background: var(--code-bg); overflow: hidden; cursor: grab; user-select: none; }
+.schem-view:active { cursor: grabbing; }
+.schem-view svg { display: block; width: 100%; height: 100%; stroke: none; }
+.schem-info { min-height: 1.4em; }
+#scG text { font: 11px var(--mono); fill: var(--text); stroke: none; }
+#scG text.t { font-weight: 600; font-size: 12px; }
+#scG text.pin { fill: var(--muted); font-size: 10px; }
+#scG text.nm { fill: var(--muted); font-size: 10.5px; }
+#scG text.konst { fill: var(--warn); font-size: 10px; }
+#scG .sc-n rect, #scG .sc-n path { fill: var(--panel); stroke: var(--line); stroke-width: 1.2; }
+#scG .sc-n { cursor: pointer; }
+#scG .sc-mod rect { stroke: var(--accent); stroke-width: 2; }
+#scG .sc-reg rect { stroke: var(--ok); stroke-width: 1.6; }
+#scG .sc-port path { fill: var(--sel); stroke: var(--accent); }
+#scG .sc-n.hit rect, #scG .sc-n.hit path { stroke: var(--warn); stroke-width: 3; }
+#scG .sc-n.sel rect, #scG .sc-n.sel path { stroke: var(--accent); stroke-width: 3; }
+#scG .sc-w { fill: none; stroke: var(--muted); stroke-width: 1.1; opacity: .8; }
+#scG .sc-w.bus { stroke-width: 2.4; }
+#scG .sc-w.back { stroke-dasharray: 5 4; opacity: .55; }
+#scG .sc-w:hover, #scG .sc-w.hit { stroke: var(--accent); opacity: 1; stroke-width: 3; }

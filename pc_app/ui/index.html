@@ -158,6 +158,7 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
         <span class="edsep"></span>
         <button class="ghost small" id="edSmaller" title="Smaller text (Ctrl -)">A-</button>
         <button class="ghost small" id="edBigger" title="Bigger text (Ctrl +)">A+</button>
+        <button class="ghost small" id="edInclude" hidden title="Include library: add the #include line of a library to this sketch">Include library</button>
         <button class="ghost small" id="edFormat" title="Auto Format: put the indentation right and remove the spaces at line ends (Ctrl+T)">Format</button>
         <button class="ghost small" id="edSet" title="Editor settings: font, colours, indent, ruler, auto-save ...">Editor settings</button>
       </div>
@@ -230,6 +231,7 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
             <option value="1000000">1 ms</option><option value="10000000">10 ms</option><option value="100000000">100 ms</option></select></label>
           <button class="primary small" id="simRun" title="Compile and run the simulation (F6)">Simulate</button>
           <button class="ghost small" id="simNew" title="Make a testbench for the design's top module">New testbench</button>
+          <button class="ghost small" id="simIla" title="Signal analyzer: capture the (* mark_debug *) signals inside the FPGA on the board and show them here">Analyzer (board)</button>
           <span class="hint" id="simState"></span><span class="grow"></span>
           <select id="simRadix" title="How buses are shown"><option value="hex">hex</option><option value="dec">decimal</option><option value="signed">signed</option><option value="bin">binary</option></select>
           <span class="seg"><button id="simZin" title="Zoom in (or the mouse wheel)">+</button><button id="simZout" title="Zoom out">-</button><button id="simFit" title="The whole time">fit</button></span>
@@ -462,6 +464,11 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
       <tr><td><kbd>Ctrl</kbd> <kbd>R</kbd></td><td>Check the project (compile / test without uploading)</td></tr>
       <tr><td><kbd>Ctrl</kbd> <kbd>T</kbd></td><td>Auto Format: the indentation right, no spaces at line ends</td></tr>
       <tr><td>right-click</td><td>a project or a file: rename, duplicate, archive (zip), delete, I/O planning, build report</td></tr>
+      <tr><td>Schematic</td><td>the project's menu (right-click it, or the ... button): the design drawn as blocks and wires; click a module to go inside</td></tr>
+      <tr><td><kbd>F12</kbd></td><td>Go to where the name under the cursor is made (in any file of the project)</td></tr>
+      <tr><td><kbd>Shift</kbd> <kbd>F12</kbd></td><td>Find every use of the name under the cursor</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>R</kbd></td><td>Rename the name under the cursor in every file of the project</td></tr>
+      <tr><td>right-click in the editor</td><td>go to definition, find uses, rename, include library, cut / copy / paste</td></tr>
       <tr><td><kbd>Ctrl</kbd> <kbd>S</kbd></td><td>Save the file</td></tr>
       <tr><td><kbd>Ctrl</kbd> <kbd>F</kbd> / <kbd>F3</kbd></td><td>Find in the file / find the next one (<kbd>Shift</kbd> <kbd>F3</kbd> the one before)</td></tr>
       <tr><td><kbd>Ctrl</kbd> <kbd>H</kbd></td><td>Find and replace</td></tr>
@@ -552,6 +559,9 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
 <script src="ai.js"></script>
 <script src="boardprofile.js"></script>
 <script src="projtools.js"></script>
+<script src="navtools.js"></script>
+<script src="ila.js"></script>
+<script src="schematic.js"></script>
 <script src="vendor/blockly/blockly_compressed.js"></script>
 <script src="vendor/blockly/blocks_compressed.js"></script>
 <script src="vendor/blockly/en.js"></script>
