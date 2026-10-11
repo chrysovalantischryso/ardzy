@@ -1053,3 +1053,36 @@ label.inl { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
 .ibstate .ok { color: var(--ok); font-weight: 600; }
 .ibstate .no { color: var(--err, #d04040); font-weight: 600; }
 @media (max-width: 760px) { .sdfirst { grid-template-columns: 1fr; } }
+
+
+/* ---- Style "thechryso.com" (Settings, Look): black and white, sharp, hairlines, Plus Jakarta Sans + Inter.
+   The colours come from settings.js (APP_CHRYSO); here only the shapes and the type. */
+body.style-chryso {
+  --radius: 0px;
+  --head-font: "Plus Jakarta Sans", "Inter", "Segoe UI", system-ui, sans-serif;
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 64px 64px;
+  scrollbar-color: var(--line) var(--bg);
+}
+body.style-chryso *:not(.dot):not(.lvl):not(.sw):not(input[type=radio]):not(input[type=checkbox]) { border-radius: 0 !important; box-shadow: none !important; }
+body.style-chryso h1, body.style-chryso h2, body.style-chryso h3, body.style-chryso .brand, body.style-chryso dialog h2 {
+  font-family: var(--head-font); font-weight: 750; letter-spacing: -.01em; }
+body.style-chryso .dcard h3, body.style-chryso .sdstep > b, body.style-chryso .side h3, body.style-chryso th {
+  font-family: var(--mono); font-weight: 500; font-size: 12.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+body.style-chryso button.primary { background: var(--text); border-color: var(--text); color: var(--bg); }
+body.style-chryso button:hover:not(:disabled), body.style-chryso button.primary:hover:not(:disabled) {
+  background: var(--text); border-color: var(--text); color: var(--bg); }
+body.style-chryso button.primary:hover:not(:disabled) { background: var(--bg); color: var(--text); }
+body.style-chryso .dcard, body.style-chryso dialog { border-color: var(--line); }
+body.style-chryso dialog { border-top: 2px solid var(--text); }
+body.style-chryso input:focus, body.style-chryso select:focus, body.style-chryso button:focus-visible { outline: 1px solid var(--text); outline-offset: 1px; }
+body.style-chryso input[type=range], body.style-chryso input[type=checkbox] { accent-color: var(--text); }
+body.style-chryso :is(#mon, #ser, .uterm, .logtext, .app-term) .l-head { color: var(--term-text); }
+/* thechryso style: the code in black and white too; weight and slant tell the kinds apart */
+:root body.style-chryso .cm-s-default :is(.cm-keyword, .cm-meta, .cm-qualifier, .cm-tag) { color: var(--text); font-weight: 700; }
+:root body.style-chryso .cm-s-default :is(.cm-def, .cm-builtin, .cm-property, .cm-variable-2, .cm-variable-3, .cm-type, .cm-number, .cm-atom) { color: var(--text); }
+:root body.style-chryso .cm-s-default .cm-def { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+:root body.style-chryso .cm-s-default :is(.cm-string, .cm-string-2) { color: var(--muted); }
+:root body.style-chryso .cm-s-default .cm-comment { color: var(--muted); font-style: italic; opacity: .8; }
+:root body.style-chryso .cs-sym .ic { color: var(--muted) !important; }
+:root body.style-chryso .CodeMirror-matchingbracket { color: var(--text) !important; outline: 1px solid var(--muted); }

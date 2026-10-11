@@ -10,6 +10,7 @@ written for Ardzy.
 |---|---|---|
 | Blockly (Google / Raspberry Pi Foundation) | `pc_app/ui/vendor/blockly` | Apache-2.0 (`LICENSE.txt` next to it) |
 | CodeMirror 5 (Marijn Haverbeke and others) | `pc_app/ui/vendor/codemirror.min.*`, `addon_*`, `mode_*` | MIT |
+| Inter (Rasmus Andersson), Plus Jakarta Sans (Tokotype): the fonts of the thechryso.com style | `pc_app/ui/fonts` | SIL Open Font License 1.1 |
 | ArduinoCore-API (Arduino) | `arduino/core/api` | LGPL-2.1 (`LICENSE.txt` next to it) |
 | Zynq PS7 init for U-Boot | `uboot/ps7_init_gpl.c` | GPL-2.0 (as in U-Boot) |
 | EBAZ4205 PS7 init (Xilinx Vivado output, from KeitetsuWorks/EBAZ4205, MIT) | `boards/ebaz4205/uboot/vivado_ps7_init_gpl.c`, `ps7_init_gpl.c` | GPL-2.0-or-later (Xilinx) |

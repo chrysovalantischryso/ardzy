@@ -3,10 +3,11 @@
    (workspace, Vivado, board names, FPGA tool). Everything here is kept in this PC's app storage (ardzy.app).
    Uses app.js (S, $, esc, api, out, pref, setPref, setTheme, editorFont, editorWrap) and i18n.js (T, I18N_LANGS). */
 
-const APP_DEFAULT = { accent: '', palette: 'ardzy', zoom: 100, font: 'Segoe UI', density: 'comfy', corners: 'normal', calm: false,
+const APP_DEFAULT = { style: 'ardzy', accent: '', palette: 'ardzy', zoom: 100, font: 'Segoe UI', density: 'comfy', corners: 'normal', calm: false,
   termSize: 13.5, termFont: 'Cascadia Mono', termLh: 1.5, startView: 'last', tips: true, sound: false, panel: 'keep' };
 const APP = (() => { try { return Object.assign({}, APP_DEFAULT, JSON.parse(pref('app', '{}')) || {}); } catch (e) { return Object.assign({}, APP_DEFAULT); } })();
 const appSave = () => setPref('app', JSON.stringify(APP));
+{ const m = location.hash.match(/style=(ardzy|chryso)/); if (m) APP.style = m[1]; }   // a link can show a style (not saved)
 
 const APP_ACCENTS = ['#2fbf6c', '#13894a', '#3d8fe0', '#6c63ff', '#9b6be0', '#d65a9c', '#e05050', '#e8743b', '#d4a020', '#20a3a3', '#64748b'];
 const APP_FONTS = ['Segoe UI', 'Segoe UI Variable', 'system-ui', 'Arial', 'Verdana', 'Tahoma', 'Calibri', 'Bahnschrift', 'Trebuchet MS', 'Georgia'];
@@ -27,7 +28,16 @@ const APP_PALETTES = {
     { bg: '#ffffff', panel: '#ffffff', side: '#f2f2f2', line: '#000000', hover: '#e6e6e6', sel: '#ffe680', 'code-bg': '#ffffff', text: '#000000', muted: '#222222' },
     { bg: '#000000', panel: '#000000', side: '#000000', line: '#ffffff', hover: '#222222', sel: '#1d4a8a', 'code-bg': '#000000', text: '#ffffff', muted: '#dddddd' }],
 };
-const APP_VARS = ['bg', 'panel', 'side', 'line', 'hover', 'sel', 'code-bg', 'text', 'muted', 'accent', 'accent-2', 'accent-text'];
+// the thechryso.com style: black and white, sharp, hairlines (dark = the site itself; light = the same inverted)
+const APP_CHRYSO = [
+  { bg: '#ffffff', panel: '#ffffff', side: '#f6f6f6', line: '#d4d4d4', hover: '#ededed', sel: '#e2e2e2', 'code-bg': '#ffffff',
+    text: '#000000', muted: '#3a3a3a', accent: '#000000', 'accent-2': '#000000', 'accent-text': '#ffffff', head: '#000000',
+    'term-bg': '#000000', 'term-text': '#e4e4e4', grid: 'rgba(0, 0, 0, .045)' },
+  { bg: '#000000', panel: '#0b0b0b', side: '#070707', line: '#2a2a2a', hover: '#141414', sel: '#1c1c1c', 'code-bg': '#050505',
+    text: '#ffffff', muted: '#b8b8b8', accent: '#ffffff', 'accent-2': '#ffffff', 'accent-text': '#000000', head: '#ffffff',
+    'term-bg': '#000000', 'term-text': '#e4e4e4', grid: 'rgba(255, 255, 255, .028)' }];
+const APP_VARS = ['bg', 'panel', 'side', 'line', 'hover', 'sel', 'code-bg', 'text', 'muted', 'accent', 'accent-2', 'accent-text',
+  'head', 'term-bg', 'term-text', 'grid'];
 
 const appDark = () => document.documentElement.dataset.theme === 'dark' ||
   (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
@@ -40,14 +50,16 @@ function appLuma(hex) { const n = parseInt(hex.slice(1), 16); return (0.299 * (n
 function appApply() {
   const r = document.documentElement.style, dark = appDark();
   APP_VARS.forEach(v => r.removeProperty('--' + v));
-  const pal = APP_PALETTES[APP.palette] && APP_PALETTES[APP.palette][dark ? 2 : 1];
+  const chryso = APP.style === 'chryso';
+  document.body.classList.toggle('style-chryso', chryso);
+  const pal = chryso ? APP_CHRYSO[dark ? 1 : 0] : APP_PALETTES[APP.palette] && APP_PALETTES[APP.palette][dark ? 2 : 1];
   if (pal) Object.entries(pal).forEach(([k, v]) => r.setProperty('--' + k, v));
-  if (APP.accent) {
+  if (APP.accent && !chryso) {
     r.setProperty('--accent', APP.accent);
     r.setProperty('--accent-2', appShade(APP.accent, dark ? 0.12 : -0.15));
     r.setProperty('--accent-text', appLuma(APP.accent) > 0.55 ? '#06120b' : '#ffffff');
   }
-  r.setProperty('--font', `"${APP.font}", "Segoe UI", system-ui, sans-serif`);
+  r.setProperty('--font', chryso ? '"Inter", "Segoe UI", system-ui, sans-serif' : `"${APP.font}", "Segoe UI", system-ui, sans-serif`);
   r.setProperty('--term-size', APP.termSize + 'px');
   r.setProperty('--term-lh', String(APP.termLh));
   r.setProperty('--term-font', `"${APP.termFont}", Consolas, monospace`);
@@ -104,15 +116,18 @@ function appRender() {
       <label>${T('Board names to try (comma separated)')} <input id="appHosts" value="${esc((set.manual_hosts || []).join(', '))}" spellcheck="false"></label>
       <div class="row"><button class="primary small" id="appSaveEngine">${T('Save')}</button><span class="hint" id="appSaved"></span></div>`;
   } else if (appSection === 'look') {
-    h = `<label>${T('Accent colour')}</label>
-      <div class="app-swatches">${['', ...APP_ACCENTS].map(c => `<button class="sw ${c === APP.accent ? 'on' : ''}" data-c="${c}" style="--c:${c || 'var(--ok)'}" title="${c || 'Ardzy'}">${c ? '' : 'A'}</button>`).join('')}
+    const chryso = APP.style === 'chryso';
+    h = `<label>${T('Style')} <select data-app="style">${opt('ardzy', T('Ardzy (green, rounded)'), APP.style)}${opt('chryso', T('thechryso.com (black and white, sharp)'), APP.style)}</select></label>
+      <p class="hint">${chryso ? T('The design of thechryso.com: black and white, sharp corners, hairlines, its fonts. In light mode the same, inverted. Red, orange and green stay for errors, warnings and success.') : T('Choose thechryso.com for the black and white design of the website.')}</p>
+      ${chryso ? '' : `<label>${T('Accent colour')}</label>`}
+      <div class="app-swatches" ${chryso ? 'hidden' : ''}>${['', ...APP_ACCENTS].map(c => `<button class="sw ${c === APP.accent ? 'on' : ''}" data-c="${c}" style="--c:${c || 'var(--ok)'}" title="${c || 'Ardzy'}">${c ? '' : 'A'}</button>`).join('')}
         <label class="sw-custom">${T('your own colour')} <input type="color" id="appColor" value="${APP.accent || '#2fbf6c'}"></label></div>
       <div class="ed-grid">
-        <label>${T('Background')} <select data-app="palette">${Object.entries(APP_PALETTES).map(([k, p]) => opt(k, T(p[0]), APP.palette)).join('')}</select></label>
+        ${chryso ? '' : `<label>${T('Background')} <select data-app="palette">${Object.entries(APP_PALETTES).map(([k, p]) => opt(k, T(p[0]), APP.palette)).join('')}</select></label>`}
         <label>${T('App size')} <select data-app="zoom">${[80, 90, 100, 110, 125, 150].map(n => opt(n, n + ' %', APP.zoom)).join('')}</select></label>
-        <label>${T('Font')} <select data-app="font">${APP_FONTS.map(f => opt(f, f, APP.font)).join('')}</select></label>
+        ${chryso ? '' : `<label>${T('Font')} <select data-app="font">${APP_FONTS.map(f => opt(f, f, APP.font)).join('')}</select></label>`}
         <label>${T('Density')} <select data-app="density">${opt('comfy', T('comfortable'), APP.density)}${opt('compact', T('compact'), APP.density)}</select></label>
-        <label>${T('Corners')} <select data-app="corners">${opt('sharp', T('sharp'), APP.corners)}${opt('normal', T('normal'), APP.corners)}${opt('round', T('round'), APP.corners)}</select></label>
+        ${chryso ? '' : `<label>${T('Corners')} <select data-app="corners">${opt('sharp', T('sharp'), APP.corners)}${opt('normal', T('normal'), APP.corners)}${opt('round', T('round'), APP.corners)}</select></label>`}
       </div>
       ${chk('calm', 'less motion (no animations)')}
       <div class="app-preview"><b>${T('Preview')}</b> <button class="ghost small" onclick="return false">${T('A button')}</button>
@@ -164,6 +179,7 @@ function appRender() {
     APP[k] = el.type === 'checkbox' ? el.checked : ['zoom', 'termSize', 'termLh'].includes(k) ? +el.value : el.value;
     appSave(); appApply();
     if (k === 'tips' && APP.tips) location.reload();
+    if (k === 'style') appRender();                    // (the choices that apply to this style)
   });
   if ($('appLang')) $('appLang').onchange = () => { try { localStorage.setItem('ardzy.lang', $('appLang').value); } catch (e) { } location.reload(); };
   if ($('appTheme')) $('appTheme').onchange = () => { setTheme($('appTheme').value); appApply(); };
