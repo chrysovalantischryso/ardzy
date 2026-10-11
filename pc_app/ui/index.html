@@ -12,6 +12,37 @@
 <link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="app.css">
 <script>window.ARDZY_TOKEN = "__ARDZY_TOKEN__";
+// The window's settings (style, theme, editor, language, layout ...) are kept by the engine in ui_prefs.json:
+// the app window forgets its own storage when it closes, and the engine's address is new at every start.
+// Here they are put back before any other script reads them, and every change is sent back.
+(function () {
+  let saved = {};
+  try { saved = __ARDZY_PREFS__ || {}; } catch (e) { }
+  const ls = window.localStorage, P = Storage.prototype, set0 = P.setItem, rem0 = P.removeItem;
+  const mine = () => { const o = {}; try { for (let i = 0; i < ls.length; i++) { const k = ls.key(i); if (k && k.indexOf('ardzy.') === 0) o[k] = ls.getItem(k); } } catch (e) { } return o; };
+  try {
+    const here = mine();
+    if (+(here['ardzy._changed'] || 0) <= +(saved['ardzy._changed'] || 0)) {        // the file is as new or newer: it wins
+      Object.keys(here).forEach(k => { if (!(k in saved)) rem0.call(ls, k); });
+      Object.keys(saved).forEach(k => { if (here[k] !== saved[k]) set0.call(ls, k, saved[k]); });
+    }
+  } catch (e) { }
+  let timer = null;
+  const send = closing => {
+    timer = null;
+    const body = JSON.stringify({ prefs: mine() });
+    try {
+      fetch('/api/uiprefs', { method: 'POST', keepalive: !!closing && body.length < 60000,
+        headers: { 'X-Ardzy-Token': window.ARDZY_TOKEN, 'Content-Type': 'application/json' }, body });
+    } catch (e) { }
+  };
+  const changed = () => { set0.call(ls, 'ardzy._changed', String(Date.now())); clearTimeout(timer); timer = setTimeout(send, 300); };
+  P.setItem = function (k, v) { set0.call(this, k, v); if (this === ls && String(k).indexOf('ardzy.') === 0 && k !== 'ardzy._changed') changed(); };
+  P.removeItem = function (k) { rem0.call(this, k); if (this === ls && String(k).indexOf('ardzy.') === 0) changed(); };
+  window.addEventListener('pagehide', () => { if (timer) { clearTimeout(timer); send(true); } });
+  window.ardzyPrefsSave = () => { clearTimeout(timer); send(); };
+  if (Object.keys(mine()).some(k => !(k in saved))) changed();       // (settings only this window had: keep them too)
+})();
 try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) { }</script>
 </head>
 <body>

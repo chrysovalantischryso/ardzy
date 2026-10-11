@@ -114,7 +114,7 @@ async function navRename() {
     let n = 0;
     const back = S.active;
     for (const { f } of touched) {
-      // every file changes in the editor (the closed ones are opened): Ctrl+Z works, nothing is saved before you save
+      // every file changes in the editor (the closed ones are opened, so Ctrl+Z works there too)
       let t = f.tab;
       if (!t) { await openFile(S.project, f.name); t = S.tabs.find(x => x.key === S.project + '/' + f.name); }
       const doc = t.doc, text = doc.getValue();
@@ -123,10 +123,11 @@ async function navRename() {
       for (const at of marks.reverse()) doc.replaceRange(to, doc.posFromIndex(at), doc.posFromIndex(at + word.length), '+rename');
       n += marks.length;
       t.dirty = doc.getValue() !== t.saved;
+      if (t.dirty) await saveTab(t);                  // every changed file is saved at once (Ctrl+Z still takes it back)
     }
     if (back) activate(back);
     renderTabs();
-    out(TF('Renamed {0} to {1} in {2} places. Save to keep it (Ctrl+S, or Check / Upload / Build save it).', word, to, n), 'ok');
+    out(TF('Renamed {0} to {1} in {2} places and saved {3} files.', word, to, n, touched.length), 'ok');
   };
   d.showModal();
   inp.select();

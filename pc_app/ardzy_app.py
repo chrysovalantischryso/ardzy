@@ -126,6 +126,36 @@ def startfile(path):
         os.startfile(path)
 
 
+UI_PREFS_FILE = os.path.join(os.path.dirname(SETTINGS_FILE), 'ui_prefs.json')
+UI_PREFS_MAX = 8 * 1024 * 1024
+_ui_lock = threading.Lock()
+
+
+def ui_prefs():
+    """The window's own settings (style, theme, editor, language, layout ...: the page's "ardzy.*" keys).
+    They live here and not only in the window's storage: the app window forgets its storage when it closes
+    and the engine's address (its port) is new at every start."""
+    try:
+        d = json.load(open(UI_PREFS_FILE, encoding='utf-8'))
+        return {k: v for k, v in d.items() if isinstance(k, str) and k.startswith('ardzy.') and isinstance(v, str)}
+    except (OSError, ValueError, AttributeError):
+        return {}
+
+
+def save_ui_prefs(prefs):
+    prefs = {k: v for k, v in (prefs or {}).items() if isinstance(k, str) and k.startswith('ardzy.') and isinstance(v, str)}
+    data = json.dumps(prefs, ensure_ascii=False, indent=0)
+    if len(data) > UI_PREFS_MAX:
+        raise ValueError('the window settings are too big to keep (%d KB)' % (len(data) // 1024))
+    with _ui_lock:
+        os.makedirs(os.path.dirname(UI_PREFS_FILE), exist_ok=True)
+        tmp = UI_PREFS_FILE + '.tmp'
+        with open(tmp, 'w', encoding='utf-8') as f:
+            f.write(data)
+        os.replace(tmp, UI_PREFS_FILE)            # (all or nothing: a crash never leaves half a file)
+    return len(prefs)
+
+
 def default_workspace():
     # 2_Ardzy/projects when running from 2_Ardzy/pc_app (or its dist folder), else Documents/Ardzy
     # (only the projects folder of an Ardzy checkout: next to pc_app and fpga_projects. A "projects" folder found
@@ -1728,6 +1758,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         data = open(p, 'rb').read()
         if p.endswith('index.html'):
             data = data.replace(b'__ARDZY_TOKEN__', TOKEN.encode())
+            # the saved window settings, in the page before any script reads them ("<" escaped: no </script> inside)
+            data = data.replace(b'__ARDZY_PREFS__', json.dumps(ui_prefs()).replace('<', '\\u003c').encode())
         self.send(200, data, ctype)
 
     def body(self):
@@ -2200,6 +2232,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == '/api/fpga/toolchain':
             return {'ok': True, 'builtin': fpga_flow.available(), 'tool': settings.get('fpga_tool', 'builtin'),
                     'dir': fpga_flow.tools_dir()}
+        if path == '/api/uiprefs':
+            if method == 'POST':
+                return {'ok': True, 'kept': save_ui_prefs(a.get('prefs'))}
+            return {'ok': True, 'prefs': ui_prefs()}
         if path == '/api/settings':
             if a.get('fpga_tool') in ('builtin', 'vivado'):
                 settings['fpga_tool'] = a['fpga_tool']
@@ -2285,7 +2321,8 @@ def main():
     try:
         import webview
         webview.create_window('Ardzy %s %s' % (APP_VERSION, APP_STAGE), url, width=1360, height=860, min_size=(900, 600))
-        webview.start()
+        # (not private: the window may keep its storage too; the settings themselves are kept in ui_prefs.json)
+        webview.start(private_mode=False, storage_path=os.path.join(os.path.dirname(SETTINGS_FILE), 'webview'))
         return
     except Exception as e:                      # no window possible: the same app in the web browser
         log('app window not available (%s): opening Ardzy in the web browser' % e, 'warn')

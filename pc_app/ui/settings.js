@@ -253,6 +253,7 @@ async function appSaveAll(e) {
   // the look, text and behaviour are kept as soon as they change; the fields of General and Board are sent now
   if ($('appSaveEngine')) $('appSaveEngine').click();
   appSave();
+  if (window.ardzyPrefsSave) window.ardzyPrefsSave();          // (written to ui_prefs.json now)
   await new Promise(r => setTimeout(r, 300));
   $('appFootMsg').textContent = T('Saved: every setting is kept on this PC.');
 }
