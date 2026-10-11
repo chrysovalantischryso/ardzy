@@ -30,14 +30,21 @@ const APP_PALETTES = {
 };
 // the thechryso.com style: black and white, sharp, hairlines (dark = the site itself; light = the same inverted)
 const APP_CHRYSO = [
-  { bg: '#ffffff', panel: '#ffffff', side: '#f6f6f6', line: '#d4d4d4', hover: '#ededed', sel: '#e2e2e2', 'code-bg': '#ffffff',
-    text: '#000000', muted: '#3a3a3a', accent: '#000000', 'accent-2': '#000000', 'accent-text': '#ffffff', head: '#000000',
-    'term-bg': '#000000', 'term-text': '#e4e4e4', grid: 'rgba(0, 0, 0, .045)' },
-  { bg: '#000000', panel: '#0b0b0b', side: '#070707', line: '#2a2a2a', hover: '#141414', sel: '#1c1c1c', 'code-bg': '#050505',
-    text: '#ffffff', muted: '#b8b8b8', accent: '#ffffff', 'accent-2': '#ffffff', 'accent-text': '#000000', head: '#ffffff',
-    'term-bg': '#000000', 'term-text': '#e4e4e4', grid: 'rgba(255, 255, 255, .028)' }];
+  { bg: '#ffffff', panel: '#ffffff', side: '#f6f6f6', line: '#d4d4d4', hover: '#ededed', sel: '#e2e2e2', 'code-sel': '#cfe0ff', 'code-bg': '#ffffff',
+    text: '#000000', muted: '#3a3a3a', accent: '#000000', 'accent-2': '#000000', 'accent-text': '#ffffff', head: '#1a56c4',
+    ok: '#1b7a3e', warn: '#8a5a00', err: '#b3261e', 'term-bg': '#000000', 'term-text': '#e4e4e4', grid: 'rgba(0, 0, 0, .045)',
+    // code on white: every colour 5:1 or more
+    'syn-kw': '#7b1fa2', 'syn-def': '#1a56c4', 'syn-str': '#2e7d32', 'syn-num': '#b74b0a', 'syn-com': '#6b6b6b',
+    'syn-type': '#00727f', 'syn-meta': '#8a5a00', 'syn-prop': '#37474f', 'syn-var': '#b3261e' },
+  { bg: '#000000', panel: '#0b0b0b', side: '#070707', line: '#2a2a2a', hover: '#141414', sel: '#1c1c1c', 'code-sel': '#1f3a5f', 'code-bg': '#050505',
+    text: '#ffffff', muted: '#b8b8b8', accent: '#ffffff', 'accent-2': '#ffffff', 'accent-text': '#000000', head: '#82aaff',
+    ok: '#7ee2a8', warn: '#ffcb6b', err: '#ff8a8a', 'term-bg': '#000000', 'term-text': '#e4e4e4', grid: 'rgba(255, 255, 255, .028)',
+    // code on black: bright, 6:1 or more
+    'syn-kw': '#c792ea', 'syn-def': '#82aaff', 'syn-str': '#c3e88d', 'syn-num': '#f78c6c', 'syn-com': '#8a8a8a',
+    'syn-type': '#89ddff', 'syn-meta': '#ffcb6b', 'syn-prop': '#b2ccd6', 'syn-var': '#f07178' }];
 const APP_VARS = ['bg', 'panel', 'side', 'line', 'hover', 'sel', 'code-bg', 'text', 'muted', 'accent', 'accent-2', 'accent-text',
-  'head', 'term-bg', 'term-text', 'grid'];
+  'head', 'term-bg', 'term-text', 'grid', 'code-sel', 'ok', 'warn', 'err', 'syn-kw', 'syn-def', 'syn-str', 'syn-num', 'syn-com',
+  'syn-type', 'syn-meta', 'syn-prop', 'syn-var'];
 
 const appDark = () => document.documentElement.dataset.theme === 'dark' ||
   (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
@@ -118,7 +125,7 @@ function appRender() {
   } else if (appSection === 'look') {
     const chryso = APP.style === 'chryso';
     h = `<label>${T('Style')} <select data-app="style">${opt('ardzy', T('Ardzy (green, rounded)'), APP.style)}${opt('chryso', T('thechryso.com (black and white, sharp)'), APP.style)}</select></label>
-      <p class="hint">${chryso ? T('The design of thechryso.com: black and white, sharp corners, hairlines, its fonts. In light mode the same, inverted. Red, orange and green stay for errors, warnings and success.') : T('Choose thechryso.com for the black and white design of the website.')}</p>
+      <p class="hint">${chryso ? T('The design of thechryso.com: black and white, sharp corners, hairlines, its fonts; in light mode the same, inverted. The code and the terminals keep their colours, made for the black (and the white) page.') : T('Choose thechryso.com for the black and white design of the website.')}</p>
       ${chryso ? '' : `<label>${T('Accent colour')}</label>`}
       <div class="app-swatches" ${chryso ? 'hidden' : ''}>${['', ...APP_ACCENTS].map(c => `<button class="sw ${c === APP.accent ? 'on' : ''}" data-c="${c}" style="--c:${c || 'var(--ok)'}" title="${c || 'Ardzy'}">${c ? '' : 'A'}</button>`).join('')}
         <label class="sw-custom">${T('your own colour')} <input type="color" id="appColor" value="${APP.accent || '#2fbf6c'}"></label></div>

@@ -1077,12 +1077,27 @@ body.style-chryso .dcard, body.style-chryso dialog { border-color: var(--line); 
 body.style-chryso dialog { border-top: 2px solid var(--text); }
 body.style-chryso input:focus, body.style-chryso select:focus, body.style-chryso button:focus-visible { outline: 1px solid var(--text); outline-offset: 1px; }
 body.style-chryso input[type=range], body.style-chryso input[type=checkbox] { accent-color: var(--text); }
-body.style-chryso :is(#mon, #ser, .uterm, .logtext, .app-term) .l-head { color: var(--term-text); }
-/* thechryso style: the code in black and white too; weight and slant tell the kinds apart */
-:root body.style-chryso .cm-s-default :is(.cm-keyword, .cm-meta, .cm-qualifier, .cm-tag) { color: var(--text); font-weight: 700; }
-:root body.style-chryso .cm-s-default :is(.cm-def, .cm-builtin, .cm-property, .cm-variable-2, .cm-variable-3, .cm-type, .cm-number, .cm-atom) { color: var(--text); }
-:root body.style-chryso .cm-s-default .cm-def { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
-:root body.style-chryso .cm-s-default :is(.cm-string, .cm-string-2) { color: var(--muted); }
-:root body.style-chryso .cm-s-default .cm-comment { color: var(--muted); font-style: italic; opacity: .8; }
-:root body.style-chryso .cs-sym .ic { color: var(--muted) !important; }
-:root body.style-chryso .CodeMirror-matchingbracket { color: var(--text) !important; outline: 1px solid var(--muted); }
+/* thechryso style: the code in colour (settings.js APP_CHRYSO: a set for the black page, a set for the white) */
+:root body.style-chryso .cm-s-default :is(.cm-keyword, .cm-qualifier, .cm-tag) { color: var(--syn-kw); font-weight: 600; }
+:root body.style-chryso .cm-s-default :is(.cm-def, .cm-builtin, .cm-attribute) { color: var(--syn-def); }
+:root body.style-chryso .cm-s-default :is(.cm-string, .cm-string-2) { color: var(--syn-str); }
+:root body.style-chryso .cm-s-default :is(.cm-number, .cm-atom) { color: var(--syn-num); }
+:root body.style-chryso .cm-s-default .cm-comment { color: var(--syn-com); font-style: italic; }
+:root body.style-chryso .cm-s-default :is(.cm-type, .cm-variable-3) { color: var(--syn-type); }
+:root body.style-chryso .cm-s-default .cm-meta { color: var(--syn-meta); }
+:root body.style-chryso .cm-s-default .cm-property { color: var(--syn-prop); }
+:root body.style-chryso .cm-s-default .cm-variable-2 { color: var(--syn-var); }
+:root body.style-chryso .cm-s-default :is(.cm-variable, .cm-operator) { color: var(--text); }
+:root body.style-chryso .cm-s-default .cm-bracket { color: var(--muted); }
+:root body.style-chryso .CodeMirror-matchingbracket { color: var(--text) !important; outline: 1px solid var(--syn-def); }
+/* the terminals are black in both modes: the bright set */
+body.style-chryso :is(#mon, #ser, .uterm, .logtext, .app-term) .l-ok { color: #7ee2a8; }
+body.style-chryso :is(#mon, #ser, .uterm, .logtext, .app-term) .l-warn { color: #ffcb6b; }
+body.style-chryso :is(#mon, #ser, .uterm, .logtext, .app-term) .l-err { color: #ff8a8a; }
+body.style-chryso :is(#mon, #ser, .uterm, .logtext, .app-term) .l-head { color: #82aaff; }
+body.style-chryso :is(#mon, #ser, .uterm, .logtext, .app-term) .l-t { color: #8a8a8a; }
+
+/* thechryso style: only the code and the terminals are in colour; the rest stays black and white */
+body.style-chryso .CodeMirror-selected, body.style-chryso .CodeMirror-focused .CodeMirror-selected { background: var(--code-sel); }
+body.style-chryso .badge.cpp { border-color: var(--text); color: var(--text); }
+body.style-chryso :is(#projectList, .side, .sddisks) .item.active { background: var(--hover); border-left: 2px solid var(--text); }
