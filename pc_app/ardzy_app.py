@@ -13,7 +13,7 @@ Run:  python ardzy_app.py          (or the packaged Ardzy.exe)
 import json, os, sys, socket, struct, threading, time, subprocess, shutil, secrets, re, glob, tempfile
 import http.server, socketserver, urllib.request, urllib.error, urllib.parse, py_compile, webbrowser
 
-APP_VERSION = '0.2a'                    # the app; the board's system (SD image) is 0.2
+APP_VERSION = '0.3'                     # the app; the board's system (SD image) is 0.2
 APP_STAGE = 'BETA'                      # shown next to the version everywhere
 DISCOVERY_PORT = 41414
 CHIP_IDCODE = 0x03722093        # XC7Z010
@@ -736,7 +736,7 @@ def ila_board(debug):
         st = board.call('GET', '/api/ila', timeout=10)
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            raise ValueError('the board system is older than the signal analyzer: update the board system')
+            raise ValueError('the board system is older than the signal analyzer: it comes with the next board system update')
         raise
     if not st.get('present'):
         raise ValueError('the FPGA on the board has no signal analyzer now: Upload this project first (its new .bit)')
@@ -2034,6 +2034,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if board.host:
                 try:
                     st = board.call('GET', '/api/ila', timeout=10)
+                except urllib.error.HTTPError as e:
+                    st = {'ok': False, 'out': 'the board system is older than the signal analyzer: it comes with the next '
+                                              'board system update' if e.code == 404 else str(e)}
                 except Exception as e:
                     st = {'ok': False, 'out': str(e)}
             return {'ok': True, 'debug': debug, 'board': st}

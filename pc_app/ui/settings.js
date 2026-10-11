@@ -171,7 +171,7 @@ function appRender() {
       <p class="hint">${T('Every language has an ardzy library in its new projects: LEDs, buzzer, buttons, FPGA registers and watch(). Start one with + New.')}</p>`;
     setTimeout(langRender, 0);
   } else {
-    h = `<p><b>Ardzy ${esc(appEngine.version || '0.2a')} ${esc(appEngine.stage || 'BETA')}</b>: ${T('the Antminer S9 control board used like an Arduino.')}</p>
+    h = `<p><b>Ardzy ${esc(appEngine.version || '0.3')} ${esc(appEngine.stage || 'BETA')}</b>: ${T('the Antminer S9 control board used like an Arduino.')}</p>
       <p class="hint">${T('This is a BETA version: it works, but some parts may still change. Please report problems on GitHub.')}</p>
       <p class="hint">${T('Made by chryso. Open source under the GNU GPL version 3.')}</p>
       <p class="hint">${esc(appEngine.settings_file || '')}</p>

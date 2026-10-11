@@ -1,4 +1,4 @@
-# Ardzy 0.2a BETA
+# Ardzy 0.3 BETA
 
 **The Antminer S9 control board, used like an Arduino.**
 
@@ -7,7 +7,7 @@ running Linux plus a real FPGA, 512 MB of RAM, Ethernet and about 50 free pins. 
 cheap to find. Ardzy turns one into a friendly development board: write an Arduino sketch, a Python
 program or a Verilog design on your PC, press **Upload**, and it runs on the board.
 
-> **BETA:** Ardzy 0.2a works and is used every day on a real board, but it is a test version.
+> **BETA:** Ardzy 0.3 works and is used every day on a real board, but it is a test version.
 > Some parts may still change, and you may find bugs. Please report them in
 > [Issues](../../issues). Use it at your own risk: it is hobby software for hardware you own.
 
@@ -34,13 +34,10 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
   - **Board, I/O, Map, System** views: every pin, the board drawn to scale, Linux processes, logs, updates.
   - **Languages**: English, Greek, Russian. **Settings**: colours, size, fonts and more.
 
-## New in 0.2a
+## New in 0.3
 
-- **AI in the FPGA**: four new ready projects. 16 reads handwritten digits, 17 is a small language model that
-  writes text, 18 draws new digits, and 19 **AI Studio** runs all three much bigger, with the weights streamed
-  from the board's DDR memory (about 100 times faster than the ARM), and learns your own handwriting.
-  They open in their own screen in the app (Read, Write, Draw).
-- The app opens from a downloaded zip, and new users get the example projects.
+0.3 is a new version of the **app**; the board's system on the SD card stays 0.2 (same image as before).
+
 - **More programming languages**: C++, Shell (bash), Perl and ARM assembly are built into every board;
   JavaScript (Node.js), Lua, Go and Rust install with one click (Settings, Languages: the PC downloads them
   from Debian and the board installs them, the board needs no internet). Every language has an `ardzy`
@@ -48,7 +45,8 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
 - Clearer app: the status bar shows what the board runs, the FPGA design and its temperature; the AI screen
   shows the real engine clock.
 - **A second board: the EBAZ4205** (the control board of Ebang miners, also a Zynq XC7Z010, 256 MB). Same app,
-  same tools, its own SD card image. See [Other boards](#other-boards-ebaz4205) below.
+  same tools; its SD card image is built in the app (Build an image, in WSL). Not yet tested on a real
+  EBAZ4205. See [Other boards](#other-boards-ebaz4205) below.
 - **Tools from the Arduino IDE and Vivado**: Auto Format (Ctrl+T); rename, duplicate, archive (zip) and delete
   projects and files (right-click, deleted items go to `projects/_trash`); for FPGA projects a **build report**
   (LUTs, flip-flops, block RAM, DSPs, pins against the chip, and each clock's speed) and **I/O planning** (a pin
@@ -58,22 +56,36 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
 - **Signal analyzer inside the FPGA** (like Vivado's ILA): mark signals with `(* mark_debug *)`, build and upload;
   then Simulation, Analyzer (board): a trigger (at once, is, becomes, changes), up to 4096 samples around it,
   shown as waves and saved as `analyzer.vcd`. It talks to the ARM through EMIO GPIO, so it works in every design.
+  It needs a small new part on the board (`/opt/ardzy/web/ila.py`), which comes with the next board system
+  update; until then the app says so. Not yet tested on a real board.
 - **Schematic** (project menu): the design drawn as blocks and wires, registers and operators inside your
   modules; click a module to go inside, click a block to find its line in the Verilog.
 - **Moving around the code**: F12 goes to where a name is made (in any file of the project), Shift+F12 lists
   every use, Ctrl+Shift+R renames a name in every file; Include library for sketches; a right-click menu in the editor.
+- **A second style** like thechryso.com (Settings, Look, Style), with colours in the editor and the terminals.
+- **Fixes**: the app window now keeps its settings (style, theme, editor, language, layout) after you close it;
+  they were lost at every start before. Simulate works without a testbench and in the packaged app. Build FPGA
+  no longer reads a testbench (`*_tb.v`) as part of the design.
 - **Settings**: one Save button for everything, and Save / Load settings to a file (to move them to another PC).
 - **Make your SD card image in the app**: choose the board, the settings, the languages and projects the board
   gets after its first start; or build a whole image from the sources (in WSL) with your own Debian packages,
   example projects and version.
+
+## New in 0.2a
+
+- **AI in the FPGA**: four new ready projects. 16 reads handwritten digits, 17 is a small language model that
+  writes text, 18 draws new digits, and 19 **AI Studio** runs all three much bigger, with the weights streamed
+  from the board's DDR memory (about 100 times faster than the ARM), and learns your own handwriting.
+  They open in their own screen in the app (Read, Write, Draw).
+- The app opens from a downloaded zip, and new users get the example projects.
 
 ## Quick start
 
 You need: an Antminer S9 control board, a 12 V supply (6-pin PCIe plug), a microSD card (4 GB or more),
 an Ethernet cable and a Windows PC.
 
-1. Download from [Releases](../../releases): `Ardzy-0.2a-BETA-windows.zip` and `Ardzy-0.2-sdcard.img.xz`
-   (the app is 0.2a; the board's system on the SD card is still 0.2).
+1. Download from [Releases](../../releases): `Ardzy-0.3-BETA-windows.zip` and `Ardzy-0.2-sdcard.img.xz`
+   (the app is 0.3; the board's system on the SD card is still 0.2).
 2. Unzip the app and start `Ardzy.exe`. Press **SD card**, choose the image and your card, Write.
    (balenaEtcher works too.)
    The app is not code-signed, so the first time Windows may show "Windows protected your PC":
