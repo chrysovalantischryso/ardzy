@@ -46,6 +46,7 @@ import boards as board_profiles            # noqa: E402  (Antminer S9, EBAZ4205:
 import imagebuild                          # noqa: E402  (build an SD card image from source, in WSL)
 from fpga import flow as fpga_flow          # noqa: E402  (built-in FPGA toolchain, no Vivado)
 from fpga import sim as fpga_sim            # noqa: E402  (Verilog simulation with Icarus)
+from fpga import ioplan as fpga_ioplan      # noqa: E402  (I/O planning: ports to pins)
 
 
 class child_safe:
@@ -782,6 +783,35 @@ def verify_lang(d, lang):
     if lang in ('cpp', 'asm', 'go', 'rust'):
         log('  it is compiled on the board when it starts (errors appear in the Monitor)')
     return ok
+
+
+def to_trash(path, project):
+    """Deleting = moving into the workspace's _trash folder (it can be taken back from there)."""
+    d = os.path.join(ws(), '_trash', '%s_%s' % (time.strftime('%Y%m%d_%H%M%S'), project))
+    os.makedirs(d, exist_ok=True)
+    shutil.move(path, os.path.join(d, os.path.basename(path)))
+    return d
+
+
+def archive_project(name):
+    """A zip of the project (like the Arduino IDE's Archive Sketch), into the workspace's _archives folder."""
+    import zipfile
+    d = proj_path(name)
+    out_dir = os.path.join(ws(), '_archives')
+    os.makedirs(out_dir, exist_ok=True)
+    out = os.path.join(out_dir, '%s_%s.zip' % (name, time.strftime('%Y%m%d_%H%M%S')))
+    n = 0
+    with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
+        for root, dirs, files in os.walk(d):
+            dirs[:] = [x for x in dirs if not x.startswith(('.', '__pycache__')) and not x.endswith(('.runs', '.cache', '.hw', '.sim', '.ip_user_files'))]
+            for f in files:
+                p = os.path.join(root, f)
+                z.write(p, os.path.join(name, os.path.relpath(p, d)))
+                n += 1
+    return out, n
+
+
+SETTINGS_KEYS = ('workspace', 'vivado', 'manual_hosts', 'fpga_tool', 'board', 'sources_dir', 'wsl_distro')
 
 
 def connected_board():
@@ -1852,6 +1882,94 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return {'ok': True, 'text': open(p, encoding='utf-8', errors='replace').read()}
             open(p, 'w', encoding='utf-8', newline='\n').write(a['text'])
             return {'ok': True, 'out': 'saved'}
+        if path == '/api/file/rename':
+            d = proj_path(a['project'])
+            old, new = os.path.basename(a['name']), os.path.basename(a.get('to', '').strip())
+            if not NAME_RE.match(new):
+                raise ValueError('file names: letters, digits, _ . - only')
+            if not os.path.isfile(os.path.join(d, old)):
+                raise ValueError(old + ' is not in the project')
+            if os.path.exists(os.path.join(d, new)):
+                raise ValueError(new + ' already exists')
+            os.rename(os.path.join(d, old), os.path.join(d, new))
+            log('%s: %s renamed to %s' % (a['project'], old, new), 'ok')
+            return {'ok': True}
+        if path == '/api/file/delete':
+            d = proj_path(a['project'])
+            f = os.path.join(d, os.path.basename(a['name']))
+            if not os.path.isfile(f):
+                raise ValueError(a['name'] + ' is not in the project')
+            t = to_trash(f, a['project'])
+            log('%s: %s moved to %s (take it back from there if you need it)' % (a['project'], a['name'], t), 'ok')
+            return {'ok': True}
+        if path == '/api/project/rename':
+            src, new = proj_path(a['name']), a.get('to', '').strip()
+            dst = proj_path(new)
+            if os.path.exists(dst):
+                raise ValueError(new + ' already exists')
+            os.rename(src, dst)
+            for f in os.listdir(dst):                # a sketch's .ino carries the project's name
+                if f == a['name'] + '.ino':
+                    os.rename(os.path.join(dst, f), os.path.join(dst, new + '.ino'))
+            log('Project %s renamed to %s' % (a['name'], new), 'ok')
+            return {'ok': True}
+        if path == '/api/project/duplicate':
+            src, new = proj_path(a['name']), a.get('to', '').strip()
+            dst = proj_path(new)
+            if os.path.exists(dst):
+                raise ValueError(new + ' already exists')
+            shutil.copytree(src, dst, ignore=shutil.ignore_patterns('*.runs', '*.cache', '__pycache__', '.build'))
+            if os.path.exists(os.path.join(dst, a['name'] + '.ino')):
+                os.rename(os.path.join(dst, a['name'] + '.ino'), os.path.join(dst, new + '.ino'))
+            log('Project %s copied to %s' % (a['name'], new), 'ok')
+            return {'ok': True}
+        if path == '/api/project/delete':
+            src = proj_path(a['name'])
+            if not os.path.isdir(src):
+                raise ValueError('no project ' + a['name'])
+            t = to_trash(src, a['name'])
+            log('Project %s moved to %s (take it back from there if you need it)' % (a['name'], t), 'ok')
+            return {'ok': True}
+        if path == '/api/project/archive':
+            out, n = archive_project(a['name'])
+            log('Archive of %s: %d files in %s' % (a['name'], n, out), 'ok')
+            if a.get('open'):
+                startfile(os.path.dirname(out))
+            return {'ok': True, 'path': out}
+        if path == '/api/fpga/report':
+            r = fpga_flow.build_report(proj_path(a['project']))
+            return {'ok': bool(r), 'report': r, 'out': '' if r else 'no build report yet: press Build FPGA'}
+        if path == '/api/fpga/ioplan':
+            prof = board_profiles.load(fpga_flow.project_board(proj_path(a['project'])) or target_board())
+            return dict(ok=True, **fpga_ioplan.plan(proj_path(a['project']), prof, UI_DIR))
+        if path == '/api/fpga/ioplan/save':
+            d = proj_path(a['project'])
+            prof = board_profiles.load(fpga_flow.project_board(d) or target_board())
+            n, moved, free, _ = fpga_ioplan.save(d, prof, UI_DIR, a.get('assign') or {})
+            log('I/O planning of %s: %d pins in %s%s%s' % (a['project'], n, fpga_ioplan.PLAN_FILE,
+                '; older lines made comments: ' + ', '.join(moved[:8]) if moved else '',
+                '; ports without a pin: ' + ', '.join(free[:8]) if free else ''), 'ok')
+            return {'ok': True, 'written': n, 'free': free}
+        if path == '/api/settings/export':
+            out_dir = os.path.join(os.path.expanduser('~'), 'Documents', 'Ardzy')
+            os.makedirs(out_dir, exist_ok=True)
+            out = os.path.join(out_dir, 'ardzy_settings_%s.json' % time.strftime('%Y%m%d_%H%M%S'))
+            json.dump({'ardzy': APP_VERSION, 'saved': time.strftime('%Y-%m-%d %H:%M'),
+                       'app': {k: settings.get(k) for k in SETTINGS_KEYS if settings.get(k) is not None},
+                       'window': a.get('window') or {}}, open(out, 'w', encoding='utf-8'), indent=1)
+            log('Settings saved to %s' % out, 'ok')
+            if a.get('open'):
+                startfile(out_dir)
+            return {'ok': True, 'path': out}
+        if path == '/api/settings/import':
+            d = a.get('data') or {}
+            app_part = d.get('app') or {}
+            for k in SETTINGS_KEYS:
+                if k in app_part:
+                    settings[k] = app_part[k]
+            settings.save()
+            log('Settings loaded (%d app settings, %d window settings)' % (len(app_part), len(d.get('window') or {})), 'ok')
+            return {'ok': True, 'window': d.get('window') or {}}
         if path == '/api/file/new':
             name = os.path.basename(a['name'])
             p = os.path.join(proj_path(a['project']), name)

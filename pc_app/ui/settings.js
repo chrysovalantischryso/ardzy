@@ -106,6 +106,7 @@ async function appOpen(section) {
   const tc = await api('/api/fpga/toolchain');
   appEngine.toolInfo = tc.builtin ? 'Built-in toolchain: ' + tc.dir : 'Built-in toolchain not found (tools/fpga).';
   appRender();
+  $('appFootMsg').textContent = '';
   if (!$('dlgApp').open) $('dlgApp').showModal();
 }
 function appRender() {
@@ -206,18 +207,8 @@ function appRender() {
     appEngine = await api('/api/app');
     refreshProjects();
   };
-  if ($('appExport')) $('appExport').onclick = async e => {
-    e.preventDefault();
-    const all = {};
-    try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('ardzy.')) all[k] = localStorage.getItem(k); } } catch (x) { }
-    const r = await api('/api/savelog', { name: 'ardzy_settings', ext: 'txt', text: JSON.stringify(all, null, 1) });
-    $('appSaved').textContent = r.ok ? r.path : r.out;
-  };
-  if ($('appImport')) $('appImport').onchange = async () => {
-    const f = $('appImport').files[0]; if (!f) return;
-    try { const all = JSON.parse(await f.text()); Object.entries(all).forEach(([k, v]) => { if (k.startsWith('ardzy.')) localStorage.setItem(k, v); }); location.reload(); }
-    catch (x) { $('appSaved').textContent = 'not a settings file: ' + x.message; }
-  };
+  if ($('appExport')) $('appExport').onclick = appFileSave;
+  if ($('appImport')) $('appImport').onchange = () => { $('appFileLoad').files = $('appImport').files; appFileLoad(); };
   if ($('appReset')) $('appReset').onclick = e => {
     e.preventDefault();
     if (!confirm('Reset every look, text and behaviour setting of the app on this PC? (Projects and board settings stay.)')) return;
@@ -251,6 +242,41 @@ async function langRender() {
   });
 }
 
+// ------------------------------------------------------------------ Save, and the settings as a file
+function appWindowPrefs() {
+  const all = {};
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('ardzy.')) all[k] = localStorage.getItem(k); } } catch (x) { }
+  return all;
+}
+async function appSaveAll(e) {
+  if (e) e.preventDefault();
+  // the look, text and behaviour are kept as soon as they change; the fields of General and Board are sent now
+  if ($('appSaveEngine')) $('appSaveEngine').click();
+  appSave();
+  await new Promise(r => setTimeout(r, 300));
+  $('appFootMsg').textContent = T('Saved: every setting is kept on this PC.');
+}
+async function appFileSave(e) {
+  e.preventDefault();
+  const r = await api('/api/settings/export', { window: appWindowPrefs(), open: 1 });
+  $('appFootMsg').textContent = r.ok ? TF('Saved to {0}', r.path) : r.out;
+}
+async function appFileLoad() {
+  const f = $('appFileLoad').files[0];
+  if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    let win = d;
+    if (d.app || d.window) {                       // the file of "Save settings to a file"
+      const r = await api('/api/settings/import', { data: d });
+      if (!r.ok) throw new Error(r.out);
+      win = d.window || {};
+    }
+    Object.entries(win).forEach(([k, v]) => { if (k.startsWith('ardzy.')) localStorage.setItem(k, v); });
+    location.reload();
+  } catch (x) { $('appFootMsg').textContent = T('not a settings file: ') + x.message; }
+}
+
 // ------------------------------------------------------------------ start
 (function appStart() {
   appApply();
@@ -272,6 +298,9 @@ async function langRender() {
     if ((APP.panel === 'hidden') !== hidden && S.panelToggle) S.panelToggle();
   }
   $('btnSettings').onclick = () => appOpen();
+  $('appSaveAll').onclick = appSaveAll;
+  $('appFileSave').onclick = appFileSave;
+  $('appFileLoad').onchange = appFileLoad;
   document.addEventListener('keydown', e => { if (e.ctrlKey && e.key === ',') { e.preventDefault(); appOpen(); } });   // Ctrl+, = App settings
   const hs = (location.hash.match(/settings=(\w+)/) || [])[1];         // a link that opens a section: #settings=look
   if (hs) setTimeout(() => appOpen(hs), 800);

@@ -158,6 +158,7 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
         <span class="edsep"></span>
         <button class="ghost small" id="edSmaller" title="Smaller text (Ctrl -)">A-</button>
         <button class="ghost small" id="edBigger" title="Bigger text (Ctrl +)">A+</button>
+        <button class="ghost small" id="edFormat" title="Auto Format: put the indentation right and remove the spaces at line ends (Ctrl+T)">Format</button>
         <button class="ghost small" id="edSet" title="Editor settings: font, colours, indent, ruler, auto-save ...">Editor settings</button>
       </div>
     </div>
@@ -343,7 +344,10 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
   <form method="dialog">
     <h2>App settings</h2>
     <div class="app-split"><nav class="app-nav" id="appNav"></nav><div class="app-body" id="appBody"></div></div>
-    <div class="row" style="justify-content:flex-end"><button class="primary" value="ok">Done</button></div>
+    <div class="row app-foot"><button class="ghost small" id="appFileSave" title="Every setting of the app (look, text, behaviour, folders, board) into one file in Documents\Ardzy">Save settings to a file</button>
+      <label class="ghost small btnlike" title="Settings saved before (this PC or another one)">Load settings from a file<input type="file" id="appFileLoad" accept=".json" hidden></label>
+      <span class="hint grow" id="appFootMsg"></span>
+      <button class="ghost" value="cancel">Close</button><button class="primary" id="appSaveAll">Save</button></div>
   </form>
 </dialog>
 
@@ -456,6 +460,8 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
     <table class="keys">
       <tr><td><kbd>Ctrl</kbd> <kbd>U</kbd></td><td>Upload the project to the board and run it</td></tr>
       <tr><td><kbd>Ctrl</kbd> <kbd>R</kbd></td><td>Check the project (compile / test without uploading)</td></tr>
+      <tr><td><kbd>Ctrl</kbd> <kbd>T</kbd></td><td>Auto Format: the indentation right, no spaces at line ends</td></tr>
+      <tr><td>right-click</td><td>a project or a file: rename, duplicate, archive (zip), delete, I/O planning, build report</td></tr>
       <tr><td><kbd>Ctrl</kbd> <kbd>S</kbd></td><td>Save the file</td></tr>
       <tr><td><kbd>Ctrl</kbd> <kbd>F</kbd> / <kbd>F3</kbd></td><td>Find in the file / find the next one (<kbd>Shift</kbd> <kbd>F3</kbd> the one before)</td></tr>
       <tr><td><kbd>Ctrl</kbd> <kbd>H</kbd></td><td>Find and replace</td></tr>
@@ -545,6 +551,7 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
 <script src="radio.js"></script>
 <script src="ai.js"></script>
 <script src="boardprofile.js"></script>
+<script src="projtools.js"></script>
 <script src="vendor/blockly/blockly_compressed.js"></script>
 <script src="vendor/blockly/blocks_compressed.js"></script>
 <script src="vendor/blockly/en.js"></script>

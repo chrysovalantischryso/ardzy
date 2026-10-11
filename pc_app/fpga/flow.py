@@ -146,11 +146,43 @@ def clean_xdc(src_files, out, ports=None):
                         unknown.add(pat)
                         continue
                 lines += ['%s{%s}%s' % (m.group(1), x, m.group(3)) for x in hits]
+    lines, overridden = merge_port_properties(lines)
     open(out, 'w').write('\n'.join(lines) + '\n')
-    return len(lines), sorted(unknown)
+    return len(lines), sorted(unknown), overridden
+
+
+_PROP_LINE = re.compile(r'^\s*set_property\s+(?:-dict\s+\{([^}]*)\}|(\S+)\s+(\S+))\s+\[get_ports\s+\{([^}]+)\}\]\s*$')
+
+
+def merge_port_properties(lines):
+    """One line per port with all its properties; a property set twice (in two files, or a pin and then all
+    pins with leds[*]) keeps the later value, like Vivado does. nextpnr itself stops at a second value."""
+    props, order, other, overridden = {}, [], [], []
+    for line in lines:
+        m = _PROP_LINE.match(line)
+        if not m:
+            other.append(line)
+            continue
+        port = m.group(4).strip()
+        if m.group(1) is not None:
+            words = m.group(1).split()
+            pairs = list(zip(words[0::2], words[1::2]))
+        else:
+            pairs = [(m.group(2), m.group(3))]
+        if port not in props:
+            props[port] = {}
+            order.append(port)
+        for k, v in pairs:
+            k = k.upper()
+            if k in props[port] and props[port][k] != v:
+                overridden.append('%s %s %s -> %s' % (port, k, props[port][k], v))
+            props[port][k] = v
+    merged = ['set_property -dict {%s} [get_ports {%s}]' % (' '.join('%s %s' % kv for kv in props[p].items()), p) for p in order]
+    return other + merged, overridden
 
 
 # ---------------------------------------------------------------- boards with the Ethernet on FPGA pins
+XDC_PORT = re.compile(r'get_ports\s+(?:\{\s*([^}]+?)\s*\}|([^\s\]]+))\s*\]')   # {leds[0]} or leds
 ETH_PORTS = [   # (port, direction, width, the library's wire)
     ('eth_txd', 'output', 4, 'ardzy_eth_txd'), ('eth_txen', 'output', 1, 'ardzy_eth_txen'),
     ('eth_txclk', 'input', 1, 'ardzy_eth_txclk'), ('eth_rxclk', 'input', 1, 'ardzy_eth_rxclk'),
@@ -166,9 +198,9 @@ def xdc_pins(xdcs):
         for line in open(f, encoding='utf-8', errors='replace'):
             line = line.split('#')[0]
             m = re.search(r'PACKAGE_PIN\s+(\w+)', line)
-            p = re.search(r'get_ports\s+\{?\s*([^}\]]+?)\s*\}?\s*\]', line)
+            p = XDC_PORT.search(line)
             if m and p:
-                out[m.group(1).upper()] = p.group(1).strip()
+                out[m.group(1).upper()] = (p.group(1) or p.group(2)).strip()
     return out
 
 
@@ -220,7 +252,8 @@ def build(proj, log=print, freq_mhz=100, out_name=None, board=None):
     srcs = project_sources(proj)
     if not srcs:
         raise ValueError('no Verilog files (*.v) in the project')
-    xdcs = sorted(os.path.join(proj, f) for f in os.listdir(proj) if f.endswith('.xdc'))
+    xdcs = sorted((os.path.join(proj, f) for f in os.listdir(proj) if f.endswith('.xdc')),
+                  key=lambda p: (os.path.basename(p) == 'io_plan.xdc', p))      # (the I/O plan last: it wins)
     if not xdcs:
         raise ValueError('no pin constraints (*.xdc) in the project: copy ardzy_pins.xdc and uncomment your pins')
     lib = library_files()
@@ -293,9 +326,11 @@ def build(proj, log=print, freq_mhz=100, out_name=None, board=None):
     for w in check_cells(os.path.join(work, 'design.json'), synth_top):
         log('     WARNING: ' + w, 'warn')
     ports = design_ports(os.path.join(work, 'design.json'), synth_top)
-    n, unknown = clean_xdc(xdcs + board_xdc, os.path.join(work, 'pins.xdc'), ports)
+    n, unknown, overridden = clean_xdc(xdcs + board_xdc, os.path.join(work, 'pins.xdc'), ports)
     log('     %d pins in the design, %d constraint lines%s' % (
         len(ports), n, ('; constraints for ports not in the design (ignored): ' + ', '.join(unknown[:8])) if unknown else ''))
+    if overridden:
+        log('     set twice, the later one is used: %s' % ', '.join(overridden[:6]) + (' ...' if len(overridden) > 6 else ''), 'warn')
     log('2/3  Place and route (nextpnr) ...')
     # Placement is random: when a try misses the clock speed (setup) or has hold-time problems,
     # other seeds are tried and the best result is kept.
@@ -323,10 +358,10 @@ def build(proj, log=print, freq_mhz=100, out_name=None, board=None):
         shutil.copy(os.path.join(work, 'nextpnr.log'), os.path.join(work, 'nextpnr_%d.log' % seed))
         score = (ok, -hold, fmax)
         if best is None or score > best[0]:
-            best = (score, fasm, seed)
+            best = (score, fasm, seed, dict(clocks), hold)
         if ok:
             break
-    (ok, _, _), fasm, seed = best
+    (ok, _, _), fasm, seed, best_clocks, best_hold = best
     shutil.copy(os.path.join(work, fasm), os.path.join(work, 'design.fasm'))
     if not ok:
         log('     No try met the clock speed without timing problems: the design may not work reliably. '
@@ -338,15 +373,44 @@ def build(proj, log=print, freq_mhz=100, out_name=None, board=None):
                       log=lambda s: log('     ' + s))
     dst = os.path.join(proj, name + '.bit')
     shutil.copy(bit, dst)
-    write_build_info(proj, dst, prof['id'])
-    log('FPGA build done in %.0f s: %s' % (time.time() - t0, dst), 'ok')
+    cells = cell_counts(os.path.join(work, 'yosys.log'))
+    report = {'board': prof['id'], 'board_name': prof['name'], 'part': part, 'top': top, 'seconds': round(time.time() - t0),
+              'date': time.strftime('%Y-%m-%d %H:%M'), 'used': cells, 'max': CHIP_MAX, 'pins': len(ports),
+              'clocks': {k: {'fmax': f, 'need': need, 'pass': r == 'PASS'} for k, (f, r, need) in best_clocks.items()},
+              'hold_problems': best_hold, 'timing_ok': ok, 'seed': seed, 'ethernet_added': bool(eth)}
+    write_build_info(proj, dst, prof['id'], report)
+    log('     used: %s' % ', '.join('%s %d of %d (%.0f %%)' % (k, v, CHIP_MAX[k], 100.0 * v / CHIP_MAX[k])
+                                    for k, v in cells.items() if k in CHIP_MAX))
+    log('FPGA build done in %.0f s: %s (Report: the build report)' % (time.time() - t0, dst), 'ok')
     return dst
+
+
+# what the XC7Z010 has (Xilinx DS190): LUTs, flip-flops, 36 Kb block RAMs, DSP slices, user I/O pins (CLG400)
+CHIP_MAX = {'LUT': 17600, 'FF': 35200, 'BRAM': 60, 'DSP': 80, 'PINS': 100}
+
+
+def cell_counts(yosys_log):
+    """The design's cells from Yosys' statistics: LUTs, flip-flops, block RAM (36 Kb units), DSPs, clocks."""
+    try:
+        text = open(yosys_log, errors='replace').read()
+    except OSError:
+        return {}
+    text = text[text.rfind('Printing statistics'):]
+    raw = {}
+    for m in re.finditer(r'^\s+(\d+)\s+(\w+)\s*$', text, re.M):
+        raw[m.group(2)] = raw.get(m.group(2), 0) + int(m.group(1))
+    pick = lambda pre: sum(v for k, v in raw.items() if k.startswith(pre))
+    out = {'LUT': pick('LUT'), 'FF': pick('FD'), 'BRAM': raw.get('RAMB36E1', 0) + (raw.get('RAMB18E1', 0) + 1) // 2,
+           'DSP': raw.get('DSP48E1', 0), 'LUT_RAM': pick('RAM32') + pick('RAM64') + pick('RAM128') + pick('RAM256'),
+           'SRL': pick('SRL'), 'CARRY': raw.get('CARRY4', 0), 'BUFG': pick('BUFG'),
+           'MMCM_PLL': pick('MMCME2') + pick('PLLE2')}
+    return out
 
 
 BUILD_INFO = '.ardzy_build.json'       # which board each bitstream of the project was built for
 
 
-def write_build_info(proj, bit, board_id):
+def write_build_info(proj, bit, board_id, report=None):
     import hashlib
     p = os.path.join(proj, BUILD_INFO)
     try:
@@ -355,6 +419,8 @@ def write_build_info(proj, bit, board_id):
         info = {}
     info[os.path.basename(bit)] = {'board': board_id, 'sha256': hashlib.sha256(open(bit, 'rb').read()).hexdigest(),
                                    'date': time.strftime('%Y-%m-%d %H:%M')}
+    if report:
+        info[os.path.basename(bit)]['report'] = report
     json.dump(info, open(p, 'w'), indent=1)
 
 
@@ -392,3 +458,21 @@ def _yosys_stats(path):
 
 if __name__ == '__main__':
     build(sys.argv[1], log=lambda s, c=None: print(s))
+
+
+def build_report(proj):
+    """The report of the project's newest build (None if it was not built here)."""
+    try:
+        info = json.load(open(os.path.join(proj, BUILD_INFO)))
+    except (OSError, ValueError):
+        return None
+    reps = [dict(v['report'], bit=k) for k, v in info.items() if isinstance(v, dict) and v.get('report')]
+    return max(reps, key=lambda r: r.get('date', '')) if reps else None
+
+
+def project_board(proj):
+    """The board named in the project's fpga.json ({"board": "ebaz4205"}), or None."""
+    try:
+        return json.load(open(os.path.join(proj, 'fpga.json'))).get('board')
+    except (OSError, ValueError):
+        return None

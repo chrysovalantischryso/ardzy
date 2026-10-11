@@ -49,6 +49,12 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
   shows the real engine clock.
 - **A second board: the EBAZ4205** (the control board of Ebang miners, also a Zynq XC7Z010, 256 MB). Same app,
   same tools, its own SD card image. See [Other boards](#other-boards-ebaz4205) below.
+- **Tools from the Arduino IDE and Vivado**: Auto Format (Ctrl+T); rename, duplicate, archive (zip) and delete
+  projects and files (right-click, deleted items go to `projects/_trash`); for FPGA projects a **build report**
+  (LUTs, flip-flops, block RAM, DSPs, pins against the chip, and each clock's speed) and **I/O planning** (a pin
+  for every port from the board's list, written into `io_plan.xdc`); a property set twice in the constraints
+  now keeps the later value (like Vivado) instead of stopping the build.
+- **Settings**: one Save button for everything, and Save / Load settings to a file (to move them to another PC).
 - **Make your SD card image in the app**: choose the board, the settings, the languages and projects the board
   gets after its first start; or build a whole image from the sources (in WSL) with your own Debian packages,
   example projects and version.

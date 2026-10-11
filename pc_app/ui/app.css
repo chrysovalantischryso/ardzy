@@ -1101,3 +1101,23 @@ body.style-chryso :is(#mon, #ser, .uterm, .logtext, .app-term) .l-t { color: #8a
 body.style-chryso .CodeMirror-selected, body.style-chryso .CodeMirror-focused .CodeMirror-selected { background: var(--code-sel); }
 body.style-chryso .badge.cpp { border-color: var(--text); color: var(--text); }
 body.style-chryso :is(#projectList, .side, .sddisks) .item.active { background: var(--hover); border-left: 2px solid var(--text); }
+
+/* menus, the build report, I/O planning, the settings footer */
+.ptmenu { position: fixed; z-index: 1000; min-width: 210px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .25); padding: 4px; display: flex; flex-direction: column; }
+.ptmenu button { border: 0; background: transparent; justify-content: flex-start; width: 100%; border-radius: calc(var(--radius) - 2px); }
+.ptmenu button:hover:not(:disabled) { background: var(--hover); }
+.ptmenu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
+.ptmore { margin-left: 4px; font-weight: 700; }
+.rtable { border-collapse: collapse; width: 100%; margin: 4px 0 10px; }
+.rtable th { text-align: left; font-size: 12.5px; color: var(--muted); font-weight: 600; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+.rtable td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.rtable td.num { text-align: right; font-family: var(--mono); white-space: nowrap; }
+.rtable td.mono { font-family: var(--mono); }
+.rbar { display: inline-block; width: 140px; height: 9px; border: 1px solid var(--line); vertical-align: middle; margin-right: 6px; }
+.rbar i { display: block; height: 100%; background: var(--accent); }
+.rbar i.hi { background: var(--warn); }
+.iotable { max-height: 52vh; overflow-y: auto; }
+.iotable select.iopin { max-width: 420px; font-family: var(--mono); font-size: 13px; }
+.iotable select.dup { outline: 2px solid var(--err); }
+.app-foot { gap: 8px; margin-top: 10px; }
