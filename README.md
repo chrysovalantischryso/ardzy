@@ -53,7 +53,15 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
   projects and files (right-click, deleted items go to `projects/_trash`); for FPGA projects a **build report**
   (LUTs, flip-flops, block RAM, DSPs, pins against the chip, and each clock's speed) and **I/O planning** (a pin
   for every port from the board's list, written into `io_plan.xdc`); a property set twice in the constraints
-  now keeps the later value (like Vivado) instead of stopping the build.
+  now keeps the later value (like Vivado) instead of stopping the build. The build report also lists the
+  **slowest path** of every clock (logic levels, time in logic and in wires, the lines of your Verilog on it).
+- **Signal analyzer inside the FPGA** (like Vivado's ILA): mark signals with `(* mark_debug *)`, build and upload;
+  then Simulation, Analyzer (board): a trigger (at once, is, becomes, changes), up to 4096 samples around it,
+  shown as waves and saved as `analyzer.vcd`. It talks to the ARM through EMIO GPIO, so it works in every design.
+- **Schematic** (project menu): the design drawn as blocks and wires, registers and operators inside your
+  modules; click a module to go inside, click a block to find its line in the Verilog.
+- **Moving around the code**: F12 goes to where a name is made (in any file of the project), Shift+F12 lists
+  every use, Ctrl+Shift+R renames a name in every file; Include library for sketches; a right-click menu in the editor.
 - **Settings**: one Save button for everything, and Save / Load settings to a file (to move them to another PC).
 - **Make your SD card image in the app**: choose the board, the settings, the languages and projects the board
   gets after its first start; or build a whole image from the sources (in WSL) with your own Debian packages,
