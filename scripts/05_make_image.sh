@@ -127,12 +127,12 @@ if [ "$BOARD" != s9 ]; then
 fi
 # refresh the board tools too (so tool fixes don't need a full rootfs rebuild)
 bash "$HERE/scripts/install_board_files.sh" $ROOTFS
-sed -i "s|^  ARDZY .*Zynq like an Arduino .*|  ARDZY ${ARDZY_VERSION:-0.2} BETA  -  Zynq like an Arduino  ($BOARD_NAME, Debian 13)|" $ROOTFS/etc/motd
+sed -i "s|^  ARDZY .*Zynq like an Arduino .*|  ARDZY ${ARDZY_VERSION:-0.3} BETA  -  Zynq like an Arduino  ($BOARD_NAME, Debian 13)|" $ROOTFS/etc/motd
 
 # release stamp: which Ardzy image is this (shown by the app and "cat /etc/ardzy-release")
 KREL=$(ls /root/s9v2/out/modules/lib/modules/)
 cat > $ROOTFS/etc/ardzy-release <<EOF
-ARDZY_VERSION=${ARDZY_VERSION:-0.2}
+ARDZY_VERSION=${ARDZY_VERSION:-0.3}
 BOARD=$BOARD
 BUILD_DATE=$(date +%Y-%m-%d)
 UBOOT=2026.07

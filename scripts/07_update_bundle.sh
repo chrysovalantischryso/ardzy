@@ -7,7 +7,7 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 sed -i 's/\r$//' "$HERE/scripts/ensure_arm_chroot.sh"; bash "$HERE/scripts/ensure_arm_chroot.sh"   # ARM chroot (dpkg-query, apt)
-VER=${ARDZY_VERSION:-0.2}
+VER=${ARDZY_VERSION:-0.3}
 WORK=/root/s9v2
 ROOTFS=$WORK/rootfs
 B="$HERE/out/boot"

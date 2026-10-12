@@ -6,7 +6,7 @@ import http.server, json, os, re, subprocess, socketserver, sys, zipfile, io, sh
 from urllib.parse import urlparse, parse_qs
 
 sys.path.insert(0, '/usr/lib/python3/dist-packages')
-VERSION = '0.2'
+VERSION = '0.3'
 STARTED = '%d-%d' % (os.getpid(), time.monotonic())   # changes when this service restarts (the app waits for it)
 PROJ = '/opt/ardzy/projects'
 STATE = '/var/lib/ardzy'

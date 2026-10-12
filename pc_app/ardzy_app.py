@@ -736,7 +736,8 @@ def ila_board(debug):
         st = board.call('GET', '/api/ila', timeout=10)
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            raise ValueError('the board system is older than the signal analyzer: it comes with the next board system update')
+            raise ValueError('the board system is older than the signal analyzer (it needs Ardzy 0.3 on the board): '
+                             'System, System update, Ardzy-0.3-update.tar.gz')
         raise
     if not st.get('present'):
         raise ValueError('the FPGA on the board has no signal analyzer now: Upload this project first (its new .bit)')
@@ -2035,8 +2036,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 try:
                     st = board.call('GET', '/api/ila', timeout=10)
                 except urllib.error.HTTPError as e:
-                    st = {'ok': False, 'out': 'the board system is older than the signal analyzer: it comes with the next '
-                                              'board system update' if e.code == 404 else str(e)}
+                    st = {'ok': False, 'out': 'the board system is older than the signal analyzer (it needs Ardzy 0.3 on the board): '
+                                              'System, System update, Ardzy-0.3-update.tar.gz' if e.code == 404 else str(e)}
                 except Exception as e:
                     st = {'ok': False, 'out': str(e)}
             return {'ok': True, 'debug': debug, 'board': st}

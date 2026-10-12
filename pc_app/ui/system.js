@@ -204,7 +204,7 @@ async function sysSettings() {
   $('updGo').onclick = async () => {
     const f = $('updFile').value;
     if (!f) return alert('Choose an update file.');
-    if (!confirm('Install ' + f.split(/[\\/]/).pop() + ' on the board? Programs keep running; a restart is needed at the end.')) return;
+    if (!confirm('Install ' + f.split(/[\\/]/).pop() + ' on the board? Programs keep running; if it brings a new kernel, a restart is needed at the end.')) return;
     showTab('output');
     const r = await api('/api/board/update', { path: f });
     if (!r.ok) return out(r.out, 'err');

@@ -5,7 +5,13 @@
 #   out/release/HOW_TO_FLASH.txt             instructions
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
-VER=${ARDZY_VERSION:-0.2}
+VER=${ARDZY_VERSION:-0.3}
+# (only images made with ARDZY_FALLBACK=1 and your own fallback/BOOT_fallback.bin carry the old boot loader)
+FB_TEXT=""
+if [ "${ARDZY_FALLBACK:-1}" = 1 ] && [ -f "$(cd "$(dirname "$0")/.." && pwd)/fallback/BOOT_fallback.bin" ]; then
+  FB_TEXT="This card also has the old boot loader: on its BOOT partition rename BOOT.bin -> BOOT_new.bin and
+BOOT_fallback.bin -> BOOT.bin, then try again."
+fi
 SRC=/root/s9v2/ardzy_debian13.img           # written by 05_make_image.sh
 REL="$HERE/out/release"
 NAME=Ardzy-$VER-sdcard.img
@@ -43,9 +49,10 @@ Inside: U-Boot 2026.07 (SPL), Linux $(ls /root/s9v2/out/modules/lib/modules/), D
 Ardzy tools, web page, Arduino core and libraries, the pin-control FPGA design (loaded at power-on),
 example projects. Settings: ardzy.txt on the boot partition.
 
-Did not start? On the card's BOOT partition (opens in Windows) rename
-BOOT.bin -> BOOT_new.bin and BOOT_fallback.bin -> BOOT.bin, then try again.
-Full guide: Desktop\\FPGA\\Documents\\02_Ardzy.html
+Did not start? Check the boot jumpers (JP2 = 1, JP4 = 1) and the 12 V power, write the card again
+(the app checks it after writing) and wait 2 minutes. Still nothing: please report it in Issues.
+$FB_TEXT
+Full guide: https://github.com/chrysovalantischryso/ardzy
 
 Check the download (PowerShell):  Get-FileHash $NAME.xz   (compare with SHA256SUMS.txt)
 EOF

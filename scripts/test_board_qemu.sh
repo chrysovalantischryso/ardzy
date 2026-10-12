@@ -12,7 +12,9 @@ RAM=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['ram_mb'])
 mkdir -p $Q && cd $Q
 pkill -f qemu-system-arm 2>/dev/null; sleep 1
 command -v sshpass >/dev/null || apt-get install -y -qq sshpass >/dev/null
-if [ "$BOARD" = s9 ]; then cp "$HERE/out/ardzy_debian13.img" sd.img; else cp "$HERE/out/ardzy_debian13_$BOARD.img" sd.img; fi
+# IMG=<file .img or .img.xz> tests that image (for example a release); else the last one 05_make_image.sh made
+if [ -n "${IMG:-}" ]; then case "$IMG" in *.xz) xz -dc "$IMG" > sd.img ;; *) cp "$IMG" sd.img ;; esac
+elif [ "$BOARD" = s9 ]; then cp "$HERE/out/ardzy_debian13.img" sd.img; else cp "$HERE/out/ardzy_debian13_$BOARD.img" sd.img; fi
 truncate -s 4G sd.img
 : > board.log
 API=http://127.0.0.1:8080
@@ -45,6 +47,7 @@ check "ardzy.py: the S9 names work (led green, button ip)" "$SSH 'python3 -c \"i
 [ "$BOARD" = s9 ] || check "ardzy.py: this board's names work (button s3, led red)" "$SSH 'python3 -c \"import ardzy; ardzy.button(\\\"s3\\\"); ardzy.led(\\\"red\\\", False)\"'"
 check "welcome text names the board" "$SSH 'grep -qi \"$MODEL\" /etc/motd'"
 check "release file has the board" "$SSH 'grep -q BOARD=$BOARD /etc/ardzy-release'"
+check "signal analyzer service answers (no analyzer in an empty FPGA)" "curl -s -m 5 $API/api/ila | python3 -c \"import json,sys; d=json.load(sys.stdin); sys.exit(not (d.get('ok') and d.get('present') is False))\""
 check "the NAND is read-only" "$SSH 'grep -q . /sys/class/mtd/mtd0/name && test \$(( \$(cat /sys/class/mtd/mtd0/flags) & 0x400 )) -eq 0' || $SSH 'test ! -e /sys/class/mtd/mtd0'"
 check "no failed services" "[ -z \"\$($SSH 'systemctl --failed --no-legend')\" ]"
 $SSH 'systemctl --failed --no-legend; cat /run/ardzy/board-io.txt; journalctl -b -u ardzy-board -o cat | tail -3' 2>/dev/null

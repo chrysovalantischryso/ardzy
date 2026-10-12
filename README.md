@@ -36,7 +36,9 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
 
 ## New in 0.3
 
-0.3 is a new version of the **app**; the board's system on the SD card stays 0.2 (same image as before).
+The app and the board's system are both 0.3. The board's system has the same boot loader, Linux and Debian as 0.2
+(tested on the real board); what is new there are the Ardzy files: the signal analyzer, the board profiles and the
+libraries. A board with 0.2 updates in a few seconds, without a restart (see [Flash and start](#flash-and-start)).
 
 - **More programming languages**: C++, Shell (bash), Perl and ARM assembly are built into every board;
   JavaScript (Node.js), Lua, Go and Rust install with one click (Settings, Languages: the PC downloads them
@@ -56,8 +58,8 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
 - **Signal analyzer inside the FPGA** (like Vivado's ILA): mark signals with `(* mark_debug *)`, build and upload;
   then Simulation, Analyzer (board): a trigger (at once, is, becomes, changes), up to 4096 samples around it,
   shown as waves and saved as `analyzer.vcd`. It talks to the ARM through EMIO GPIO, so it works in every design.
-  It needs a small new part on the board (`/opt/ardzy/web/ila.py`), which comes with the next board system
-  update; until then the app says so. Not yet tested on a real board.
+  Tested on the real S9: a counter at 100 MHz (every sample, no gaps), PWM outputs (duty and period exact),
+  every trigger kind, a trigger seconds later, and "Trigger now". It needs the board system 0.3.
 - **Schematic** (project menu): the design drawn as blocks and wires, registers and operators inside your
   modules; click a module to go inside, click a block to find its line in the Verilog.
 - **Moving around the code**: F12 goes to where a name is made (in any file of the project), Shift+F12 lists
@@ -84,8 +86,7 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
 You need: an Antminer S9 control board, a 12 V supply (6-pin PCIe plug), a microSD card (4 GB or more),
 an Ethernet cable and a Windows PC.
 
-1. Download from [Releases](../../releases): `Ardzy-0.3-BETA-windows.zip` and `Ardzy-0.2-sdcard.img.xz`
-   (the app is 0.3; the board's system on the SD card is still 0.2).
+1. Download from [Releases](../../releases): `Ardzy-0.3-BETA-windows.zip` and `Ardzy-0.3-sdcard.img.xz`.
 2. Unzip the app and start `Ardzy.exe`. Press **SD card**, choose the image and your card, Write.
    (balenaEtcher works too.)
    The app is not code-signed, so the first time Windows may show "Windows protected your PC":
@@ -189,12 +190,13 @@ port 41414, also over a direct cable). Everything is inside the app, nothing els
 Rebuild the exe with `pc_app\build_exe.bat` (needs `pc_app\tools\fpga`, made by `pc_app\fpga\make_toolchain.sh`).
 
 ## Flash and start
-1. App, **SD card** (or balenaEtcher): write `Ardzy-0.2-sdcard.img.xz` (Releases, or `out/release/` after a build) to a microSD card.
+1. App, **SD card** (or balenaEtcher): write `Ardzy-0.3-sdcard.img.xz` (Releases, or `out/release/` after a build) to a microSD card.
 2. Boot jumpers on SD (JP2, JP4), card in the board, power on, wait about 2 minutes.
 3. The app finds **ardzy.local**. Browser: http://ardzy.local. PuTTY: `ardzy.local`, **root / root**.
 
 A board that already runs Ardzy: System, Settings and update, **Install update**
-(`Ardzy-0.2-update.tar.gz` from Releases, also works for 0.1 boards), then Restart.
+(`Ardzy-0.3-update.tar.gz` from Releases: the Ardzy files only, no restart needed). A board with 0.1 first takes
+`Ardzy-0.2-update.tar.gz` (from the 0.2 release; new kernel, then Restart), then the 0.3 update.
 
 ## Projects
 A **project** is a folder in `projects\`:
@@ -266,6 +268,7 @@ A USB-serial adapter on the UART header (115200) shows where a boot stops.
 03_build_kernel.sh kernel + dtb         04_build_rootfs.sh Debian 13 + ardzy tools
 05_make_image.sh  SD image -> out/      06_release.sh      out/release/*.img.xz
 07_update_bundle.sh update bundle       test_os2_qemu.sh   emulator test of OS 0.2
+07b_files_release.sh  a release of the Ardzy files only: update bundle + the earlier image with them
 03b_board_dtb.sh  device tree of another board (BOARD=ebaz4205)
 test_board_qemu.sh  emulator test of a board's image (BOARD=s9 or BOARD=ebaz4205)
 test_uboot_for_qemu.sh  U-Boot for the emulator tests (keeps uboot.env like the board)
