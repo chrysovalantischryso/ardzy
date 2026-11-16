@@ -1,0 +1,19 @@
+{
+ "databases": {
+  "658886ab4f31841e": {
+   "empty": "37f521181721f21c",
+   "random_1": "3453a20d5f50165f",
+   "random_2": "724e91043b5ffc2d",
+   "random_3": "4c837ec8bc144e09",
+   "random_4": "edc0f2c79b5039a3",
+   "random_5": "37e1fb1bdefac735",
+   "random_6": "8f93dc3ab41fed50",
+   "stepdown": "022c3bd5846ff0f9"
+  }
+ },
+ "prjxray_db": {
+  "commit": "0a0addedd73e7e4139d52a6d8db4258763e0f1f3",
+  "family": "zynq7",
+  "repo": "https://github.com/f4pga/prjxray-db"
+ }
+}

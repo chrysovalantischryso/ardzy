@@ -17,6 +17,7 @@ written for Ardzy.
 | EBAZ4205 device trees, based on Linux's zynq-ebaz4205.dts (Michael Walle) | `boards/ebaz4205/kernel`, `boards/ebaz4205/uboot/*.dts` | GPL-2.0 |
 | EBAZ4205 pin map (facts from KeitetsuWorks/EBAZ4205, xjtuecho/EBAZ4205 and Michael Walle's pinout) | `boards/ebaz4205/board.json` | written for Ardzy |
 | nextpnr patch | `pc_app/fpga/nextpnr_ardzy.patch` | ISC (as nextpnr) |
+| fasm2bit / bit2fasm: ports of Project X-Ray's fasm2frames, xc7frames2bit, bitread and bit2fasm | `pc_app/fpga/fasm2bit.py`, `pc_app/fpga/bit2fasm.py` | ISC (as Project X-Ray) |
 
 ## Inside the Windows app (Release zip)
 

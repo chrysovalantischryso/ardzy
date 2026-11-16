@@ -131,6 +131,15 @@ reference manual, the app, the FPGA projects and the lessons.
   The app needs the FPGA tools in `pc_app\tools` (too big for git): copy the `tools` folder from
   the release zip (`_internal\tools`) or build them with `pc_app\fpga\make_toolchain.sh` (MSYS2).
   Then run `pc_app\build_exe.bat`. For a quick test without building: `python pc_app\ardzy_app.py`.
+- **Test the bitstream writer**: `python pc_app/tests/fasm2bit_test.py` builds an empty design, random designs
+  (features of every tile type), a STEPDOWN pin and a damaged file, reads each `.bit` back with
+  `pc_app/fpga/bit2fasm.py` and checks that every frame, ECC and feature comes back, plus golden hashes of the
+  frames. It uses the app's `pc_app/tools/fpga/db/zynq7`, or a [prjxray-db](https://github.com/f4pga/prjxray-db)
+  `zynq7` folder in `ARDZY_PRJXRAY_DB`. Give it `.fasm` files (or `ARDZY_FASM_DIR`) to check real designs, and
+  `--build` to build every ready project first (Windows, built-in toolchain). With `PRJXRAY_TOOLS` (`bitread`,
+  `xc7frames2bit`) and `PRJXRAY_ROOT` (a prjxray checkout, `pip install fasm`) it also compares every design
+  with the original Project X-Ray tools; the GitHub workflow `.github/workflows/fasm2bit.yml` does all of this.
+  After a change to fasm2bit on purpose: `--update-golden`.
 
 ## License
 

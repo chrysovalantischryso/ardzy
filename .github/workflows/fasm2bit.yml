@@ -1,0 +1,92 @@
+# The built-in bitstream writer (pc_app/fpga/fasm2bit.py), checked against Project X-Ray:
+# FASM -> fasm2bit -> .bit -> bit2fasm round trip, golden frame hashes, and the same designs through
+# the original prjxray tools (fasm2frames.py, xc7frames2bit, bitread). See pc_app/tests/fasm2bit_test.py.
+name: fasm2bit
+
+on:
+  push:
+    paths:
+      - 'pc_app/fpga/fasm2bit.py'
+      - 'pc_app/fpga/bit2fasm.py'
+      - 'pc_app/tests/fasm2bit_test.py'
+      - 'pc_app/tests/data/fasm2bit_golden.json'
+      - '.github/workflows/fasm2bit.yml'
+  pull_request:
+    paths:
+      - 'pc_app/fpga/fasm2bit.py'
+      - 'pc_app/fpga/bit2fasm.py'
+      - 'pc_app/tests/fasm2bit_test.py'
+      - 'pc_app/tests/data/fasm2bit_golden.json'
+      - '.github/workflows/fasm2bit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # the versions the golden hashes were made with (pc_app/tests/data/fasm2bit_golden.json)
+  PRJXRAY_DB_COMMIT: 0a0addedd73e7e4139d52a6d8db4258763e0f1f3
+  PRJXRAY_COMMIT: c9f02d8576042325425824647ab5555b1bc77833
+
+jobs:
+  roundtrip:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache the Project X-Ray database (zynq7)
+        id: db-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/prjxray-db
+          key: prjxray-db-zynq7-v2-${{ env.PRJXRAY_DB_COMMIT }}
+
+      - name: Get the Project X-Ray database (only what fasm2bit reads)
+        if: steps.db-cache.outputs.cache-hit != 'true'
+        run: |
+          git init -q ~/prjxray-db
+          cd ~/prjxray-db
+          git remote add origin https://github.com/f4pga/prjxray-db.git
+          git sparse-checkout set --no-cone '/zynq7/mapping/*' '/zynq7/xc7z010/tilegrid.json' \
+            '/zynq7/xc7z010clg400-1/*' '/zynq7/segbits_*.db' '/zynq7/ppips_*.db' '/zynq7/mask_*.db' \
+            '/zynq7/tile_type_*.json' '/COPYING'
+          git fetch -q --depth 1 --filter=blob:none origin "$PRJXRAY_DB_COMMIT"
+          git checkout -q FETCH_HEAD
+          du -sh zynq7
+
+      - name: Cache the Project X-Ray tools
+        id: xray-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/prjxray
+          key: prjxray-tools-${{ runner.os }}-${{ env.PRJXRAY_COMMIT }}
+
+      - name: Build the Project X-Ray tools (bitread, xc7frames2bit)
+        if: steps.xray-cache.outputs.cache-hit != 'true'
+        run: |
+          git init -q ~/prjxray
+          cd ~/prjxray
+          git remote add origin https://github.com/f4pga/prjxray.git
+          git fetch -q --depth 1 origin "$PRJXRAY_COMMIT"
+          git checkout -q FETCH_HEAD
+          git submodule update --init --depth 1 third_party/abseil-cpp third_party/cctz \
+            third_party/googletest third_party/gflags third_party/yaml-cpp third_party/sanitizers-cmake
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DPRJXRAY_BUILD_TESTING=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake --build build -j"$(nproc)" --target bitread xc7frames2bit
+          find build -mindepth 1 -maxdepth 1 ! -name tools -exec rm -rf {} +
+          find build/tools -mindepth 1 ! -name bitread ! -name xc7frames2bit -exec rm -rf {} +
+
+      - name: Python packages for prjxray's fasm2frames.py
+        run: python -m pip install fasm intervaltree simplejson pyjson5 progressbar2 pyyaml numpy
+
+      - name: Round trip, golden hashes, and against Project X-Ray
+        env:
+          ARDZY_REQUIRE_DB: '1'
+        run: |
+          export ARDZY_PRJXRAY_DB=~/prjxray-db/zynq7 PRJXRAY_TOOLS=~/prjxray/build/tools PRJXRAY_ROOT=~/prjxray
+          python pc_app/tests/fasm2bit_test.py --seeds 20
