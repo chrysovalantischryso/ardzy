@@ -58,6 +58,15 @@ def settings_dir():
     return os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), APP)
 
 
+def workspace():
+    """Where this user's projects are (the app's setting), or None when Ardzy never ran here."""
+    try:
+        w = json.load(open(os.path.join(settings_dir(), 'settings.json'), encoding='utf-8')).get('workspace')
+        return w if w and os.path.isdir(w) else None
+    except (OSError, ValueError):
+        return None
+
+
 # ------------------------------------------------------------------ checks
 def running_from(folder):
     """The programs that run from this folder now (Ardzy.exe, or a tool it started). Windows lets a running
@@ -152,8 +161,12 @@ def register(folder, size_kb):
             winreg.SetValueEx(k, name, 0, winreg.REG_DWORD, val)
 
 
-def unregister():
+def unregister(folder):
+    """Remove the Apps entry, but only when it is the entry of this folder (another install keeps its own)."""
     import winreg
+    where = installed()[0]
+    if where and os.path.normcase(os.path.abspath(where)) != os.path.normcase(os.path.abspath(folder)):
+        return
     try:
         winreg.DeleteKey(winreg.HKEY_CURRENT_USER, REG_KEY)
     except OSError:
@@ -235,7 +248,7 @@ def uninstall(folder, remove_settings=False, progress=lambda f, t: None):
     for link in (start_menu_link(), desktop_link()):
         if os.path.exists(link) and shortcut_is_ours(link, folder):
             os.remove(link)
-    unregister()
+    unregister(folder)
     progress(0.6, 'Removing the app ...')
     shutil.rmtree(gone, ignore_errors=True)
     if os.path.exists(gone):          # the uninstaller that started us still waits in there: it goes when it ends
@@ -408,11 +421,16 @@ def run_gui(mode, folder=None):
         old_dir, old_ver = installed()
         text('Welcome', size=13, pady=(0, 4))
         if old_dir and os.path.exists(os.path.join(old_dir, MARKER)):
-            text('Ardzy %s is installed. Setup replaces it with %s. Your projects and settings stay as they are.'
-                 % (old_ver, FULL_NAME.replace(APP + ' ', '')), muted=True, pady=(0, 12))
+            if old_ver == META['version']:
+                msg = '%s is already installed. Setup installs it again (this repairs it).' % FULL_NAME
+            else:
+                msg = 'Ardzy %s is installed. Setup updates it to %s.' % (old_ver, FULL_NAME.replace(APP + ' ', ''))
+            text(msg + ' Your projects and settings stay as they are.', muted=True, pady=(0, 12))
         else:
-            text('Setup puts Ardzy on this PC for you (no administrator rights needed). Your projects stay in '
-                 'Documents\\Ardzy, your settings in your Windows profile.', muted=True, pady=(0, 12))
+            ws = workspace()
+            text('Setup puts Ardzy on this PC for you (no administrator rights needed). ' +
+                 ('Your projects in %s and your settings stay as they are.' % ws if ws else
+                  'Your projects go to Documents\\Ardzy, your settings to your Windows profile.'), muted=True, pady=(0, 12))
         text('Folder', pady=(0, 3))
         row = tk.Frame(body, bg=C['bg'])
         row.pack(fill='x', pady=(0, 12))
@@ -467,11 +485,12 @@ def run_gui(mode, folder=None):
             ttk.Button(foot, text='Close', command=lambda: close(1)).pack(side='right')
             return
         text('Remove Ardzy from this PC?', size=13, pady=(0, 6))
-        text('The app and its shortcuts are removed. Your projects (Documents\\Ardzy) always stay.', muted=True, pady=(0, 12))
-        text('Folder: ' + f, muted=True, pady=(0, 12))
+        text('The app and its shortcuts are removed. Your projects always stay%s.' % (' (%s)' % workspace() if workspace() else ''),
+             muted=True, pady=(0, 8))
+        text('App folder: ' + f, muted=True, pady=(0, 12))
         v_set = tk.BooleanVar(value=False)
-        ttk.Checkbutton(body, text='Also remove my Ardzy settings (window, editor, boards: %s)' % settings_dir(),
-                        variable=v_set).pack(anchor='w')
+        ttk.Checkbutton(body, text='Also remove my Ardzy settings (window, editor, boards)', variable=v_set).pack(anchor='w')
+        text(settings_dir(), muted=True, size=9, padx=(int(25 * scale), 0))
 
         def go():
             if app_running(f, ignore=(UNINSTALLER,)):
@@ -483,7 +502,8 @@ def run_gui(mode, folder=None):
     def removed():
         clear()
         text('Ardzy is removed', size=13, pady=(0, 6))
-        text('Your projects are still in Documents\\Ardzy.', muted=True)
+        ws = workspace()
+        text(('Your projects are still in %s.' % ws) if ws else 'Your projects are still there.', muted=True)
         state['result'] = 0
         ttk.Button(foot, text='Close', style='Accent.TButton', command=lambda: close(0)).pack(side='right')
 
@@ -540,7 +560,10 @@ def main():
     silent = flag('S')
     folder = arg('DIR')
     if uninstall_mode:
-        folder = folder or installed()[0] or os.path.dirname(os.path.abspath(sys.executable))
+        # which Ardzy: /DIR, else the folder this uninstaller is in (Settings > Apps starts the one of that
+        # install), and only without either the one in the Apps entry
+        here = os.path.dirname(os.path.abspath(sys.executable))
+        folder = folder or (here if os.path.exists(os.path.join(here, MARKER)) else None) or installed()[0] or here
         me = os.path.abspath(sys.executable)
         # running from the folder it removes: work from a copy in %TEMP% (the copy goes a moment later)
         if getattr(sys, 'frozen', False) and os.path.dirname(me).lower() == os.path.abspath(folder).lower() and not flag('FROMTEMP'):

@@ -42,9 +42,40 @@ def lnk_target(link):
     return subprocess.run(['powershell', '-NoProfile', '-Command', ps], capture_output=True, text=True).stdout.strip()
 
 
+REAL = {}          # a real install of this user: its Apps entry and shortcuts, put back by cleanup()
+
+
+def save_real():
+    import shutil
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, KEY) as k:
+            REAL['key'] = [winreg.EnumValue(k, i) for i in range(winreg.QueryInfoKey(k)[1])]
+    except OSError:
+        return
+    REAL['dir'] = tempfile.mkdtemp(prefix='ardzy_real_links_')
+    for i, link in enumerate((START, desktop())):
+        if os.path.exists(link):
+            shutil.copy2(link, os.path.join(REAL['dir'], '%d.lnk' % i))
+    print('(a real Ardzy is installed in %s: its Apps entry and shortcuts are saved and put back after the test)'
+          % dict((n, v) for n, v, _t in REAL['key']).get('InstallLocation'))
+
+
+def restore_real():
+    import shutil
+    if 'key' not in REAL:
+        return
+    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, KEY) as k:
+        for name, val, typ in REAL['key']:
+            winreg.SetValueEx(k, name, 0, typ, val)
+    for i, link in enumerate((START, desktop())):
+        b = os.path.join(REAL['dir'], '%d.lnk' % i)
+        if os.path.exists(b):
+            shutil.copy2(b, link)
+    shutil.rmtree(REAL['dir'], ignore_errors=True)
+
+
 def main():
-    if reg() is not None:
-        raise SystemExit('Ardzy is installed for this user: this test would replace it. Uninstall first.')
+    save_real()
     base = tempfile.mkdtemp(prefix='ardzy_inst_')
     folder = os.path.join(base, 'Ardzy')
     print('Setup: %s (%d MB)\nfolder: %s' % (SETUP, os.path.getsize(SETUP) >> 20, folder))
@@ -104,6 +135,19 @@ def main():
     check('refuses a folder with other files (they stay)', r.returncode == 1 and open(os.path.join(other, 'mine.txt')).read() == 'keep me')
     check('... and the real install was not moved', (reg() or {}).get('InstallLocation') == folder)
 
+    # two installs: the uninstaller of one must remove only its own folder, and leave the other's Apps entry
+    second = os.path.join(base, 'second', 'Ardzy')
+    r = subprocess.run([SETUP, '/S', '/DIR=' + second, '/NODESKTOP', '/NOSTARTMENU'], timeout=180)
+    check('a second install (the Apps entry now names it)', r.returncode == 0 and (reg() or {}).get('InstallLocation') == second)
+    r = subprocess.run([os.path.join(folder, 'Ardzy-uninstall.exe'), '/S'], timeout=180)
+    time.sleep(8)
+    check('the first folder\'s uninstaller removed the first folder', r.returncode == 0 and not os.path.exists(folder),
+          (r.returncode, os.path.exists(folder)))
+    check('... and left the second install and its Apps entry', os.path.exists(os.path.join(second, 'Ardzy.exe')) and
+          (reg() or {}).get('InstallLocation') == second)
+    check('... and removed its own Start menu shortcut', not os.path.exists(START))
+    folder = second
+
     # uninstall the way Windows does it (QuietUninstallString)
     t = time.time()
     r = subprocess.run((reg() or {}).get('QuietUninstallString', ''), shell=False, timeout=180)
@@ -133,6 +177,7 @@ def cleanup():
             os.remove(link)
     for d in glob.glob(os.path.join(tempfile.gettempdir(), 'ardzy_inst_*')) + glob.glob(os.path.join(tempfile.gettempdir(), 'ardzy_set_*')):
         shutil.rmtree(d, ignore_errors=True)
+    restore_real()
 
 
 if __name__ == '__main__':
