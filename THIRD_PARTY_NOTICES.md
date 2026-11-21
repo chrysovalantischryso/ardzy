@@ -19,7 +19,7 @@ written for Ardzy.
 | EBAZ4205 pin map (facts from KeitetsuWorks/EBAZ4205, xjtuecho/EBAZ4205 and Michael Walle's pinout) | `boards/ebaz4205/board.json` | written for Ardzy |
 | nextpnr patch | `pc_app/fpga/nextpnr_ardzy.patch` | ISC (as nextpnr) |
 
-## Inside the Windows app (Release zip)
+## Inside the Windows app (Release zip and Setup)
 
 | Part | License | Source |
 |---|---|---|
@@ -29,6 +29,7 @@ written for Ardzy.
 | Icarus Verilog | GPL-2.0-or-later | https://github.com/steveicarus/iverilog |
 | MSYS2 runtime DLLs used by the tools above | various free licenses | https://www.msys2.org |
 | Python, pywebview, pyserial, numpy, PyAudioWPatch, PyInstaller | PSF, BSD-3, BSD-3, BSD-3, MIT, GPL with bootloader exception | https://pypi.org |
+| Tcl/Tk (the window of the Setup program and the uninstaller, through Python's tkinter) | Tcl/Tk license (BSD-style) | https://www.tcl-lang.org |
 
 ## Inside the SD card image (Release file)
 

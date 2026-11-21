@@ -129,15 +129,18 @@ libraries. A board with 0.2 updates in a few seconds, without a restart (see [Fl
 ## Quick start
 
 You need: an Antminer S9 control board, a 12 V supply (6-pin PCIe plug), a microSD card (4 GB or more),
-an Ethernet cable and a Windows PC.
+a Windows PC, and an Ethernet cable or a 3.3 V USB-UART adapter (CP2102, CH340, FT232).
 
-1. Download from [Releases](../../releases): `Ardzy-0.3-BETA-windows.zip` and `Ardzy-0.3-sdcard.img.xz`.
-2. Unzip the app and start `Ardzy.exe`. Press **SD card**, choose the image and your card, Write.
-   (balenaEtcher works too.)
+1. Download from [Releases](../../releases): `Ardzy-0.3.1-BETA-Setup.exe` and `Ardzy-0.3.1-sdcard.img.xz`.
+2. Start the Setup and press **Install** (it makes Start menu and Desktop shortcuts; no administrator rights).
+   Or, without installing: `Ardzy-0.3.1-BETA-windows.zip`, unzip it and start `Ardzy\Ardzy.exe`.
    The app is not code-signed, so the first time Windows may show "Windows protected your PC":
    click **More info**, then **Run anyway**.
-3. Set the boot jumpers to SD card (**JP2 = 1, JP4 = 1**), put the card in, connect Ethernet, power on.
-4. Wait about 2 minutes. The app finds **ardzy.local** by itself.
+3. In Ardzy press **SD card**, choose the image and your card, Write (balenaEtcher works too).
+4. Set the boot jumpers to SD card (**JP2 = 1, JP4 = 1**), put the card in, connect Ethernet, power on.
+   Wait about 2 minutes. The app finds **ardzy.local** by itself.
+   No network cable: a USB-UART adapter on the console header J12 (adapter TX to pin 1, RX to pin 3, GND to pin 2),
+   then the board button (top right), "Or over a USB-UART cable", your COM port, Connect over cable.
 
 The default login is **root / root**: change it (App: System, Settings; or `passwd` over SSH, or
 `password = ...` in `ardzy.txt` on the card) before you connect the board to a network you share.
@@ -238,13 +241,14 @@ port 41414, also over a direct cable). Everything is inside the app, nothing els
 Rebuild the exe with `pc_app\build_exe.bat` (needs `pc_app\tools\fpga`, made by `pc_app\fpga\make_toolchain.sh`).
 
 ## Flash and start
-1. App, **SD card** (or balenaEtcher): write `Ardzy-0.3-sdcard.img.xz` (Releases, or `out/release/` after a build) to a microSD card.
+1. App, **SD card** (or balenaEtcher): write `Ardzy-0.3.1-sdcard.img.xz` (Releases, or `out/release/` after a build) to a microSD card.
 2. Boot jumpers on SD (JP2, JP4), card in the board, power on, wait about 2 minutes.
 3. The app finds **ardzy.local**. Browser: http://ardzy.local. PuTTY: `ardzy.local`, **root / root**.
 
 A board that already runs Ardzy: System, Settings and update, **Install update**
-(`Ardzy-0.3-update.tar.gz` from Releases: the Ardzy files only, no restart needed). A board with 0.1 first takes
-`Ardzy-0.2-update.tar.gz` (from the 0.2 release; new kernel, then Restart), then the 0.3 update.
+(`Ardzy-0.3.1-update.tar.gz` from Releases: the Ardzy files only, no restart needed; for a board with 0.3).
+A board with 0.2 first takes `Ardzy-0.3-update.tar.gz` (from the 0.3 release); a board with 0.1 first takes
+`Ardzy-0.2-update.tar.gz` (from the 0.2 release; new kernel, then Restart), then the 0.3 and 0.3.1 updates.
 
 ## Projects
 A **project** is a folder in `projects\`:
