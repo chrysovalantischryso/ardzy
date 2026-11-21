@@ -36,6 +36,13 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
 
 ## In development (after 0.3, not released yet)
 
+- **Windows installer** `Ardzy-0.3-BETA-Setup.exe` (72 MB): installs Ardzy for your Windows user (no administrator
+  rights, folder `%LOCALAPPDATA%\Programs\Ardzy` or one you choose), with shortcuts in the Start menu and on the
+  Desktop, an entry in Windows Settings > Apps, and an uninstaller. A newer version replaces the old one (it is
+  unpacked next to it first, so a failed install never leaves half an app); Setup waits while Ardzy runs. Your
+  projects (Documents\Ardzy) and settings (%APPDATA%\Ardzy) are never touched; the uninstaller removes the settings
+  only when you tick that box. For scripts: `Setup.exe /S [/DIR=folder] [/NODESKTOP] [/NOSTARTMENU] [/RUN]` and
+  `Ardzy-uninstall.exe /S [/REMOVESETTINGS]`.
 - **The whole app over a USB-UART cable** (no network cable needed; asked for in issue 1). Board button, top right,
   "Or over a USB-UART cable": choose the COM port and press Connect over cable. The app logs in on the board's console
   (root / root, or your password), copies a small link program to the board when it is missing or older (about 3 s),
@@ -162,6 +169,9 @@ reference manual, the app, the FPGA projects and the lessons.
   The app needs the FPGA tools in `pc_app\tools` (too big for git): copy the `tools` folder from
   the release zip (`_internal\tools`) or build them with `pc_app\fpga\make_toolchain.sh` (MSYS2).
   Then run `pc_app\build_exe.bat`. For a quick test without building: `python pc_app\ardzy_app.py`.
+- **Windows installer**: after `build_exe.bat`, `python pc_app\installer\make_installer.py` makes
+  `pc_app\dist\Ardzy-<version>-Setup.exe` (about 72 MB). `python pc_app\installer\test_installer.py` checks it
+  (install, shortcuts, Apps entry, upgrade, a running Ardzy, uninstall) in a temporary folder.
 
 ## License
 
