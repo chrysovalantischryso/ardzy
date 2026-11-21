@@ -34,6 +34,37 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
   - **Board, I/O, Map, System** views: every pin, the board drawn to scale, Linux processes, logs, updates.
   - **Languages**: English, Greek, Russian. **Settings**: colours, size, fonts and more.
 
+## In development (after 0.3, not released yet)
+
+- **The whole app over a USB-UART cable** (no network cable needed; asked for in issue 1). Board button, top right,
+  "Or over a USB-UART cable": choose the COM port and press Connect over cable. The app logs in on the board's console
+  (root / root, or your password), copies a small link program to the board when it is missing or older (about 3 s),
+  and starts it; then every view works as over the network (Code, Upload, Monitor, Board, I/O, Tools, AI ...), at
+  921600 baud (about 90 KB/s; the app goes back to 115200 by itself if the adapter can not). Disconnect gives the
+  console back to its login. Wiring: a 3.3 V USB-UART adapter on the console header J12 (on many boards its pins are
+  not fitted: solder a small header): adapter TX to board RX, RX to TX, GND to GND, no power wire. Works with every
+  board that has Ardzy 0.3 (nothing to install). Not possible over the cable: the NAND backup and the network speed test.
+  Tested: the whole start through a real shell on the real S9 (over SSH, the same steps as on the console) and every
+  call on a pretend board; not yet with a real USB-UART adapter (the getty login and the speed change).
+- **Terminal** (bottom tab): a real bash shell on the board in the app (xterm.js), with colours, programs like
+  `top` and `nano`, Ctrl+C, resizing, copy (Ctrl+Shift+C) and paste (Ctrl+Shift+V). The shell keeps running when the
+  window reloads. Over the cable it works on every board now; over the network it needs the next board update
+  (the board's web service gets the same terminal). Tested on the real S9: commands, Ctrl+C, pipes, resizing, exit.
+- **Versions of a project** (project menu, Versions, or Ctrl+Alt+V): save a version with a short note, see what
+  changed (line by line, against the files now or another version), take back one file or the whole project.
+  Going back always saves the files first, so it can be undone. A version is also saved by itself before each
+  upload (can be switched off). Nothing to install: the versions live in `projects/_versions/<project>`,
+  each file content stored once. Ctrl+Alt+S saves a version at once.
+- **Split editor** (Split button or Ctrl+\\): a second editor beside or below the first, for another file or another
+  place of the same file (both edit the same text). Ctrl+Alt+\\ turns it, the bar between them can be dragged.
+- **More blocks**: I2C (find devices, read and write registers, 8 or 16 bit), stepper motors (STEP/DIR drivers such as
+  A4988 and DRV8825, and 4-wire motors on a ULN2003 board such as the 28BYJ-48), a "watch" block, and
+  **Functions** (make your own blocks, with inputs and a result). Two new examples. All block examples were
+  checked with a C++ compiler; the new blocks are not yet run on the real board.
+- **Safety fix**: the board service, the `ardzy` command and the app no longer accept `.` or `..` as a project name
+  (`ardzy delete ..` would have removed `/opt/ardzy`). The board part reaches a board with the next board update.
+- Greek and Russian text for all of the above.
+
 ## New in 0.3
 
 The app and the board's system are both 0.3. The board's system has the same boot loader, Linux and Debian as 0.2

@@ -30,7 +30,7 @@ function edThemeCss() {
   let css = '';
   for (const [k, t] of Object.entries(ED_THEMES)) {
     if (!t.bg) continue;
-    const p = `#editor.edth-${k}`, c = `${p} .cm-s-default`;
+    const p = `:is(#editor, #editor2).edth-${k}`, c = `${p} .cm-s-default`;
     css += `${p} .CodeMirror { background: ${t.bg}; color: ${t.text}; }
       ${p} .CodeMirror-gutters { background: ${t.gut}; border-right-color: ${t.sel}; }
       ${p} .CodeMirror-linenumber { color: ${t.muted}; } ${p} .CodeMirror-cursor { border-left-color: ${t.text}; }

@@ -22,7 +22,7 @@ APP_DIR = os.path.dirname(sys.executable if FROZEN else os.path.abspath(__file__
 UI_DIR = os.path.join(getattr(sys, '_MEIPASS', APP_DIR), 'ui')
 TEMPLATES_DIR = os.path.join(getattr(sys, '_MEIPASS', APP_DIR), 'templates')
 SETTINGS_FILE = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'Ardzy', 'settings.json')
-NAME_RE = re.compile(r'^[A-Za-z0-9_.-]+$')
+NAME_RE = re.compile(r'^(?!\.{1,2}$)[A-Za-z0-9_.-]{1,64}$')   # never "." or ".."
 PROGRAM_FILES = ('main.py', 'run.sh', 'Makefile', 'devices.dtsi', 'overlay.dts')
 UPLOAD_EXT = ('.py', '.c', '.h', '.txt', '.json', '.csv', '.s', '.wav',
               '.cpp', '.hpp', '.sh', '.pl', '.pm', '.lua', '.js', '.go', '.rs', '.S')   # + the languages of langs.py
@@ -44,6 +44,8 @@ import sdflash                             # noqa: E402  (SD card writer)
 import langs                               # noqa: E402  (C++, Shell, Perl, assembly, JavaScript, Lua, Go, Rust)
 import boards as board_profiles            # noqa: E402  (Antminer S9, EBAZ4205: boards/<id>/board.json)
 import imagebuild                          # noqa: E402  (build an SD card image from source, in WSL)
+import versions                            # noqa: E402  (versions of a project: save, compare, go back)
+import ardzy_link, linkpc                  # noqa: E402  (the board over a USB-UART cable)
 from fpga import flow as fpga_flow          # noqa: E402  (built-in FPGA toolchain, no Vivado)
 from fpga import sim as fpga_sim            # noqa: E402  (Verilog simulation with Icarus)
 from fpga import ioplan as fpga_ioplan      # noqa: E402  (I/O planning: ports to pins)
@@ -256,20 +258,46 @@ def fetch_info(host, port, timeout=3):
 class Board:
     def __init__(self):
         self.host, self.port, self.info = '', 80, {}
+        self.link = self.link_io = None          # the serial link (USB-UART cable), when connected that way
+        self.link_port = ''
 
     @property
     def base(self):
-        return http_base(self.host, self.port)
+        return ('serial://' + self.link_port) if self.link else http_base(self.host, self.port)
 
-    def call(self, method, path, data=None, timeout=10, raw=False):
+    def call(self, method, path, data=None, timeout=10, raw=False, port=None):
         if not self.host:
             raise ConnectionError('no board connected')
-        req = urllib.request.Request(self.base + path, data=data, method=method)
+        if self.link:                            # over the cable: the same API, carried in frames
+            status, body, head = self.link.request(method, path, data, timeout, port or self.port)
+            if status >= 400 or status == 0:
+                import io as _io
+                raise urllib.error.HTTPError(self.base + path, status, 'board answered %d' % status, None, _io.BytesIO(body))
+            return body if raw else json.loads(body or b'{}')
+        base = http_base(self.host, port) if port else self.base
+        req = urllib.request.Request(base + path, data=data, method=method)
         if data is not None:
             req.add_header('Content-Type', 'application/octet-stream')
         with urllib.request.urlopen(req, timeout=timeout) as r:
             body = r.read()
         return body if raw else json.loads(body or b'{}')
+
+    def drop_link(self, bye=True):
+        """End the serial link (the board gives its console back to the login)."""
+        link, io = self.link, self.link_io
+        self.link = self.link_io = None
+        if link:
+            if bye:
+                try:
+                    link.send('X')
+                    time.sleep(0.4)
+                except Exception:
+                    pass
+            link.close()
+        if io:
+            io.close()
+        if self.host.startswith('serial:'):
+            self.host, self.info = '', {}
 
     def connect(self, host, port=80):
         """Connect by name or address. A name (ardzy.local) can give several addresses
@@ -291,6 +319,8 @@ class Board:
             except Exception as e:
                 errors.append('%s: %s' % (a, getattr(e, 'reason', e)))
                 continue
+            if self.link:
+                self.drop_link()
             self.host, self.port, self.info = a, port, info      # all at once (no half state)
             settings['last_board'] = {'host': a, 'port': port}
             settings.save()
@@ -299,6 +329,68 @@ class Board:
 
 
 board = Board()
+
+
+LINK_SPEEDS = ardzy_link.SPEEDS
+
+
+def connect_serial(port, baud=921600, password=None):
+    """The board over a USB-UART cable: log in on its console, start the link, then everything works as over
+    the network (slower: about 90 KB/s at 921600 baud)."""
+    if serial_con.ser and serial_con.port == port:
+        serial_con.close()                       # (the plain console window had this port)
+    board.drop_link()
+    pw = password if password else settings.get('serial_password') or 'root'
+    log('Connecting over %s (serial link) ...' % port, 'head')
+    try:
+        link, io, hello = linkpc.open_link(port, int(baud or 921600), settings.get('serial_user') or 'root', pw,
+                                           log=lambda m, k='out': log(m, k))
+    except PermissionError as e:
+        log(str(e), 'err')
+        return {'ok': False, 'out': str(e), 'password': True}
+    except Exception as e:
+        log('Serial link failed: %s' % e, 'err')
+        return {'ok': False, 'out': str(e)}
+    board.link, board.link_io, board.link_port = link, io, port
+    board.host, board.port = 'serial:' + port, 80
+    try:
+        board.info = board.call('GET', '/api/info', timeout=8)
+    except Exception as e:
+        board.drop_link()
+        log('The link runs, but the board web service does not answer: %s' % e, 'err')
+        return {'ok': False, 'out': str(e)}
+    if password:
+        settings['serial_password'] = password
+    settings['last_link'] = {'serial': port, 'baud': int(baud or 921600)}
+    settings.save()
+    log('Connected over %s at %d baud: %s, %s, kernel %s' % (port, link.baud, board.info.get('hostname'),
+                                                            board.info.get('os'), board.info.get('kernel')), 'ok')
+    threading.Thread(target=link_keeper, args=(link,), daemon=True).start()
+    threading.Thread(target=sync_time, daemon=True).start()
+    return {'ok': True, 'info': board.info, 'baud': link.baud}
+
+
+def link_keeper(link):
+    """A ping every 5 s; the link is given up after 3 missed pings (cable out, board off)."""
+    missed = 0
+    while board.link is link and link.alive:
+        time.sleep(5)
+        if board.link is not link:
+            return
+        missed = 0 if link.ping(2.0) else missed + 1
+        if missed >= 3 or not link.alive:
+            log('The serial link to the board was lost (no answer for 15 s). Connect again when the board is back.', 'err')
+            board.drop_link(bye=False)
+            events.add('board', 'lost', state='lost')
+            return
+
+
+def link_status():
+    l = board.link
+    if not l:
+        return {'active': False}
+    return {'active': True, 'port': board.link_port, 'baud': l.baud, 'rx': l.rx_bytes, 'tx': l.tx_bytes,
+            'bad_frames': l.dec.bad, 'good_frames': l.dec.good}
 
 
 def local_ipv4():
@@ -871,6 +963,23 @@ def verify_lang(d, lang):
     return ok
 
 
+def vstore(name):
+    return versions.Store(ws(), name, proj_path(name))
+
+
+def auto_version(name, why):
+    """An automatic version before an upload (only when something changed): the program that ran
+    on the board can always be found again. Never stops the upload."""
+    if not settings.get('auto_versions', True):
+        return
+    try:
+        v = vstore(name).save(why, auto=True)
+        if v:
+            log('  version %d of %s saved (%s)' % (v['id'], name, why))
+    except Exception as e:
+        log('  (could not save a version: %s)' % e, 'warn')
+
+
 def to_trash(path, project):
     """Deleting = moving into the workspace's _trash folder (it can be taken back from there)."""
     d = os.path.join(ws(), '_trash', '%s_%s' % (time.strftime('%Y%m%d_%H%M%S'), project))
@@ -897,7 +1006,7 @@ def archive_project(name):
     return out, n
 
 
-SETTINGS_KEYS = ('workspace', 'vivado', 'manual_hosts', 'fpga_tool', 'board', 'sources_dir', 'wsl_distro')
+SETTINGS_KEYS = ('workspace', 'vivado', 'manual_hosts', 'fpga_tool', 'board', 'sources_dir', 'wsl_distro', 'auto_versions')
 
 
 def connected_board():
@@ -1107,6 +1216,7 @@ def upload_files(d):
 
 
 def upload(name, run=True, default=False):
+    auto_version(name, 'uploaded to the board')
     if arduino.is_sketch(proj_path(name)):
         return upload_sketch(name, run, default)
     if not verify(name):
@@ -1151,6 +1261,9 @@ def nand_backup(raw):
     if not board.host:
         log('No board connected.', 'err')
         return False
+    if board.link:
+        log('The NAND backup needs the network cable (256 MB would take about an hour over the serial link).', 'err')
+        return False
     info = board.call('GET', '/api/nand')
     if not info.get('enabled'):
         log('NAND backup not possible yet: %s' % info.get('note', info.get('out')), 'err')
@@ -1190,6 +1303,9 @@ def net_speed(mb=32):
     """Network speed test: mb MB from the board, then mb MB to the board."""
     if not board.host:
         log('No board connected.', 'err')
+        return False
+    if board.link:
+        log('The network speed test needs the network cable (now connected over the serial link).', 'err')
         return False
     log('Network speed test (%d MB each way) ...' % mb, 'head')
     t0 = time.time()
@@ -1475,11 +1591,16 @@ def ai_call(path, data=None, timeout=5):
     """Talk to the AI demo on the board (through the engine: works over IPv6 link-local too)."""
     if not board.host:
         return {'ok': False, 'running': False, 'out': 'no board connected'}
-    req = urllib.request.Request(http_base(board.host, AI_PORT) + path, data=json.dumps(data).encode() if data is not None else None,
-                                 headers={'Content-Type': 'application/json'})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            out = json.loads(r.read() or b'{}')
+        if board.link:
+            out = board.call('POST' if data is not None else 'GET', path,
+                             json.dumps(data).encode() if data is not None else None, timeout, port=AI_PORT)
+        else:
+            req = urllib.request.Request(http_base(board.host, AI_PORT) + path,
+                                         data=json.dumps(data).encode() if data is not None else None,
+                                         headers={'Content-Type': 'application/json'})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                out = json.loads(r.read() or b'{}')
         out.setdefault('ok', True)
         return out
     except (urllib.error.URLError, OSError, ValueError) as e:
@@ -1811,8 +1932,36 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                                         info.get('kernel')), 'ok')
             return {'ok': True, 'info': info, 'host': board.host}
         if path == '/api/disconnect':
+            if board.link:
+                board.drop_link()
+                settings['last_link'] = None
+                settings.save()
+                log('Serial link ended: the board console is back at its login.', 'ok')
             board.host, board.info = '', {}
             return {'ok': True}
+        if path == '/api/link/connect':          # the board over a USB-UART cable
+            if events.busy:
+                return {'ok': False, 'out': 'wait until "%s" has finished' % events.busy}
+            return connect_serial(a.get('port', ''), int(a.get('baud') or 921600), a.get('password') or None)
+        if path == '/api/link/status':
+            return dict(ok=True, **link_status())
+        if path.startswith('/api/term/'):        # the terminal: a shell on the board (network or cable)
+            act = path.rsplit('/', 1)[-1]
+            if act not in ('open', 'read', 'write', 'resize', 'close', 'list'):
+                raise ValueError('unknown terminal call')
+            qs = urllib.parse.urlencode({k: a[k] for k in ('id', 'since', 'wait', 'cols', 'rows') if k in a})
+            body = a.get('data', '').encode('utf-8') if act == 'write' else None
+            meth = 'GET' if act in ('read', 'list') else 'POST'
+            wait = float(a.get('wait') or 0)
+            try:
+                return board.call(meth, '/api/term/%s?%s' % (act, qs), body if body is not None else (b'' if meth == 'POST' else None),
+                                  timeout=wait + 10)
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    return {'ok': False, 'old_board': True,
+                            'out': 'The terminal over the network needs the next board update (ardzy_link.py on the board). '
+                                   'Over the serial link (USB-UART) it works now.'}
+                raise
         if path == '/api/imagebuild/status':
             return dict(ok=True, **imagebuild.status(APP_DIR, settings.get('sources_dir'), settings.get('wsl_distro')),
                         boards=[{'id': b['id'], 'name': b['name']} for b in board_profiles.all_boards()])
@@ -1996,6 +2145,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if os.path.exists(dst):
                 raise ValueError(new + ' already exists')
             os.rename(src, dst)
+            versions.rename(ws(), a['name'], new)
             for f in os.listdir(dst):                # a sketch's .ino carries the project's name
                 if f == a['name'] + '.ino':
                     os.rename(os.path.join(dst, f), os.path.join(dst, new + '.ino'))
@@ -2018,6 +2168,37 @@ class Handler(http.server.BaseHTTPRequestHandler):
             t = to_trash(src, a['name'])
             log('Project %s moved to %s (take it back from there if you need it)' % (a['name'], t), 'ok')
             return {'ok': True}
+        if path.startswith('/api/versions'):          # versions of a project (versions.py)
+            vs = vstore(a['project'])
+            if not os.path.isdir(vs.src):
+                raise ValueError('no project ' + a['project'])
+            act = path[len('/api/versions'):].strip('/') or 'list'
+            if act == 'list':
+                return dict(ok=True, auto=settings.get('auto_versions', True), **vs.listing())
+            if act == 'save':
+                v = vs.save(a.get('message', ''))
+                if v:
+                    log('%s: version %d saved%s' % (a['project'], v['id'], ': ' + v['message'] if v['message'] else ''), 'ok')
+                return {'ok': True, 'id': v and v['id'], 'out': '' if v else 'nothing changed since the last version'}
+            if act == 'diff':
+                return dict(ok=True, **vs.diff(a['id'], a.get('other')))
+            if act == 'file':
+                return {'ok': True, 'text': vs.file_text(a['id'], a['file'])}
+            if act == 'restore':
+                r = vs.restore(a['id'], a.get('file') or None)
+                log('%s: %s back as in version %s%s' % (a['project'], a.get('file') or 'all files', a['id'],
+                    ' (the files before are version %s)' % r['saved_before'] if r['saved_before'] else ''), 'ok')
+                return dict(ok=True, **r)
+            if act == 'edit':
+                return {'ok': True, 'version': vs.edit(a['id'], a.get('message'), a.get('pinned'))}
+            if act == 'delete':
+                vs.delete(a['id'])
+                return {'ok': True}
+            if act == 'auto':
+                settings['auto_versions'] = bool(a.get('on'))
+                settings.save()
+                return {'ok': True}
+            raise ValueError('unknown versions action')
         if path == '/api/project/archive':
             out, n = archive_project(a['name'])
             log('Archive of %s: %d files in %s' % (a['name'], n, out), 'ok')
@@ -2253,8 +2434,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             settings.save()
             return {'ok': True, 'settings': settings}
         if path == '/api/serial/ports':
-            return {'ok': True, 'ports': Serial.ports(), 'open': serial_con.port if serial_con.ser else None}
+            return {'ok': True, 'ports': Serial.ports(), 'open': serial_con.port if serial_con.ser else None,
+                    'link': link_status(), 'last_link': settings.get('last_link'), 'speeds': list(LINK_SPEEDS)}
         if path == '/api/serial/open':
+            if board.link and board.link_port == a['port']:
+                raise ValueError('%s carries the serial link now: use the Terminal tab (or disconnect first)' % a['port'])
             serial_con.open(a['port'], int(a.get('baud', 115200)))
             return {'ok': True}
         if path == '/api/serial/close':
@@ -2272,6 +2456,11 @@ class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
 
 def auto_connect():
     """At start: reconnect to the last board, else connect if exactly one board is found."""
+    ll = settings.get('last_link')
+    if isinstance(ll, dict) and ll.get('serial') and any(p['port'] == ll['serial'] for p in Serial.ports()):
+        r = connect_serial(ll['serial'], ll.get('baud') or 921600)
+        if r.get('ok'):
+            return
     last = last_board()
     if last:
         try:
@@ -2306,7 +2495,7 @@ def main():
     if len(sys.argv) == 3 and sys.argv[1] == '--flash':        # the SD card writer (run as administrator)
         sdflash.flash(json.load(open(sys.argv[2])))
         return
-    srv = Server(('127.0.0.1', 0), Handler)
+    srv = Server(('127.0.0.1', int(os.environ.get('ARDZY_PORT') or 0)), Handler)   # (a fixed port only for tests)
     while srv.server_address[1] in UNSAFE_PORTS:       # the window (Chromium / WebView2) refuses these ports
         srv.server_close()
         srv = Server(('127.0.0.1', 0), Handler)

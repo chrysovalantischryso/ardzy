@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ardzy 0.3 BETA</title>
+<link rel="stylesheet" href="vendor/xterm/xterm.css">
 <link rel="icon" href="icon.svg">
 <link rel="stylesheet" href="vendor/codemirror.min.css">
 <link rel="stylesheet" href="vendor/addon_dialog_dialog.min.css">
@@ -229,6 +230,7 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
         <button data-tab="watch" title="Values of your program, live: Ardzy.watch(), watch(), or any name:value line">Watch</button>
         <button data-tab="board">Board</button>
         <button data-tab="regs">Registers</button>
+        <button data-tab="term" title="A Linux shell on the board (bash), over the network or the USB-UART cable">Terminal</button>
         <button data-tab="serial">USB serial</button>
         <button data-tab="pins">Pins</button>
         <span class="grow"></span>
@@ -311,6 +313,18 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
         </div>
         <pre id="regOut"></pre>
         <p class="hint pad">Use only addresses that exist in the loaded design (Vivado Address Editor). An empty address freezes the board; the watchdog reboots it after about 30 s.</p>
+      </div>
+      <div class="panel" data-panel="term">
+        <div class="row pad termbar">
+          <span id="termState" class="hint">Open this tab with a board connected.</span>
+          <span class="grow"></span>
+          <span class="hint">Copy Ctrl+Shift+C, paste Ctrl+Shift+V</span>
+          <button id="termSmaller" class="ghost small" title="Smaller text">A-</button>
+          <button id="termBigger" class="ghost small" title="Bigger text">A+</button>
+          <button id="termClear" class="ghost small" title="Clear the screen (the shell keeps running)">Clear</button>
+          <button id="termNew" class="ghost small" title="Start a new shell">New shell</button>
+        </div>
+        <div id="termBox"></div>
       </div>
       <div class="panel" data-panel="serial">
         <div class="row pad">
@@ -484,6 +498,22 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
     <div id="boardList" class="list"></div>
     <label>Or connect by name / IP <input id="manualHost" placeholder="ardzy.local or 192.168.1.68" spellcheck="false"></label>
     <div class="row end"><button value="cancel" class="ghost">Close</button><button id="btnRescan" class="ghost" value="scan">Scan again</button><button id="btnManual" class="primary" value="manual">Connect</button></div>
+    <div class="lkbox">
+      <h3>Or over a USB-UART cable</h3>
+      <p class="hint">No network cable needed. A 3.3 V USB-UART adapter on the board's console header J12 (on many boards its pins are not fitted: solder a small header): adapter TX to board RX, RX to TX, GND to GND
+        (do not connect the adapter's 5 V or 3.3 V pin). The app logs in on the console and starts the link; everything works, only slower.</p>
+      <div class="row lkrow">
+        <select id="lkPort" title="The adapter's COM port"></select>
+        <select id="lkBaud" title="Speed after the start (the console starts at 115200). If the adapter can not, the app goes back to 115200 by itself.">
+          <option value="921600">921600 baud (about 90 KB/s)</option><option value="460800">460800 baud</option>
+          <option value="230400">230400 baud</option><option value="115200">115200 baud (any adapter)</option></select>
+        <button id="lkRefresh" class="ghost small" title="Read the COM ports again">Refresh</button>
+        <button id="lkPassShow" class="ghost small" title="The board's root password (if you changed it from root)">Password</button>
+        <button id="lkGo" class="primary">Connect over cable</button>
+      </div>
+      <div class="row" id="lkPassRow" hidden><label class="grow">Root password of the board <input id="lkPass" type="password" autocomplete="off" placeholder="root (the default)"></label></div>
+      <p id="lkState" class="hint"></p>
+    </div>
   </form>
 </dialog>
 
@@ -590,6 +620,10 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
 <script src="ai.js"></script>
 <script src="boardprofile.js"></script>
 <script src="projtools.js"></script>
+<script src="versions.js"></script>
+<script src="split.js"></script>
+<script src="vendor/xterm/xterm.js"></script>
+<script src="term.js"></script>
 <script src="navtools.js"></script>
 <script src="ila.js"></script>
 <script src="schematic.js"></script>
@@ -600,6 +634,7 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
   try { const l = (location.hash.match(/lang=(el|ru)/) || [])[1] || localStorage.getItem('ardzy.lang'); if (l === 'el' || l === 'ru') document.write('<script src="vendor/blockly/' + l + '.js"><\/script>'); } catch (e) { }</script>
 <script src="fblocks.js"></script>
 <script src="blocks.js"></script>
+<script src="blocks_more.js"></script>
 <script src="settings.js"></script>
 </body>
 </html>

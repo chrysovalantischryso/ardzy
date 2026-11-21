@@ -93,6 +93,7 @@ function projectMenu(name, x, y) {
       const to = prompt(T('Name of the copy:'), name + '_copy');
       if (to && await ptCall('/api/project/duplicate', { name, to })) { await refreshProjects(); selectProject(to); }
     } },
+    { label: T('Versions ... (Ctrl+Alt+V)'), run: () => vsOpen(name) },
     { label: T('Archive (zip)'), run: () => ptCall('/api/project/archive', { name, open: 1 }) },
     { label: T('Open folder'), run: () => api('/api/open', { what: 'folder', project: name }) },
     '-',

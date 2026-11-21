@@ -684,8 +684,8 @@ table.pt tr[data-con]:hover td { background: var(--hover); cursor: default; }
 .center.alt-view > .edbar, .center.alt-view > .code-main { display: none; }
 .code-main { flex: 1; display: flex; min-height: 0; }
 .code-main .editor-wrap { flex: 1; min-width: 0; }
-#editor .CodeMirror { font: var(--ed-font, 14px/1.55 var(--mono)); }
-#editor.edcur-block .CodeMirror-cursor { border-left: 0; width: .6em; background: rgba(127, 127, 127, .55); }
+#editor .CodeMirror, #editor2 .CodeMirror { font: var(--ed-font, 14px/1.55 var(--mono)); }
+#editor.edcur-block .CodeMirror-cursor, #editor2.edcur-block .CodeMirror-cursor { border-left: 0; width: .6em; background: rgba(127, 127, 127, .55); }
 .codeside { width: 320px; flex: none; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: var(--panel); min-height: 0; }
 .codeside[hidden] { display: none; }
 .cs-head { display: flex; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line); font-size: 14px; }
@@ -1171,3 +1171,69 @@ dialog.schem-dlg .ptbody { display: flex; flex-direction: column; gap: 6px; }
 #scG .sc-w.bus { stroke-width: 2.4; }
 #scG .sc-w.back { stroke-dasharray: 5 4; opacity: .55; }
 #scG .sc-w:hover, #scG .sc-w.hit { stroke: var(--accent); opacity: 1; stroke-width: 3; }
+
+/* ---------- versions of a project (versions.js) ---------- */
+dialog.vs-dlg { width: min(1100px, 96vw); }
+.vs-save { gap: 8px; margin-bottom: 6px; }
+.vs-save input { flex: 1; min-width: 0; }
+.vs-main { display: grid; grid-template-columns: 260px 1fr; gap: 12px; height: min(62vh, 620px); margin-top: 8px; }
+.vs-list { overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.vs-item { padding: 8px 10px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.vs-item:hover { background: var(--hover); }
+.vs-item.sel { background: var(--sel); }
+.vs-item.auto .vs-msg { color: var(--muted); }
+.vs-top { display: flex; gap: 6px; align-items: baseline; }
+.vs-time { margin-left: auto; font-size: 12px; }
+.vs-msg { font-size: 13.5px; margin-top: 2px; overflow-wrap: anywhere; }
+.vs-cnt { font-size: 12px; }
+.vs-tag { font-size: 11px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line); color: var(--muted); }
+.vs-tag.pin { color: var(--accent); border-color: var(--accent); }
+.vs-view { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.vs-head { gap: 6px; flex-wrap: wrap; padding-bottom: 6px; }
+.vs-head select { max-width: 260px; }
+.vs-diff { overflow: auto; flex: 1; min-height: 0; }
+.vs-file { border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 8px; background: var(--panel); }
+.vs-file summary { display: flex; gap: 8px; align-items: center; padding: 6px 10px; cursor: pointer; flex-wrap: wrap; }
+.vs-st { font-size: 11.5px; padding: 0 6px; border-radius: 8px; border: 1px solid currentColor; }
+.vs-st.added { color: var(--ok); } .vs-st.removed { color: var(--err); } .vs-st.changed { color: var(--warn); }
+.vs-pm { font-family: var(--mono); font-size: 12.5px; }
+.vs-code { margin: 0; padding: 4px 0; font: 13px/1.5 var(--mono); background: var(--code-bg); overflow-x: auto; border-top: 1px solid var(--line); }
+.vs-code div { white-space: pre; padding-right: 12px; }
+.vs-code i { display: inline-block; width: 3.6em; text-align: right; padding-right: .7em; color: var(--muted); font-style: normal; user-select: none; }
+.vs-code .vs-add { background: color-mix(in srgb, var(--ok) 16%, transparent); }
+.vs-code .vs-del { background: color-mix(in srgb, var(--err) 16%, transparent); }
+.vs-code .vs-hunk { color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); padding-left: 8px; }
+.vs-auto { display: flex !important; flex-direction: row !important; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); margin: 0; }
+.vs-auto input { width: auto !important; margin: 0; }
+@media (max-width: 760px) { .vs-main { grid-template-columns: 1fr; height: auto; } .vs-list { max-height: 30vh; } }
+
+/* ---------- split editor (split.js) ---------- */
+#editor2box { display: none; position: absolute; flex-direction: column; background: var(--code-bg); }
+#editor2 { position: relative; flex: 1; min-height: 0; }
+#spGrip { display: none; position: absolute; z-index: 3; background: var(--line); }
+#spGrip:hover, #spGrip:active { background: var(--accent); }
+.editor-wrap.sp-on #editor2box { display: flex; }
+.editor-wrap.sp-on #spGrip { display: block; }
+.editor-wrap.sp-on:not(.sp-h) #editor { right: calc(100% - var(--sp, 50%) + 3px); }
+.editor-wrap.sp-on:not(.sp-h) #spGrip { top: 0; bottom: 0; left: calc(var(--sp, 50%) - 3px); width: 6px; cursor: col-resize; }
+.editor-wrap.sp-on:not(.sp-h) #editor2box { top: 0; bottom: 0; right: 0; left: calc(var(--sp, 50%) + 3px); }
+.editor-wrap.sp-on.sp-h #editor { bottom: calc(100% - var(--sp, 50%) + 3px); }
+.editor-wrap.sp-on.sp-h #spGrip { left: 0; right: 0; top: calc(var(--sp, 50%) - 3px); height: 6px; cursor: row-resize; }
+.editor-wrap.sp-on.sp-h #editor2box { left: 0; right: 0; bottom: 0; top: calc(var(--sp, 50%) + 3px); }
+.sp-bar { display: flex; gap: 4px; align-items: center; padding: 3px 6px; border-bottom: 1px solid var(--line); background: var(--bg); }
+.sp-bar select { flex: 1; min-width: 0; font-family: var(--mono); font-size: 12.5px; padding: 2px 4px; }
+.editor-wrap.sp-on #editor2box { box-shadow: inset 0 2px 0 transparent; }
+.editor-wrap.sp-on.sp-focus2 #editor2box .sp-bar { box-shadow: inset 0 -2px 0 var(--accent); }
+#edSplit.sp-active { color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
+
+/* ---------- terminal (term.js) */
+.panel[data-panel="term"].active { display: flex; flex-direction: column; }
+.termbar { gap: 6px; flex-wrap: wrap; }
+#termBox { flex: 1; min-height: 120px; background: var(--term-bg); padding: 4px 0 0 8px; overflow: hidden; }
+#termBox .xterm { height: 100%; }
+#termBox .xterm-viewport { background: var(--term-bg) !important; }
+.lkbox { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); }
+.lkbox h3 { margin: 0 0 4px; font-size: 14px; }
+.lkrow { gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.lkrow select { min-width: 0; max-width: 260px; }
+#lkState { margin-top: 6px; }

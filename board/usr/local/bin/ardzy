@@ -70,7 +70,7 @@ def write_state(name, value):
     os.sync()
 
 def proj_dir(name):
-    if not re.fullmatch(r'[A-Za-z0-9_.-]+', name or ''):
+    if not re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', name or '') or name in ('.', '..'):
         die('bad project name %r (use letters, digits, _ . -)' % name)
     return os.path.join(PROJ, name)
 

@@ -11,7 +11,7 @@ STARTED = '%d-%d' % (os.getpid(), time.monotonic())   # changes when this servic
 PROJ = '/opt/ardzy/projects'
 STATE = '/var/lib/ardzy'
 HERE = os.path.dirname(os.path.abspath(__file__))
-NAME_RE = re.compile(r'^[A-Za-z0-9_.-]+$')
+NAME_RE = re.compile(r'^(?!\.{1,2}$)[A-Za-z0-9_.-]{1,64}$')   # never "." or ".." (they point outside a project)
 PART_RE = re.compile(r'^[A-Za-z0-9_.+-]+$')     # parts of a path inside an uploaded zip (TinyGPS++.h)
 DISCOVERY_PORT = 41414
 HTTP_PORT = 80
@@ -144,6 +144,12 @@ def discovery_responder(family):
 
 import hwapi, iotools, sysinfo, datalog, ila
 
+try:                                         # the terminal (a shell on a pseudo terminal): the same code as the serial link
+    import ardzy_link
+    TERMS = ardzy_link.Terminals()
+except ImportError:
+    TERMS = None
+
 HW_GET = {   # GET /api/...  -> function(query) ; all read-only
     '/api/hw': lambda q: hwapi.hw(),
     '/api/sensors': lambda q: hwapi.sensors(),
@@ -245,7 +251,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             lines, cur = app_log(q.get('cursor'))
             return self.send(200, {'log': '\n'.join(lines) + ('\n' if lines else ''), 'lines': lines, 'cursor': cur})
         if path == '/api/file':
-            if not (self.name_ok(q.get('p')) and NAME_RE.match(q.get('f', ''))):
+            if not (self.name_ok(q.get('p')) and self.name_ok(q.get('f'))):
                 return
             p = os.path.join(PROJ, q['p'], q['f'])
             if not os.path.isfile(p) or os.path.getsize(p) > 512 * 1024:
@@ -274,9 +280,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send(200, st)
         if path == '/api/bench/download':
             return self.bench_download(q.get('mb', '20'))
+        if path.startswith('/api/term/'):
+            return self.term(path, q, b'')
         if path.startswith('/api/hw') or path in HW_GET:
             return self.hw_call(HW_GET.get(path), q)
         self.send(404, {'ok': False, 'out': 'not found'})
+
+    def term(self, path, q, body):
+        if TERMS is None:
+            return self.send(404, {'ok': False, 'out': 'no terminal on this board (ardzy_link.py missing)'})
+        try:
+            return self.send(200, dict(TERMS.http(self.command, path, q, body), ok=True))
+        except (ValueError, OSError) as e:
+            return self.send(200, {'ok': False, 'out': str(e)})
 
     def hw_call(self, fn, q):
         """Hardware API: functions from hwapi.py; a ValueError becomes a friendly message."""
@@ -332,6 +348,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         path, q = self.q()
         n = q.get('p', '')
+        if path.startswith('/api/term/'):
+            size = int(self.headers.get('Content-Length', 0) or 0)
+            return self.term(path, q, self.rfile.read(size) if 0 < size <= 1 << 20 else b'')
         if path == '/api/load':
             return self.name_ok(n) and self.send(200, ardzy('load', n, *(['--default'] if q.get('default') else [])))
         if path == '/api/build':
@@ -427,8 +446,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.send(200, {'ok': True, 'bytes': got})
         if path != '/api/upload':
             return self.send(404, {'ok': False})
-        n, f = q.get('p', ''), os.path.basename(q.get('f', ''))
-        if not self.name_ok(n) or not NAME_RE.match(f):
+        n, f = q.get('p', ''), q.get('f', '')
+        if not (self.name_ok(n) and self.name_ok(f)):
             return
         size = int(self.headers.get('Content-Length', 0))
         if size > 64 * 1024 * 1024:
