@@ -19,7 +19,7 @@ python -m PyInstaller --noconfirm --windowed --name Ardzy --icon "%~dp0ardzy.ico
   --add-data "%~dp0..\projects\fpga_selftest;starter\fpga_selftest" --add-data "%~dp0..\projects\leds_python;starter\leds_python" ^
   --paths "%~dp0fpga" --hidden-import fasm2bit --hidden-import aes67_pc --hidden-import pyaudiowpatch --hidden-import numpy ^
   --distpath "%OUT%" --workpath "%TEMP%\ardzy_pyi" --specpath "%TEMP%\ardzy_pyi" ^
-  --hidden-import serial.tools.list_ports ardzy_app.py
+  --hidden-import serial.tools.list_ports --hidden-import serial.urlhandler.protocol_socket ardzy_app.py
 if not exist "%OUT%\Ardzy\Ardzy.exe" (echo BUILD FAILED & exit /b 1)
 robocopy "%OUT%\Ardzy" "%~dp0dist\Ardzy" /MIR /R:1 /W:1 /NFL /NDL /NJH /NJS /NP >nul
 echo.
