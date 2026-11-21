@@ -1237,3 +1237,4 @@ dialog.vs-dlg { width: min(1100px, 96vw); }
 .lkrow { gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 .lkrow select { min-width: 0; max-width: 260px; }
 #lkState { margin-top: 6px; }
+.tab .tproj { font-size: 11px; color: var(--muted); margin-left: -4px; font-family: var(--font); }

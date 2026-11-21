@@ -409,8 +409,10 @@ function activate(key) {
   renderTabs(); S.cm.refresh(); S.cm.focus();
 }
 function renderTabs() {
+  // tabs with the same file name (main.py of two projects) also show their project
+  const same = {}; S.tabs.forEach(t => same[t.name] = (same[t.name] || 0) + 1);
   $('editorTabs').innerHTML = S.tabs.map(t => `<div class="tab ${t.key === S.active ? 'active' : ''} ${t.dirty ? 'dirty' : ''}" data-k="${esc(t.key)}" title="${esc(t.key)}">
-    <span class="name">${esc(t.name)}</span><span class="x" data-x="${esc(t.key)}">&times;</span></div>`).join('');
+    <span class="name">${esc(t.name)}</span>${same[t.name] > 1 ? `<span class="tproj">${esc(t.project)}</span>` : ''}<span class="x" data-x="${esc(t.key)}">&times;</span></div>`).join('');
   $('editorTabs').querySelectorAll('.tab').forEach(el => el.onclick = e => {
     if (e.target.dataset.x) return closeTab(e.target.dataset.x);
     activate(el.dataset.k);

@@ -1,7 +1,7 @@
 #!/bin/bash
 # A release of the Ardzy files only: the boot loader, kernel and Debian of an earlier (tested) image stay
 # exactly the same, the Ardzy tools, web service, libraries and Arduino core are the ones of now.
-#   ARDZY_VERSION=0.3 BASE=out/release/Ardzy-0.2-sdcard.img.xz bash scripts/07b_files_release.sh
+#   ARDZY_VERSION=0.3.1 BASE=out/release/Ardzy-0.2-sdcard.img.xz bash scripts/07b_files_release.sh
 # makes  out/release/Ardzy-<ver>-update.tar.gz   for boards that run Ardzy (files only: no kernel, no restart)
 #        out/release/Ardzy-<ver>-sdcard.img.xz   the earlier image with these files (for new cards)
 # (S9 images: the EBAZ4205 image is made with 05_make_image.sh)

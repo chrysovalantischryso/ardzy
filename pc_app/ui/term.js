@@ -183,8 +183,7 @@ async function lkConnect() {
   if (r.ok) {
     $('lkPass').value = '';
     $('dlgBoards').close();
-    setBoard(r.info, 'serial:' + port);
-    out(TF('The board is connected over the cable ({0} baud). Every view works; uploads are slower than over the network.', r.baud), 'ok');
+    setBoard(r.info, 'serial:' + port);                 // (the engine's log already says "Connected over COMx at ... baud")
   } else {
     $('lkState').innerHTML = `<span class="l-err">${esc(r.out)}</span>`;
     if (r.password) { $('lkPassRow').hidden = false; $('lkPass').focus(); }

@@ -1,6 +1,6 @@
 # Ardzy roadmap
 
-What is planned next, and how. The newest work is listed in the README under "In development".
+What is planned next, and how. The newest work is listed in the README under "New in 0.3.1".
 
 ## Next: step debugging for sketches (like the Arduino IDE 2 debugger)
 
@@ -31,7 +31,7 @@ and the Arduino IDE 2 debugger tutorial (docs.arduino.cc), which shows the expec
 
 ## From issue 1 (feature request)
 
-- Done (in development): the app over a USB-UART cable, and a terminal in the app.
+- Done in 0.3.1: the app over a USB-UART cable (tested with a CP2102), and a terminal in the app.
 - **Android app**: the same link (ardzy_link.py frames) over a USB-UART adapter on a phone (USB OTG). The phone app
   would carry the link's PC end; the board end is already done.
 - **A light desktop (LXDE or similar)**: the board has no display output, so it would be shown in the app (VNC);

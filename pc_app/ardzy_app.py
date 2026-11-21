@@ -13,7 +13,7 @@ Run:  python ardzy_app.py          (or the packaged Ardzy.exe)
 import json, os, sys, socket, struct, threading, time, subprocess, shutil, secrets, re, glob, tempfile
 import http.server, socketserver, urllib.request, urllib.error, urllib.parse, py_compile, webbrowser
 
-APP_VERSION = '0.3'                     # the app; the board's system (SD image) is 0.2
+APP_VERSION = '0.3.1'                   # the app (the board's system has its own version: ardzyweb VERSION)
 APP_STAGE = 'BETA'                      # shown next to the version everywhere
 DISCOVERY_PORT = 41414
 CHIP_IDCODE = 0x03722093        # XC7Z010
@@ -365,6 +365,8 @@ def connect_serial(port, baud=921600, password=None):
     settings.save()
     log('Connected over %s at %d baud: %s, %s, kernel %s' % (port, link.baud, board.info.get('hostname'),
                                                             board.info.get('os'), board.info.get('kernel')), 'ok')
+    log('  every view works over the cable; uploads are slower than over the network (about %d KB/s)'
+        % (link.baud // 10240))
     threading.Thread(target=link_keeper, args=(link,), daemon=True).start()
     threading.Thread(target=sync_time, daemon=True).start()
     return {'ok': True, 'info': board.info, 'baud': link.baud}

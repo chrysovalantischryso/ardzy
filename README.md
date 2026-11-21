@@ -1,4 +1,4 @@
-# Ardzy 0.3 BETA
+# Ardzy 0.3.1 BETA
 
 **The Antminer S9 control board, used like an Arduino.**
 
@@ -34,9 +34,9 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
   - **Board, I/O, Map, System** views: every pin, the board drawn to scale, Linux processes, logs, updates.
   - **Languages**: English, Greek, Russian. **Settings**: colours, size, fonts and more.
 
-## In development (after 0.3, not released yet)
+## New in 0.3.1
 
-- **Windows installer** `Ardzy-0.3-BETA-Setup.exe` (72 MB): installs Ardzy for your Windows user (no administrator
+- **Windows installer** `Ardzy-0.3.1-BETA-Setup.exe` (72 MB): installs Ardzy for your Windows user (no administrator
   rights, folder `%LOCALAPPDATA%\Programs\Ardzy` or one you choose), with shortcuts in the Start menu and on the
   Desktop, an entry in Windows Settings > Apps, and an uninstaller. A newer version replaces the old one (it is
   unpacked next to it first, so a failed install never leaves half an app); Setup waits while Ardzy runs. Your

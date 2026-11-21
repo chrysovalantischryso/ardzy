@@ -5,7 +5,7 @@
 #   out/release/HOW_TO_FLASH.txt             instructions
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
-VER=${ARDZY_VERSION:-0.3}
+VER=${ARDZY_VERSION:-0.3.1}
 # (only images made with ARDZY_FALLBACK=1 and your own fallback/BOOT_fallback.bin carry the old boot loader)
 FB_TEXT=""
 if [ "${ARDZY_FALLBACK:-1}" = 1 ] && [ -f "$(cd "$(dirname "$0")/.." && pwd)/fallback/BOOT_fallback.bin" ]; then
