@@ -51,8 +51,8 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
   console back to its login. Wiring: a 3.3 V USB-UART adapter on the console header J12 (on many boards its pins are
   not fitted: solder a small header): adapter TX to board RX, RX to TX, GND to GND, no power wire. Works with every
   board that has Ardzy 0.3 (nothing to install). Not possible over the cable: the NAND backup and the network speed test.
-  Tested: the whole start through a real shell on the real S9 (over SSH, the same steps as on the console) and every
-  call on a pretend board; not yet with a real USB-UART adapter (the getty login and the speed change).
+  Tested on the real S9 with a CP2102 adapter: login, start in 5 s, 921600 baud, 87 KB/s to the board and 88 KB/s
+  from it, the terminal, no damaged frame, and the login back after Disconnect (`pc_app/tests/link_cable_test.py`).
 - **Terminal** (bottom tab): a real bash shell on the board in the app (xterm.js), with colours, programs like
   `top` and `nano`, Ctrl+C, resizing, copy (Ctrl+Shift+C) and paste (Ctrl+Shift+V). The shell keeps running when the
   window reloads. Over the cable it works on every board now; over the network it needs the next board update
