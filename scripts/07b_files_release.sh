@@ -46,12 +46,13 @@ cp $W/sums.txt "$REL/SHA256SUMS-$VER.txt"
 echo "== the update bundle"
 B=$W/bundle; mkdir -p $B
 cp -a $W/stage $B/rootfs
-python3 - "$B" "$VER" "$TODAY" "$W/release.txt" <<'EOF'
+NOTES=${NOTES:-the Ardzy files (tools, web service, libraries)}       # what is new, shown by the app before it installs
+python3 - "$B" "$VER" "$TODAY" "$W/release.txt" "$NOTES" <<'EOF'
 import json, sys
-b, ver, today, rel = sys.argv[1:]
+b, ver, today, rel, notes = sys.argv[1:]
 release = dict(l.strip().split('=', 1) for l in open(rel) if '=' in l)
 json.dump({'version': ver, 'date': today, 'reboot': False, 'restart_web': True, 'release': release,
-           'notes': 'Ardzy %s: the Ardzy files (signal analyzer, board profiles, libraries). Same kernel: no restart.' % ver},
+           'notes': 'Ardzy %s: %s. Same kernel: no restart.' % (ver, notes)},
           open(b + '/manifest.json', 'w'), indent=1)
 EOF
 ( cd $B && find . -type f ! -name sha256sums.txt -printf '%P\n' | sort | xargs -d '\n' sha256sum > sha256sums.txt )
