@@ -1238,3 +1238,12 @@ dialog.vs-dlg { width: min(1100px, 96vw); }
 .lkrow select { min-width: 0; max-width: 260px; }
 #lkState { margin-top: 6px; }
 .tab .tproj { font-size: 11px; color: var(--muted); margin-left: -4px; font-family: var(--font); }
+
+/* ---------- examples: list + what the chosen one does and how to wire it ---------- */
+dialog#dlgExamples { width: min(1080px, 96vw); }
+.exmain { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 12px; margin: 10px 0; }
+.exmain .exlist { margin: 0; max-height: 60vh; }
+.exabout { max-height: 60vh; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; background: var(--panel); }
+.exabout h4 { margin: 0 0 8px; font-size: 15px; }
+.exabout pre { margin: 0 0 10px; white-space: pre-wrap; overflow-wrap: anywhere; font: 12.5px/1.5 var(--mono); background: var(--code-bg); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line); }
+@media (max-width: 760px) { .exmain { grid-template-columns: 1fr; } .exmain .exlist { max-height: 30vh; } }

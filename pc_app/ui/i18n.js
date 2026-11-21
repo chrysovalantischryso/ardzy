@@ -819,6 +819,14 @@ const I18N_ROWS = [
   ['The board is connected over the cable ({0} baud). Every view works; uploads are slower than over the network.', 'Η πλακέτα συνδέθηκε με καλώδιο ({0} baud). Όλες οι προβολές λειτουργούν· τα ανεβάσματα είναι πιο αργά από το δίκτυο.', 'Плата подключена по кабелю ({0} бод). Все разделы работают; загрузка медленнее, чем по сети.'],
   ['Board {0} over the USB-UART cable on {1}. Click to choose another board.', 'Πλακέτα {0} με καλώδιο USB-UART στο {1}. Κάντε κλικ για άλλη πλακέτα.', 'Плата {0} по кабелю USB-UART на {1}. Нажмите, чтобы выбрать другую плату.'],
   ['The terminal could not load (vendor/xterm).', 'Το τερματικό δεν φόρτωσε (vendor/xterm).', 'Терминал не загрузился (vendor/xterm).'],
+  // ---- examples with their wiring, the connection guide (arduino.js, connect.html)
+  ['How to connect', 'Πώς συνδέω', 'Как подключить'],
+  ['How to connect things to Ardzy', 'Πώς συνδέω εξαρτήματα στο Ardzy', 'Как подключать устройства к Ardzy'],
+  ['Choose an example: what it does, the parts it needs and how to wire them are shown here.', 'Επιλέξτε ένα παράδειγμα: εδώ φαίνεται τι κάνει, τα εξαρτήματα που χρειάζεται και πώς συνδέονται.', 'Выберите пример: здесь показано, что он делает, какие детали нужны и как их подключить.'],
+  ['More wiring, and the rules for the 3.3 V pins:', 'Περισσότερες συνδέσεις και οι κανόνες για τους ακροδέκτες 3.3 V:', 'Больше схем подключения и правила для выводов 3,3 В:'],
+  ['(this example has no description)', '(αυτό το παράδειγμα δεν έχει περιγραφή)', '(у этого примера нет описания)'],
+  ['The connector pins, UART, I2C, LEDs, motors, power: how to wire everything', 'Ακροδέκτες, UART, I2C, LED, κινητήρες, τροφοδοσία: πώς συνδέονται όλα', 'Выводы разъёмов, UART, I2C, светодиоды, моторы, питание: как всё подключить'],
+  ['How to wire LEDs, buttons, UART devices, I2C sensors, motors and power', 'Πώς συνδέονται LED, κουμπιά, συσκευές UART, αισθητήρες I2C, κινητήρες και τροφοδοσία', 'Как подключать светодиоды, кнопки, устройства UART, датчики I2C, моторы и питание'],
 ];
 
 const I18N = (() => {

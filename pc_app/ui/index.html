@@ -170,6 +170,7 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
       <div class="view-head">
         <h2>Map</h2><span class="seg" id="mapSeg"><button data-v="board" class="on">Board</button><button data-v="pins">Pin table</button><button data-v="wiring">Wiring</button><button data-v="inside">How it works</button></span>
         <span class="hint" id="mapState"></span><span class="grow"></span>
+        <button class="ghost small" onclick="openConnectGuide()" title="How to wire LEDs, buttons, UART devices, I2C sensors, motors and power">How to connect</button>
       </div>
       <div id="mapBody" class="map-body"></div>
     </div>
@@ -466,8 +467,12 @@ try { const t = localStorage.getItem('ardzy.theme'); if (t) document.documentEle
 <dialog id="dlgExamples" class="wide">
   <form method="dialog">
     <h2>Examples</h2>
-    <div class="row"><input id="exFind" class="grow" placeholder="find an example" spellcheck="false"></div>
-    <div id="exList" class="exlist"></div>
+    <div class="row"><input id="exFind" class="grow" placeholder="find an example" spellcheck="false">
+      <button class="ghost small" id="btnConnectGuide" title="The connector pins, UART, I2C, LEDs, motors, power: how to wire everything">How to connect</button></div>
+    <div class="exmain">
+      <div id="exList" class="exlist"></div>
+      <div id="exAbout" class="exabout"><p class="hint">Choose an example: what it does, the parts it needs and how to wire them are shown here.</p></div>
+    </div>
     <label>New project name <input id="exName" placeholder="my_blink" pattern="[A-Za-z0-9_.\-]+"></label>
     <div class="row end"><button value="cancel" class="ghost">Close</button><button id="btnExOk" class="primary" value="ok">Create project</button></div>
   </form>

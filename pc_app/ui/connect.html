@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to connect things to Ardzy</title>
+<style>
+  :root { --text: #18211c; --muted: #5b6a62; --line: #d6ddd9; --accent: #13894a; --bg: #ffffff; --soft: #f3f5f4;
+          --gnd: #3b3f3d; --pwr: #c42b2b; --io: #13894a; --i2c: #1d5fa8; --nc: #b9c2bd; --en: #9a6400; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.6 "Segoe UI", system-ui, sans-serif; color: var(--text); background: var(--bg); }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 22px 26px 60px; }
+  h1 { font-size: 26px; margin: 0 0 4px; } h2 { font-size: 20px; margin: 34px 0 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 22px 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 14px; }
+  .warn { background: #fff4e5; border-left: 4px solid #e08a00; padding: 10px 14px; border-radius: 6px; margin: 12px 0; }
+  .tip { background: #e9f6ee; border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 6px; margin: 12px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 14px; font-size: 14px; }
+  th, td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: var(--soft); }
+  code, pre { font-family: "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+  code { background: var(--soft); padding: 1px 5px; border-radius: 4px; }
+  pre { background: #0f1512; color: #cfeedd; padding: 12px 14px; border-radius: 8px; overflow-x: auto; line-height: 1.45; }
+  nav.toc { background: var(--soft); border-radius: 8px; padding: 10px 16px; margin: 14px 0; }
+  nav.toc a { color: var(--accent); text-decoration: none; margin-right: 14px; white-space: nowrap; }
+  .legend span { display: inline-block; margin: 0 12px 4px 0; font-size: 13px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  svg text { font-family: "Segoe UI", system-ui, sans-serif; }
+  .ex { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>How to connect things to Ardzy</h1>
+<p class="lead">The 9 connectors J1 to J9, the console header, and how to wire LEDs, buttons, serial devices (UART),
+sensors (I2C) and motors. Every wiring here belongs to an example: <b>Examples</b> (top bar) shows the same wiring
+next to each one.</p>
+
+<nav class="toc"><a href="#safe">Rules first</a><a href="#conn">The connectors</a><a href="#uart">UART</a>
+<a href="#i2c">I2C sensors</a><a href="#led">LEDs and buttons</a><a href="#motor">Motors</a><a href="#power">Power</a>
+<a href="#examples">Examples</a></nav>
+
+<h2 id="safe">Rules first (read this once)</h2>
+<div class="warn"><b>The pins are 3.3 V and have no protection.</b> Never connect 5 V (or more) to a pin: not from an
+Arduino Uno, not from a 5 V sensor, not from a USB-UART adapter set to 5 V. It can destroy the FPGA. A 5 V device needs a
+level shifter or, for a signal going <i>into</i> Ardzy, a voltage divider (1 kOhm and 2 kOhm, see <a href="#uno">Arduino Uno</a>).</div>
+<ul>
+  <li><b>GND together.</b> Every device you connect shares GND with the board (a GND pin of the connector). Without it, nothing works.</li>
+  <li><b>Small currents only.</b> A pin gives a few mA: enough for an LED with a resistor, a signal, a driver's input. Never a motor,
+    a relay coil or a buzzer directly: use a driver (transistor, ULN2003, motor driver module).</li>
+  <li><b>Power for motors from their own supply</b>, with only GND shared with Ardzy.</li>
+  <li><b>Wire with the power off</b>, check twice, then switch on.</li>
+  <li>The board itself runs from its 12 V input or 5 V. Do not power it from 3.3 V (its regulators need more).</li>
+</ul>
+
+<h2 id="conn">The connectors J1 to J9</h2>
+<p>The 9 connectors (2 rows of 9 pins, 2.54 mm) were the hash-board plugs of the miner. All 9 have the same pins.
+The pin numbers are printed next to each connector.</p>
+<svg viewBox="0 0 720 360" width="100%" role="img" aria-label="Connector J1 to J9 pins"><rect x="300" y="8" width="110" height="338" rx="10" fill="#f3f5f4" stroke="#d6ddd9"/><circle cx="330" cy="30" r="13" fill="#7a8580"/><text x="330" y="34" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">2</text><text x="305" y="34" font-size="13" text-anchor="end" fill="#18211c">GND</text><rect x="367" y="17" width="26" height="26" rx="4" fill="#7a8580"/><text x="380" y="34" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">1</text><text x="405" y="34" font-size="13" text-anchor="start" fill="#18211c">GND</text><circle cx="330" cy="66" r="13" fill="#4f8fe0"/><text x="330" y="70" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">4</text><text x="305" y="70" font-size="13" text-anchor="end" fill="#18211c">SCL (I2C)</text><circle cx="380" cy="66" r="13" fill="#4f8fe0"/><text x="380" y="70" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">3</text><text x="405" y="70" font-size="13" text-anchor="start" fill="#18211c">SDA (I2C)</text><circle cx="330" cy="102" r="13" fill="#a7b0ab"/><text x="330" y="106" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">6</text><text x="305" y="106" font-size="13" text-anchor="end" fill="#8a958f">not connected</text><circle cx="380" cy="102" r="13" fill="#2fbf6c"/><text x="380" y="106" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">5</text><text x="405" y="106" font-size="13" text-anchor="start" fill="#18211c">I/O  J_5</text><circle cx="330" cy="138" r="13" fill="#a7b0ab"/><text x="330" y="142" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">8</text><text x="305" y="142" font-size="13" text-anchor="end" fill="#8a958f">not connected</text><circle cx="380" cy="138" r="13" fill="#a7b0ab"/><text x="380" y="142" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">7</text><text x="405" y="142" font-size="13" text-anchor="start" fill="#8a958f">not connected</text><circle cx="330" cy="174" r="13" fill="#7a8580"/><text x="330" y="178" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">10</text><text x="305" y="178" font-size="13" text-anchor="end" fill="#18211c">GND</text><circle cx="380" cy="174" r="13" fill="#7a8580"/><text x="380" y="178" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">9</text><text x="405" y="178" font-size="13" text-anchor="start" fill="#18211c">GND</text><circle cx="330" cy="210" r="13" fill="#2fbf6c"/><text x="330" y="214" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">12</text><text x="305" y="214" font-size="13" text-anchor="end" fill="#18211c">I/O  J_12 (Serial1 RX on J1)</text><circle cx="380" cy="210" r="13" fill="#2fbf6c"/><text x="380" y="214" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">11</text><text x="405" y="214" font-size="13" text-anchor="start" fill="#18211c">I/O  J_11 (Serial1 TX on J1)</text><circle cx="330" cy="246" r="13" fill="#7a8580"/><text x="330" y="250" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">14</text><text x="305" y="250" font-size="13" text-anchor="end" fill="#18211c">GND</text><circle cx="380" cy="246" r="13" fill="#7a8580"/><text x="380" y="250" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">13</text><text x="405" y="250" font-size="13" text-anchor="start" fill="#18211c">GND</text><circle cx="330" cy="282" r="13" fill="#e3a03a"/><text x="330" y="286" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">16</text><text x="305" y="286" font-size="13" text-anchor="end" fill="#18211c">3.3 V out</text><circle cx="380" cy="282" r="13" fill="#2fbf6c"/><text x="380" y="286" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">15</text><text x="405" y="286" font-size="13" text-anchor="start" fill="#18211c">I/O  J_15</text><circle cx="330" cy="318" r="13" fill="#b65fd6"/><text x="330" y="322" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">18</text><text x="305" y="322" font-size="13" text-anchor="end" fill="#18211c">EN: ARM pin, 2.5 V (leave free)</text><circle cx="380" cy="318" r="13" fill="#a7b0ab"/><text x="380" y="322" fill="#fff" font-size="12" font-weight="600" text-anchor="middle">17</text><text x="405" y="322" font-size="13" text-anchor="start" fill="#8a958f">not connected</text></svg>
+<div class="legend"><span><i style="background:#2fbf6c"></i>I/O pin (3.3 V)</span><span><i style="background:#4f8fe0"></i>I2C</span><span><i style="background:#e3a03a"></i>3.3 V out</span><span><i style="background:#7a8580"></i>GND</span><span><i style="background:#b65fd6"></i>EN, ARM 2.5 V</span><span><i style="background:#a7b0ab"></i>not connected</span></div><p class="lead">Drawn like the app's Map view (Map, Board, click a connector): pin 1 is the square pad. In your code, J_5 is <code>J1_5</code> on J1, <code>J2_5</code> on J2 and so on.</p>
+
+<table>
+  <tr><th>Pin</th><th>What</th><th>Name in your code</th><th>Notes</th></tr>
+  <tr><td>5</td><td>I/O</td><td><code>J1_5</code> ... <code>J9_5</code></td><td rowspan="4">Input or output, 3.3 V, a weak pull-up is always on (an open input reads HIGH). PWM, servo, tone, Serial1, counters work on any of them.</td></tr>
+  <tr><td>11</td><td>I/O (was TXD)</td><td><code>J1_11</code> ... <code>J9_11</code></td></tr>
+  <tr><td>12</td><td>I/O (was RXD)</td><td><code>J1_12</code> ... <code>J9_12</code></td></tr>
+  <tr><td>15</td><td>I/O (was RST)</td><td><code>J1_15</code> ... <code>J9_15</code></td></tr>
+  <tr><td>3 / 4</td><td>I2C SDA / SCL</td><td><code>Wire</code> (J1..J8), <code>Wire1</code> (J9)</td><td>1 kOhm pull-ups on the board. J1..J8 share one bus.</td></tr>
+  <tr><td>16</td><td>3.3 V out</td><td></td><td>For sensors and small modules (not for motors).</td></tr>
+  <tr><td>1, 2, 9, 10, 13, 14</td><td>GND</td><td></td><td></td></tr>
+</table>
+<p>That makes 36 I/O pins (4 on each of 9 connectors). The board also has its own: 4 small FPGA LEDs (<code>LED0</code> ... <code>LED3</code>),
+the green and red status LEDs, the IP and Reset buttons (<code>BUTTON_IP</code>), a buzzer, and 6 fan headers. The <b>Map</b> view of the app
+shows where everything is on the board.</p>
+
+<h2 id="uart">UART (serial) devices</h2>
+<p>The board has <b>two kinds</b> of UART. Do not mix them up:</p>
+<table>
+  <tr><th></th><th>Console header J12</th><th>Serial1 on the connector pins</th></tr>
+  <tr><td>What it is</td><td>The board's Linux console (login, boot messages)</td><td>A UART in the FPGA for <b>your sketch</b></td></tr>
+  <tr><td>Use it for</td><td>The Ardzy app over a cable (board button, "Or over a USB-UART cable"), the USB serial tab</td><td>GPS, ESP32, Arduino, a PC terminal, any serial module</td></tr>
+  <tr><td>Pins</td><td>J12: pin 1 = RX, pin 2 = GND, pin 3 = TX (often not soldered: add a 3-pin header)</td><td>TX = J1 pin 11, RX = J1 pin 12 (other pins: <code>Serial1.setPins(rx, tx)</code>)</td></tr>
+  <tr><td>Speed</td><td>115200 (the app goes to 921600 by itself)</td><td>any you set (tested on the board: 9600 to 1 000 000 baud)</td></tr>
+</table>
+<div class="tip">TX always goes to RX: the board's TX to the device's RX, the device's TX to the board's RX. And GND to GND.</div>
+
+<h3>A USB-UART adapter (CP2102, CH340, FT232) <span class="ex">(examples: UsbUartAdapter, or the app's cable link)</span></h3>
+<pre>
+  for the app's cable link (console):        for your sketch (Serial1):
+  adapter TX  --->  J12 pin 1 (RX)           adapter TX  --->  J1 pin 12 (RX)
+  adapter GND ----  J12 pin 2 (GND)          adapter GND ----  J1 pin 9  (GND)
+  adapter RX  <---  J12 pin 3 (TX)           adapter RX  <---  J1 pin 11 (TX)
+  adapter 5V / 3V3: not connected            adapter 5V / 3V3: not connected
+</pre>
+<p>If the adapter has a 5V / 3V3 jumper, set it to <b>3V3</b>. No text at all: swap the TX and RX wires (it does no harm).</p>
+
+<h3>The first test: one wire <span class="ex">(example: UartLoopback)</span></h3>
+<pre>
+  J1 pin 11 (TX)  ---->  J1 pin 12 (RX)          what is sent comes straight back
+</pre>
+
+<h3 id="uno">An Arduino Uno / Nano / Mega (5 V) <span class="ex">(example: ArduinoLink)</span></h3>
+<pre>
+  Arduino TX (pin 1) ---[ 1k ]---+---> J1 pin 12 (Ardzy RX)      the divider makes 5 V into 3.3 V
+                                 |
+                               [ 2k ]
+                                 |
+                                GND
+  Arduino RX (pin 0) <---------------- J1 pin 11 (Ardzy TX)      3.3 V is a HIGH for the Arduino
+  Arduino GND        ----------------- J1 pin 9  (GND)
+</pre>
+<p>Or a 4-channel level shifter module (LV side to Ardzy 3.3 V, HV side to the Arduino's 5 V).</p>
+
+<h3>An ESP32, ESP8266, Raspberry Pi Pico (3.3 V) <span class="ex">(example: ESP32Link)</span></h3>
+<pre>
+  ESP32 RX2 (GPIO16) <---  J1 pin 11 (TX)
+  ESP32 TX2 (GPIO17) --->  J1 pin 12 (RX)
+  ESP32 GND          ----  J1 pin 9  (GND)        both 3.3 V: no resistors
+</pre>
+
+<h3>A GPS module (NEO-6M, NEO-8M, BN-220) <span class="ex">(example: GPSReader)</span></h3>
+<pre>
+  GPS VCC  ----  J1 pin 16 (3.3 V)
+  GPS GND  ----  J1 pin 9  (GND)
+  GPS TX   --->  J1 pin 12 (RX)          9600 baud on most modules
+  GPS RX   <---  J1 pin 11 (TX)          (only to change its settings)
+</pre>
+
+<h2 id="i2c">I2C sensors and displays</h2>
+<p>Four wires: power, GND, SDA, SCL. Many devices can share the same two I2C wires, each has its own address.
+Run the <b>I2CScanner</b> example first: it lists every device it finds.</p>
+<pre>
+  sensor VCC  ----  J1 pin 16 (3.3 V)
+  sensor GND  ----  J1 pin 1  (GND)
+  sensor SDA  ----  J1 pin 3  (SDA)       the same on J1..J8 (one bus: Wire)
+  sensor SCL  ----  J1 pin 4  (SCL)       J9 is a second bus (Wire1)
+</pre>
+<table>
+  <tr><th>Device</th><th>Address</th><th>Example</th></tr>
+  <tr><td>MPU6050 motion sensor (GY-521)</td><td>0x68 (AD0 high: 0x69)</td><td class="ex">MPU6050</td></tr>
+  <tr><td>BMP280 / BME280 temperature, pressure</td><td>0x76 (SDO high: 0x77)</td><td class="ex">BMP280</td></tr>
+  <tr><td>SSD1306 OLED display 128x64</td><td>0x3C</td><td>Library Manager: Adafruit SSD1306</td></tr>
+  <tr><td>DS3231 real-time clock</td><td>0x68</td><td>Library Manager: RTClib</td></tr>
+  <tr><td>PCF8574 I/O expander (LCD backpack)</td><td>0x20 .. 0x27</td><td>Library Manager: LiquidCrystal I2C</td></tr>
+</table>
+<p>The board already has pull-up resistors on SDA and SCL. A module's own pull-ups are fine too. Use 3.3 V modules
+(most breakout boards are).</p>
+
+<h2 id="led">LEDs and buttons <span class="ex">(example: ExternalLedButton)</span></h2>
+<pre>
+  J2 pin 5  ---[ 330 Ohm ]---|>|--- J2 pin 9 (GND)       LED: long leg (+) to the resistor, short leg to GND
+  J2 pin 11 -------[ button ]------ J2 pin 10 (GND)      pressed = LOW (the pin has a pull-up inside)
+</pre>
+<p>220 Ohm to 1 kOhm for the LED resistor. For a brighter LED strip, a relay or anything bigger: a transistor or a module
+in between (the pin only switches it).</p>
+
+<h2 id="motor">Motors</h2>
+<h3>A servo (SG90, MG996R) <span class="ex">(example: ServoSweep, Blocks "turn servo")</span></h3>
+<pre>
+  servo signal (orange)  <---  J5 pin 5        any I/O pin
+  servo + (red)          ----  +5 V of a separate 5 V supply
+  servo - (brown)        ----  GND of that supply AND a GND pin of Ardzy
+</pre>
+<h3>A small stepper 28BYJ-48 with a ULN2003 board <span class="ex">(example: StepperULN2003, Blocks "4-wire stepper")</span></h3>
+<pre>
+  ULN2003 IN1..IN4  <---  J1 pin 5, 11, 12, 15
+  ULN2003 GND       ----  J1 pin 9 and the 5 V supply's GND
+  ULN2003 +5V       ----  +5 V of a 5 V supply (a USB charger)
+</pre>
+<h3>A bigger stepper with a STEP/DIR driver (A4988, DRV8825, TMC2208) <span class="ex">(example: StepperDriver, Blocks "stepper with STEP")</span></h3>
+<pre>
+  driver STEP  <---  J1 pin 5          driver VDD  ----  J1 pin 16 (3.3 V)
+  driver DIR   <---  J1 pin 11         driver GND  ----  J1 pin 9
+  driver EN    <---  J1 pin 15         driver VMOT ----  12 V motor supply (+ 100 uF capacitor)
+</pre>
+<p>Set the driver's current limit before the first run, and never unplug the motor while the motor supply is on.</p>
+<h3>Fans</h3>
+<p>The 6 fan headers of the board take normal 4-pin PC fans (12 V). The examples <b>FanControl</b> and the Blocks
+"set the fans to" control their speed.</p>
+
+<h2 id="power">Power</h2>
+<ul>
+  <li><b>The board:</b> its 12 V input (the 6-pin PCIe plug of a PC power supply) or 5 V.</li>
+  <li><b>Pin 16 (3.3 V out)</b> of every connector: for sensors, GPS, small modules.</li>
+  <li><b>Motors, LED strips, relays:</b> their own supply. Only GND is shared with the board.</li>
+</ul>
+
+<h2 id="examples">The examples and what they need</h2>
+<table>
+  <tr><th>Example</th><th>Parts</th><th>Pins</th></tr>
+  <tr><td class="ex">Blink, Fade, Button, BoardInfo</td><td>nothing (the board's own LEDs and buttons)</td><td></td></tr>
+  <tr><td class="ex">ExternalLedButton</td><td>LED, 330 Ohm, push button</td><td>J2 pins 5, 11, GND</td></tr>
+  <tr><td class="ex">UartLoopback</td><td>1 wire</td><td>J1 pin 11 to pin 12</td></tr>
+  <tr><td class="ex">UsbUartAdapter</td><td>USB-UART adapter (3.3 V)</td><td>J1 pins 11, 12, GND</td></tr>
+  <tr><td class="ex">ArduinoLink</td><td>Arduino Uno, 1k + 2k resistors</td><td>J1 pins 11, 12, GND</td></tr>
+  <tr><td class="ex">ESP32Link</td><td>ESP32 board</td><td>J1 pins 11, 12, GND</td></tr>
+  <tr><td class="ex">GPSReader</td><td>GPS module</td><td>J1 pins 12 (11), 16, GND</td></tr>
+  <tr><td class="ex">Serial1Bridge</td><td>any UART device</td><td>J1 pins 11, 12, GND</td></tr>
+  <tr><td class="ex">I2CScanner, MPU6050, BMP280</td><td>I2C modules</td><td>J1 pins 3, 4, 16, GND</td></tr>
+  <tr><td class="ex">ServoSweep</td><td>servo, 5 V supply</td><td>one I/O pin, GND</td></tr>
+  <tr><td class="ex">StepperULN2003, StepperDriver</td><td>stepper + driver, motor supply</td><td>J1 pins 5, 11, 12, 15, GND</td></tr>
+  <tr><td class="ex">FanControl</td><td>a 4-pin PC fan</td><td>a fan header</td></tr>
+  <tr><td class="ex">Melody</td><td>a small passive buzzer or speaker, 100 Ohm resistor</td><td>J6 pin 5, GND</td></tr>
+</table>
+</div>
+</body>
+</html>

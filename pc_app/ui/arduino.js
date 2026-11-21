@@ -8,6 +8,7 @@ async function openExamples() {
   const r = await api('/api/examples');
   EX.list = r.examples || [];
   EX.pick = null;
+  $('exAbout').innerHTML = `<p class="hint">${T('Choose an example: what it does, the parts it needs and how to wire them are shown here.')}</p>`;
   $('exFind').value = '';
   $('exName').value = '';
   renderExamples();
@@ -28,7 +29,29 @@ function renderExamples() {
     const base = EX.pick.split(/[\\/]/).pop();
     if (!$('exName').value || $('exName').dataset.auto === '1') { $('exName').value = 'my_' + base; $('exName').dataset.auto = '1'; }
     renderExamples();
+    showExampleAbout();
   });
+}
+
+// what the chosen example does, its parts and its wiring (the comment at the top of the sketch)
+function showExampleAbout() {
+  const e = EX.list.find(x => x.path === EX.pick);
+  if (!e) return;
+  const lines = (e.about || T('(this example has no description)')).split('\n');
+  const title = lines[0], rest = lines.slice(1).join('\n').replace(/^\n+/, '');
+  $('exAbout').innerHTML = `<h4>${esc(title)}</h4>${rest ? `<pre>${esc(rest)}</pre>` : ''}
+    <p class="hint">${T('More wiring, and the rules for the 3.3 V pins:')} <a href="#" id="exGuideLink">${T('How to connect')}</a></p>`;
+  $('exAbout').scrollTop = 0;
+  $('exGuideLink').onclick = ev => { ev.preventDefault(); openConnectGuide(); };
+}
+
+// the guide "How to connect things to Ardzy" (ui/connect.html) in the guide window
+function openConnectGuide(part) {
+  const f = $('guideFrame');
+  f.removeAttribute('srcdoc');
+  f.src = 'connect.html' + (part ? '#' + part : '');
+  $('guideTitle').textContent = T('How to connect things to Ardzy');
+  if (!$('dlgGuide').open) $('dlgGuide').showModal();
 }
 
 async function createFromExample(e) {
@@ -165,6 +188,7 @@ function drawPlot() {
 
 /* ================================================================ wiring */
 $('btnExamples').onclick = openExamples;
+$('btnConnectGuide').onclick = e => { e.preventDefault(); openConnectGuide(); };
 $('exFind').oninput = renderExamples;
 $('exName').oninput = () => $('exName').dataset.auto = '0';
 $('btnExOk').onclick = createFromExample;

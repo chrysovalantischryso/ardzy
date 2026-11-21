@@ -91,6 +91,25 @@ def examples_in(base):
     return out
 
 
+def example_about(folder):
+    """The comment at the top of an example's .ino (what it does, the parts, the wiring), or ''."""
+    try:
+        with open(os.path.join(folder, os.path.basename(folder) + '.ino'), encoding='utf-8', errors='replace') as f:
+            text = f.read(8000)
+    except OSError:
+        return ''
+    m = re.match(r'\s*/\*(.*?)\*/', text, re.S)
+    if m:
+        import textwrap
+        return textwrap.dedent('\n'.join(l.rstrip() for l in m.group(1).strip('\n').split('\n'))).strip('\n')
+    lines = []
+    for l in text.splitlines():                      # a // comment block instead
+        if not l.strip().startswith('//'):
+            break
+        lines.append(l.strip()[2:].rstrip())
+    return '\n'.join(lines)
+
+
 class Arduino:
     def __init__(self, workspace, cache_dir, builtin_examples, log):
         self.ws = workspace
@@ -286,9 +305,10 @@ class Arduino:
 
     # ---------------------------------------------------------------- examples
     def examples(self):
-        out = [{'group': 'Ardzy', 'name': name, 'path': path} for name, path in examples_in(self.builtin_examples)]
+        out = [{'group': 'Ardzy', 'name': name, 'path': path, 'about': example_about(path)}
+               for name, path in examples_in(self.builtin_examples)]
         for lib in self.installed():
-            out += [{'group': lib.name, 'name': name, 'path': path}
+            out += [{'group': lib.name, 'name': name, 'path': path, 'about': example_about(path)}
                     for name, path in examples_in(os.path.join(lib.root, 'examples'))]
         return out
 

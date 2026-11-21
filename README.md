@@ -36,6 +36,13 @@ program or a Verilog design on your PC, press **Upload**, and it runs on the boa
 
 ## New in 0.3.1
 
+- **New examples with their wiring** (Examples, top bar): UartLoopback, UsbUartAdapter (a USB-UART adapter on J1 talks to
+  your sketch), ArduinoLink (an Arduino Uno, 5 V safe with a divider), ESP32Link, GPSReader (NMEA, no library), MPU6050,
+  BMP280, StepperULN2003, StepperDriver (A4988 / DRV8825) and ExternalLedButton. The Examples window now shows what the
+  chosen example does, the parts and how to wire them. All 27 examples compile; the UART at 9600 to 1 000 000 baud and
+  the GPS parser were tested on the real board.
+- **How to connect** (Examples or the Map view): the connectors J1..J9 pin by pin (drawn like the Map view), the 3.3 V
+  rules, and wiring for LEDs, buttons, UART devices, I2C sensors, servos, steppers and power. Also document 08 in `docs/`.
 - **Windows installer** `Ardzy-0.3.1-BETA-Setup.exe` (72 MB): installs Ardzy for your Windows user (no administrator
   rights, folder `%LOCALAPPDATA%\Programs\Ardzy` or one you choose), with shortcuts in the Start menu and on the
   Desktop, an entry in Windows Settings > Apps, and an uninstaller. A newer version replaces the old one (it is
