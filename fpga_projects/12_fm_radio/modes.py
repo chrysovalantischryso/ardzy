@@ -4,11 +4,17 @@ A symbol is (carrier offset in Hz, time in microseconds, width 0..512, phase 0..
 the carrier at that offset, that strong, for that long, then takes the next symbol. That is enough for
   CW     Morse code: the carrier keyed on and off (with soft edges, so no clicks)
   RTTY   radio teletype: two tones 170 Hz apart, 45.45 baud, the Baudot (ITA2) code
-  PSK31  phase reversals at 31.25 baud with the varicode alphabet, as in the program fldigi
+  PSK    BPSK31, 63, 125 or 250: phase reversals with the varicode alphabet, as in the program fldigi
+  QRSS   very slow Morse (a dot of 3, 10 or more seconds), read on a waterfall; DFCW: dots and dashes
+         the same length on two frequencies
+  Hell   Feld-Hellschreiber: the text is scanned like a fax, 7 x 14 dots a letter, 122.5 dots a second (0.8 s a letter);
+         fldigi (and the eye, on a slow waterfall) reads it
+  WSPR   a weak-signal beacon: call sign, locator and power in 4 tones 1.46 Hz apart, 110.6 s, starting
+         one second after an even minute; WSJT-X decodes it and reports it to wsprnet.org
   beacon a melody or a tone sequence for receivers in SSB / CW mode
   sweep  the carrier stepping across a range, to test filters and antennas
 Listen with an SDR (an RTL-SDR with SDR# or SDR++) in USB mode, 1 kHz below the carrier, and decode
-RTTY and PSK31 with fldigi.
+RTTY, PSK and Hell with fldigi, WSPR with WSJT-X.
 """
 import array
 import math
@@ -144,13 +150,15 @@ def psk31_bits(text):
     return bits + '1' * 32                         # postamble: steady carrier
 
 
-def psk31(text, offset_hz=0.0, level=1.0, steps=8):
-    """BPSK at 31.25 baud: a 0 bit reverses the phase, a 1 keeps it. During a reversal the amplitude
-    follows a cosine through zero (that keeps the signal 31 Hz wide), shaped here in `steps` parts."""
-    T = 32000                                      # microseconds per bit
+def psk31(text, offset_hz=0.0, level=1.0, steps=8, baud=31.25):
+    """BPSK at 31.25 baud (or 62.5, 125, 250: PSK63, PSK125, PSK250): a 0 bit reverses the phase, a 1
+    keeps it. During a reversal the amplitude follows a cosine through zero (that keeps the signal as
+    narrow as the baud rate), shaped here in `steps` parts. The preamble lasts about a second at every speed."""
+    T = round(1e6 / float(baud))                   # microseconds per bit
+    extra = max(0, int(round(float(baud) / 31.25)) - 1) * 32
     out, phase = [], 0
     full = width_for(level)
-    for b in psk31_bits(text):
+    for b in '0' * extra + psk31_bits(text) + '1' * extra:
         if b == '1':
             out.append((offset_hz, T, full, phase))
         else:
@@ -205,6 +213,168 @@ def sweep(start_hz, stop_hz, step_hz, dwell_ms=50, level=1.0):
     """The carrier steps from start to stop (offsets, within +-970 kHz of the carrier)."""
     n = max(1, int(abs(stop_hz - start_hz) / abs(step_hz)))
     return [(start_hz + (stop_hz - start_hz) * i / n, dwell_ms * 1000, width_for(level), 0) for i in range(n + 1)]
+
+
+PSK_BAUDS = {'psk31': 31.25, 'psk63': 62.5, 'psk125': 125.0, 'psk250': 250.0}
+
+
+# ---------------------------------------------------------------- QRSS / DFCW (slow Morse for waterfalls)
+def qrss(text, dot_s=3.0, offset_hz=0.0, dfcw_hz=0.0, edge_ms=200, level=1.0):
+    """Morse so slow that it is read on a waterfall instead of by ear (QRSS 3: a dot of 3 s).
+    dfcw_hz = 0: the usual on / off keying. dfcw_hz > 0 (DFCW): every element is one dot long, a dash is
+    dfcw_hz higher than a dot, with a short gap between the elements: twice as fast for the same dot."""
+    if dfcw_hz <= 0:
+        return cw(text, wpm=1.2 / max(0.05, float(dot_s)), offset_hz=offset_hz, edge_ms=edge_ms, level=level)
+    dot = float(dot_s) * 1e6
+    w = width_for(level)
+    out = []
+    for word in text.upper().split():
+        for ch in word:
+            code = MORSE.get(ch)
+            if not code:
+                continue
+            for el in code:
+                out.append((offset_hz + (dfcw_hz if el == '-' else 0.0), dot, w, 0))
+                out.append((offset_hz, dot / 3, 0, 0))
+            out.append((offset_hz, dot, 0, 0))
+        out.append((offset_hz, 2 * dot, 0, 0))
+    return out
+
+
+# ---------------------------------------------------------------- Feld-Hellschreiber
+HELL_BAUD = 122.5                                  # dots per second (a letter: 7 columns x 14 dots = 0.8 s)
+
+
+def hell(text, offset_hz=0.0, level=1.0, edge_us=800, wide=False):
+    """Feld Hell: each letter is 7 columns of 14 dots (the 5 x 7 font with every row doubled, and 2 empty
+    columns), a column is sent from the bottom up, the carrier is on for ink and off for paper. The receiver
+    (fldigi in Feld Hell, or a slow waterfall) draws the columns side by side. wide: every column twice."""
+    import font
+    px = 1e6 / HELL_BAUD
+    w = width_for(level)
+    steps = 4
+    edge = [width_for(level * math.sin(math.pi / 2 * (k + 0.5) / steps) ** 2) for k in range(steps)]
+    seq = []                                       # dots, on (1) or off (0), in sending order
+    for ch in ' ' + text + ' ':
+        g = font.glyph(ch)                         # 7 rows x 5 columns, top row first
+        for c in range(7):
+            dots = [int(g[r // 2, c]) for r in range(14)] if c < 5 else [0] * 14
+            for _ in range(2 if wide else 1):
+                seq += dots[::-1]                  # (from the bottom up)
+    out, i = [], 0
+    eu = min(float(edge_us), px / 2) / steps
+    while i < len(seq):                            # runs of the same dot, soft edges on the ink
+        j = i
+        while j < len(seq) and seq[j] == seq[i]:
+            j += 1
+        t = (j - i) * px
+        if seq[i]:
+            out += [(offset_hz, eu, e, 0) for e in edge]
+            out.append((offset_hz, max(1.0, t - 2 * steps * eu), w, 0))
+            out += [(offset_hz, eu, e, 0) for e in reversed(edge)]
+        else:
+            out.append((offset_hz, t, 0, 0))
+        i = j
+    return out
+
+
+# ---------------------------------------------------------------- WSPR
+WSPR_SYNC = [int(c) for c in (
+    '110000001000111000100101111000000010010100000010110011010001101000011010101010010010110001101010001'
+    '000001001001110110011010001110000010100110000000110101100011000')]
+WSPR_SPACING = 12000 / 8192                        # 1.4648 Hz between the 4 tones
+WSPR_SYMBOL_US = 8192 / 12000 * 1e6                # 0.6827 s a symbol, 162 symbols = 110.6 s
+WSPR_POWERS = (0, 3, 7, 10, 13, 17, 20, 23, 27, 30, 33, 37, 40, 43, 47, 50, 53, 57, 60)
+
+
+def _wspr_char(c):
+    if c.isdigit():
+        return ord(c) - 48
+    if 'A' <= c <= 'Z':
+        return ord(c) - 55
+    return 36                                      # space
+
+
+def wspr_check(call, locator, dbm):
+    """'' when the message can be sent, else what is wrong with it."""
+    call, loc = str(call).strip().upper(), str(locator).strip().upper()
+    if not 3 <= len(call) <= 6 or not all(c.isalnum() for c in call):
+        return 'the call sign must be 3 to 6 letters and digits (no / and no extensions in this form)'
+    c = (' ' + call) if call[1].isdigit() else call
+    if len(c) > 6 or not c[2].isdigit() or any(x.isdigit() for x in c[3:]):
+        return 'a call sign like K1ABC, DL1AB or SV1ABC: a digit as its 2nd or 3rd character, then up to 3 letters'
+    if len(loc) != 4 or not ('A' <= loc[0] <= 'R' and 'A' <= loc[1] <= 'R' and loc[2:].isdigit()):
+        return 'the locator is 4 characters, like KM17 or JN58'
+    try:
+        if int(dbm) not in WSPR_POWERS:
+            raise ValueError
+    except (TypeError, ValueError):
+        return 'the power in dBm must be one of %s' % ', '.join(map(str, WSPR_POWERS))
+    return ''
+
+
+def wspr_symbols(call, locator, dbm):
+    """The 162 channel symbols (0..3) of a WSPR message type 1 (call sign, 4-character locator, dBm)."""
+    err = wspr_check(call, locator, dbm)
+    if err:
+        raise ValueError('WSPR: ' + err)
+    call, loc = call.strip().upper(), locator.strip().upper()
+    if call[1].isdigit():
+        call = ' ' + call
+    call = (call + '      ')[:6]
+    n = _wspr_char(call[0])
+    n = n * 36 + _wspr_char(call[1])
+    n = n * 10 + _wspr_char(call[2])
+    for c in call[3:]:
+        n = n * 27 + (_wspr_char(c) - 10)
+    m = (179 - 10 * (ord(loc[0]) - 65) - int(loc[2])) * 180 + 10 * (ord(loc[1]) - 65) + int(loc[3])
+    m = m * 128 + int(dbm) + 64
+    bits = [(n >> (27 - i)) & 1 for i in range(28)] + [(m >> (21 - i)) & 1 for i in range(22)] + [0] * 31
+    reg, coded = 0, []                             # convolutional code, K = 32, rate 1/2
+    for b in bits:
+        reg = ((reg << 1) | b) & 0xFFFFFFFF
+        coded.append(bin(reg & 0xF2D05351).count('1') & 1)
+        coded.append(bin(reg & 0xE4613C47).count('1') & 1)
+    inter, p = [0] * 162, 0                        # interleaving by bit-reversed addresses
+    for i in range(256):
+        j = int('{:08b}'.format(i)[::-1], 2)
+        if j < 162:
+            inter[j] = coded[p]
+            p += 1
+    return [WSPR_SYNC[i] + 2 * inter[i] for i in range(162)]
+
+
+def wspr(call, locator, dbm, offset_hz=1500.0, level=1.0):
+    """The WSPR transmission as symbols: tone k at offset + (k - 1.5) * 1.4648 Hz (about 6 Hz wide)."""
+    w = width_for(level)
+    base = offset_hz - 1.5 * WSPR_SPACING
+    return [(base + s * WSPR_SPACING, WSPR_SYMBOL_US, w, 0) for s in wspr_symbols(call, locator, dbm)] + \
+           [(offset_hz, 1000, 0, 0)]
+
+
+def wspr_next_start(now):
+    """The next WSPR slot start: one second after an even minute (UTC), not before now."""
+    t = math.floor(now / 120.0) * 120 + 1
+    while t < now:
+        t += 120
+    return t
+
+
+# ---------------------------------------------------------------- timing
+def quantize(symbols, max_us=1000000):
+    """Whole microseconds for the FPGA, with the rounding carried on (no drift over a long message),
+    and symbols longer than the FPGA takes (about 1 s) cut into parts."""
+    out, t, done = [], 0.0, 0
+    for off, us, w, ph in symbols:
+        t += us
+        n = int(round(t)) - done
+        done += n
+        while n > max_us:
+            out.append((off, max_us, w, ph))
+            n -= max_us
+        if n > 0:
+            out.append((off, n, w, ph))
+    return out
 
 
 def duration_s(symbols):

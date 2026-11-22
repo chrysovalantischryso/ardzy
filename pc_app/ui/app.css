@@ -347,6 +347,13 @@ dialog.guide iframe { flex: 1; border: 0; width: 100%; background: #fff; }
 .rctl input[type=range] { width: 100%; }
 .rctl .row { margin: 0; }
 .rnote { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+.pt-wrap { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-top: 8px; }
+.pt-prev { width: 320px; max-width: 100%; display: flex; flex-direction: column; gap: 4px; }
+.pt-cv { width: 100%; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 6px; background: #000; }
+.pt-help { margin-top: 10px; }
+.pt-help summary { cursor: pointer; font-weight: 600; font-size: 13.5px; }
+.pt-help ol { padding-left: 20px; }
+.pt-help li { margin: 3px 0; }
 .rwarn { font-size: 13px; color: var(--warn); margin: 6px 0 0; }
 .meter { display: grid; grid-template-columns: 44px 1fr 46px; align-items: center; gap: 6px; font-size: 12.5px; }
 .meter .bar { margin: 3px 0; height: 12px; }

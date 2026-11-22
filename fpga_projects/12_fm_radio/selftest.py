@@ -233,6 +233,59 @@ d, hz = duty(), r.rf_hz()
 seen = sum(1 for i in range(1000) if math.asin(0.5 * abs(math.cos(2 * math.pi * i / 1000))) / math.pi / F2 >= 2e-9) / 1000
 check('DSB: the strength follows the sound (no carrier)', near(d, want, 0.008) and near(hz, F2 * seen, F2 * 0.015),
       'high %.1f %% (want %.1f %%), %d Hz (want about %d)' % (d * 100, want * 100, hz, F2 * seen))
+# I/Q: complex samples from the ARM (left = I, right = Q) straight to the CORDIC
+r.mode('iq')
+check('I/Q mode present (mode 8 reads back)', r.mode() == 'iq', r.mode())
+r.setup(tones=False, stereo=False, rds=False, preemph=0, narrow=False, mute=False)
+r.volume(1.0)
+r.input_rate(r.FS_AUDIO)             # 65536: the samples pass unchanged (no resampling)
+iq_n = [0]
+
+
+def iq_tone(f, amp, n):
+    """Push n complex samples of a tone at f Hz (continuous phase between calls)."""
+    w = []
+    for k in range(n):
+        ph = 2 * math.pi * f * (iq_n[0] + k) / r.FS_AUDIO
+        i, q = round(amp * 32767 * math.cos(ph)), round(amp * 32767 * math.sin(ph))
+        w.append(((q & 0xFFFF) << 16) | (i & 0xFFFF))
+    iq_n[0] += n
+    r.push(w)
+
+
+def iq_line(f, amp=0.5):
+    r.audio_flush()
+    iq_tone(f, amp, 6000)
+    time.sleep(0.06)
+    z = r.capture_iq()
+    n = len(z)
+    win = [0.5 - 0.5 * math.cos(2 * math.pi * i / (n - 1)) for i in range(n)]
+
+    def at(fr):
+        w = 2 * math.pi * fr / FS
+        return abs(sum(v * win[i] * cmath.exp(-1j * w * i) for i, v in enumerate(z))) * 2 / n
+    return at(f), at(-f)
+
+
+p5, m5 = iq_line(5000)
+check('I/Q: +5 kHz in, +5 kHz out, -5 kHz suppressed', near(p5, 0.5, 0.03) and m5 < p5 / 300,
+      '+5 kHz %.3f (want 0.5), -5 kHz %.5f (%.0f dB)' % (p5, m5, 20 * math.log10(p5 / max(m5, 1e-9))))
+pm, mm = iq_line(-8000)
+check('I/Q: -8 kHz in, -8 kHz out', near(pm, 0.5, 0.04) and mm < pm / 300, '-8 kHz %.3f, +8 kHz %.5f' % (pm, mm))
+p2, _ = iq_line(2000)
+p12, _ = iq_line(12000)
+flat = 20 * math.log10(p12 / p2)
+check('I/Q: flat from 2 to 12 kHz (no resampler droop)', abs(flat) < 1.0, '12 kHz vs 2 kHz %+.2f dB' % flat)
+r.audio_flush()
+iq_tone(1000, 0.5, 8000)
+time.sleep(0.135)
+hz, d = r.rf_hz(), duty()
+check('I/Q: a +1 kHz tone is the carrier +1 kHz, steady strength', near(hz, F2 + 1000, 20) and near(d, table(0.5), 0.012),
+      '%+d Hz, high %.1f %% (want %.1f %%)' % (hz - F2, d * 100, 100 * table(0.5)))
+r.audio_flush()
+r.mode('off')
+r.setup(tones=True)
+r.tones(1000, 1000)
 # NFM: the voice filter
 r.mode('fm')
 r.setup(narrow=True)

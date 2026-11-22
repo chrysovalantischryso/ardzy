@@ -1728,6 +1728,21 @@ def radio_image(project, rgb_b64):
     return {'ok': True}
 
 
+RADIO_GRAY = {'paint': 'paint_image.pgm', 'fax': 'fax_image.pgm'}
+
+
+def radio_gray(project, which, w, h, gray_b64):
+    """A grey picture for the waterfall painter or the radiofax: w x h bytes, saved on the board as PGM."""
+    import base64
+    data = base64.b64decode(gray_b64)
+    w, h = int(w), int(h)
+    if which not in RADIO_GRAY or not (1 <= w <= 1024 and 1 <= h <= 4096) or len(data) != w * h:
+        raise ValueError('a picture of 1 .. 1024 x 1 .. 4096 grey pixels')
+    pgm = b'P5\n%d %d\n255\n' % (w, h) + data
+    board.call('PUT', '/api/upload?p=%s&f=%s' % (urllib.parse.quote(project), RADIO_GRAY[which]), data=pgm, timeout=60)
+    return {'ok': True, 'name': RADIO_GRAY[which]}
+
+
 # ---------------------------------------------------------------- network sound from this PC (AES67)
 NET = {'heard': None, 'active': None}
 
@@ -2097,6 +2112,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return radio_add_wav(a.get('p') or RADIO_PROJECT)
         if path == '/api/radio/image':
             return radio_image(a.get('p') or RADIO_PROJECT, a['rgb'])
+        if path == '/api/radio/gray':
+            return radio_gray(a.get('p') or RADIO_PROJECT, a['which'], a['w'], a['h'], a['gray'])
         if path == '/api/aes67/devices':
             return aes67_devices()
         if path == '/api/aes67/send':

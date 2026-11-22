@@ -19,7 +19,11 @@
 //   0 CTRL      [0] transmit  [1] stereo  [2] RDS  [3] pilot  [5:4] pre-emphasis 0 off, 1 50 us, 2 75 us
 //               [6] mute  [7] audio from the two test tones (else from the FIFO)
 //               [8] narrow: the sound through the 300 .. 2700 Hz voice filter, mono (NFM, AM)
-//   1 MODE      0 off, 1 carrier (key in 14), 2 FM, 3 AM, 4 symbols, 5 USB, 6 LSB, 7 DSB
+//   1 MODE      0 off, 1 carrier (key in 14), 2 FM, 3 AM, 4 symbols, 5 USB, 6 LSB, 7 DSB, 8 I/Q
+//               I/Q: the FIFO's left sample is I and the right one Q (complex baseband, 48828 per second
+//               after the resampler): through the 15 kHz low-pass (so +-15 kHz around the carrier) and the
+//               x8 interpolation into the CORDIC. Any signal made on the ARM: pictures in a waterfall, QAM...
+//               (turn pre-emphasis off for it). Reading MODE back tells an older design (3 bits: 8 reads 0).
 //               SSB / DSB: a 256-tap complex band-pass (300 .. 2700 Hz) makes I and Q from the sound;
 //               a CORDIC turns them into the carrier's strength (pulse width) and phase, 390625 times a second
 //   2 FREQ      carrier = FREQ * 500 MHz / 2^32
@@ -27,6 +31,7 @@
 //   4 G_AUDIO   audio in the MPX, Q15 (28508 = 87 %)   5 G_PILOT (2949 = 9 %)   6 G_RDS (1311 = 4 %)
 //   7 VOLUME    audio input gain, 256 = 1.0 (up to 1023)
 //   8 RATIO     input sample rate / 48828.125, Q16.16 (65536 = 48828 Hz, 59190 = 44100 Hz), 0.0625 .. 4
+//               (writing it puts the resampler on a whole sample: at 65536 the samples pass unchanged)
 //   9 AUDIO     write: one stereo sample, right << 16 | left (8192 places)
 //  10 AUDIO_LEVEL read: samples waiting; write: empty the FIFO
 //  11 TONE_L    left test tone = TONE_L * 48828.125 / 2^32 Hz    12 TONE_R   (writing restarts the tone at 0)
@@ -66,7 +71,7 @@ module ardzy_radio #(parameter [3:0] SLOT = 4'd1) (
 
     // ------------------------------------------------------------------ registers
     reg [8:0]  ctrl = 9'b0_0000_1110;
-    reg [2:0]  mode = 3'd0;
+    reg [3:0]  mode = 4'd0;
     reg [31:0] freq = 32'd824633721;                    // 96.0 MHz
     reg [31:0] dev = 32'd1288530;
     reg [15:0] g_audio = 16'd28508, g_pilot = 16'd2949, g_rds = 16'd1311, am_depth = 16'd29491;
@@ -81,6 +86,7 @@ module ardzy_radio #(parameter [3:0] SLOT = 4'd1) (
     reg        log_clr = 1'b0;
     reg        tl_rst = 1'b0, tr_rst = 1'b0;               // a new tone frequency restarts its phase
     reg        a_flush = 1'b0, s_flush = 1'b0;             // empty the audio / symbol FIFO
+    reg        fr_clr = 1'b0;                              // a new RATIO: the resampler starts on a whole sample
 
     // ------------------------------------------------------------------ audio FIFO
     (* ram_style = "block" *) reg [31:0] afifo [0:8191];
@@ -190,7 +196,7 @@ module ardzy_radio #(parameter [3:0] SLOT = 4'd1) (
     reg [15:0] cz = 16'd0, c_ang = 16'd0;
     reg [3:0]  ci = 4'd0;
     reg signed [34:0] c_mag = 0;
-    wire       ssb_mode = (mode == 3'd5) || (mode == 3'd6) || (mode == 3'd7);
+    wire       ssb_mode = (mode == 4'd5) || (mode == 4'd6) || (mode == 4'd7) || (mode == 4'd8);
     reg [15:0] atan_t;
     always @* case (ci)
         4'd0: atan_t = 16'd8192;  4'd1: atan_t = 16'd4836;  4'd2: atan_t = 16'd2555;  4'd3: atan_t = 16'd1297;
@@ -300,9 +306,10 @@ module ardzy_radio #(parameter [3:0] SLOT = 4'd1) (
         S_MS: begin
             hp <= hp + 1'b1;
             ip <= ip + 1'b1;
-            if (mode == 3'd5) h_ms_d <= {ssb_q, ssb_i};                 // USB: I + jQ
-            else if (mode == 3'd6) h_ms_d <= {-ssb_q, ssb_i};           // LSB: I - jQ
-            else if (mode == 3'd7 || ctrl[8]) h_ms_d <= {16'd0, ssb_i}; // DSB, narrow: the band-passed sound
+            if (mode == 4'd8) h_ms_d <= {lpr, lpl};                     // I/Q: left = I, right = Q (both low-passed)
+            else if (mode == 4'd5) h_ms_d <= {ssb_q, ssb_i};            // USB: I + jQ
+            else if (mode == 4'd6) h_ms_d <= {-ssb_q, ssb_i};           // LSB: I - jQ
+            else if (mode == 4'd7 || ctrl[8]) h_ms_d <= {16'd0, ssb_i}; // DSB, narrow: the band-passed sound
             else h_ms_d <= {s_dif[16:1], m_sum[16:1]};
             st <= S_ITP0;
         end
@@ -394,11 +401,11 @@ module ardzy_radio #(parameter [3:0] SLOT = 4'd1) (
         end
         S_SEND: begin                                    // hand the new values to the RF clock
             case (mode)
-                3'd1: begin o_inc <= freq; o_duty <= key ? level : 10'd0; o_ph <= 10'd0; end
-                3'd2: begin o_inc <= freq + inc_off; o_duty <= level; o_ph <= 10'd0; end
-                3'd3: begin o_inc <= freq; o_duty <= asin_q; o_ph <= 10'd0; end
-                3'd4: begin o_inc <= freq + {{8{s_off[23]}}, s_off}; o_duty <= s_duty; o_ph <= {s_ph, 2'b00}; end
-                3'd5, 3'd6, 3'd7: begin o_inc <= freq; o_duty <= asin_q; o_ph <= c_ang[15:6]; end
+                4'd1: begin o_inc <= freq; o_duty <= key ? level : 10'd0; o_ph <= 10'd0; end
+                4'd2: begin o_inc <= freq + inc_off; o_duty <= level; o_ph <= 10'd0; end
+                4'd3: begin o_inc <= freq; o_duty <= asin_q; o_ph <= 10'd0; end
+                4'd4: begin o_inc <= freq + {{8{s_off[23]}}, s_off}; o_duty <= s_duty; o_ph <= {s_ph, 2'b00}; end
+                4'd5, 4'd6, 4'd7, 4'd8: begin o_inc <= freq; o_duty <= asin_q; o_ph <= c_ang[15:6]; end
                 default: begin o_inc <= freq; o_duty <= 10'd0; o_ph <= 10'd0; end
             endcase
             if (!ctrl[0]) o_duty <= 10'd0;
@@ -410,6 +417,7 @@ module ardzy_radio #(parameter [3:0] SLOT = 4'd1) (
         default: st <= S_IDLE;
         endcase
         if (a_flush) ar <= aw;
+        if (fr_clr) rfrac[15:0] <= 16'd0;
         if (tl_rst) tlp <= 32'd0;
         if (tr_rst) trp <= 32'd0;
         if (!rstn) begin st <= S_IDLE; m_iss <= 1'b0; end
@@ -455,7 +463,7 @@ module ardzy_radio #(parameter [3:0] SLOT = 4'd1) (
     always @(posedge clk) begin
         s_ready <= !s_flush && (s_av != 10'd0) && (s_av <= s_n);
         us_c <= (us_c == 7'd99) ? 7'd0 : us_c + 1'b1;
-        if (mode != 3'd4) begin s_left <= 20'd0; s_duty <= 10'd0; end
+        if (mode != 4'd4) begin s_left <= 20'd0; s_duty <= 10'd0; end
         else if (us_c == 7'd0) begin
             if (s_left > 20'd1) s_left <= s_left - 1'b1;
             else if (s_ready && !s_flush) begin
@@ -572,19 +580,19 @@ module ardzy_radio #(parameter [3:0] SLOT = 4'd1) (
     // ------------------------------------------------------------------ bus
     reg rd_cap = 1'b0;
     always @(posedge clk) begin
-        cap_go <= 1'b0; pk_clr <= 3'd0; log_clr <= 1'b0; tl_rst <= 1'b0; tr_rst <= 1'b0; a_flush <= 1'b0; s_flush <= 1'b0;
+        cap_go <= 1'b0; pk_clr <= 3'd0; log_clr <= 1'b0; tl_rst <= 1'b0; tr_rst <= 1'b0; a_flush <= 1'b0; s_flush <= 1'b0; fr_clr <= 1'b0;
         if (!rstn) begin
-            ctrl <= 9'b0_0000_1110; mode <= 3'd0; key <= 1'b0;
+            ctrl <= 9'b0_0000_1110; mode <= 4'd0; key <= 1'b0;
         end else if (bus_we && reg_sel) case (idx)
             10'd0: ctrl <= bus_wdata[8:0];
-            10'd1: mode <= bus_wdata[2:0];
+            10'd1: mode <= (bus_wdata[3:0] > 4'd8) ? 4'd0 : bus_wdata[3:0];
             10'd2: freq <= bus_wdata;
             10'd3: dev <= bus_wdata;
             10'd4: g_audio <= bus_wdata[15:0];
             10'd5: g_pilot <= bus_wdata[15:0];
             10'd6: g_rds <= bus_wdata[15:0];
             10'd7: vol <= bus_wdata[9:0];
-            10'd8: ratio <= (bus_wdata < 32'd4096) ? 32'd4096 : (bus_wdata > 32'd262144) ? 32'd262144 : bus_wdata;
+            10'd8: begin fr_clr <= 1'b1; ratio <= (bus_wdata < 32'd4096) ? 32'd4096 : (bus_wdata > 32'd262144) ? 32'd262144 : bus_wdata; end
             10'd9: if (a_n != 14'd8192) aw <= aw + 1'b1;
             10'd11: begin tone_l <= bus_wdata; tl_rst <= 1'b1; end
             10'd12: begin tone_r <= bus_wdata; tr_rst <= 1'b1; end
@@ -605,7 +613,7 @@ module ardzy_radio #(parameter [3:0] SLOT = 4'd1) (
             if (!reg_sel) bus_rdata <= 32'd0;
             else case (idx)
                 10'd0: bus_rdata <= {23'd0, ctrl};
-                10'd1: bus_rdata <= {29'd0, mode};
+                10'd1: bus_rdata <= {28'd0, mode};
                 10'd2: bus_rdata <= freq;
                 10'd3: bus_rdata <= dev;
                 10'd4: bus_rdata <= {16'd0, g_audio};

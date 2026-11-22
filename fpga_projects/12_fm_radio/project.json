@@ -1,9 +1,9 @@
 {
   "id": "FMTX",
-  "title": "Radio transmitter (FM stereo + RDS, NFM, AM, SSB, CW, digital, pictures, AES67)",
+  "title": "Radio transmitter (FM stereo + RDS, NFM, AM, SSB, I/Q, CW, digital, pictures, AES67)",
   "category": "Radio",
   "level": "advanced",
-  "summary": "A radio station on one pin, made inside the FPGA: FM stereo with your station name and text on the radio's display (RDS), NFM, AM, USB, LSB and DSB, Morse code, RTTY and PSK31, pictures (SSTV), songs from WAV files and live sound from the network (AES67).",
+  "summary": "A radio station on one pin, made inside the FPGA: FM stereo with your station name and text on the radio's display (RDS), NFM, AM, USB, LSB, DSB and I/Q, Morse code, RTTY, PSK31 to PSK250, QRSS, Hellschreiber and WSPR, pictures in an SDR's waterfall, SSTV and radiofax pictures, APRS packets, DTMF, songs from WAV files and live sound from the network (AES67).",
   "slots": {
     "0": "Info",
     "1": "Radio registers",
@@ -42,8 +42,8 @@
   ],
   "parts": [
     "an FM radio with RDS (a car radio, a kitchen radio, a phone with an FM chip)",
-    "optional: an RTL-SDR stick to see the spectrum, the RDS and the digital modes",
+    "optional: an RTL-SDR stick to see the spectrum, the RDS, the digital modes and pictures painted into its waterfall",
     "nothing for the self-test"
   ],
-  "tested": "the self-test passed 36 of 36 checks on the real board (October 2026), with nothing connected; the radio service test 23 of 23."
+  "tested": "the self-test passed 41 of 41 checks on the real board (November 2026, with the I/Q mode), with nothing connected; the new modes 21 of 21 on the board (radio_gen_test.py) and 42 of 42 on the PC (radio_modes_test.py)."
 }

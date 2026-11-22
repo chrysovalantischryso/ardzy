@@ -746,7 +746,7 @@ class Radio(Block):
     CLK = 500e6                       # carrier samples per second
     FS_AUDIO = 100e6 / 2048           # 48828.125 audio samples per second
     FS_MPX = 100e6 / 256              # 390625 MPX samples per second
-    MODES = {'off': 0, 'carrier': 1, 'fm': 2, 'am': 3, 'symbols': 4, 'usb': 5, 'lsb': 6, 'dsb': 7}
+    MODES = {'off': 0, 'carrier': 1, 'fm': 2, 'am': 3, 'symbols': 4, 'usb': 5, 'lsb': 6, 'dsb': 7, 'iq': 8}
     BITS = {'tx': 0, 'stereo': 1, 'rds': 2, 'pilot': 3, 'mute': 6, 'tones': 7, 'narrow': 8}
 
     def __init__(self, bus, slot=1):
@@ -774,6 +774,19 @@ class Radio(Block):
         if name is not None:
             self.w(1, self.MODES[name])
         return {v: k for k, v in self.MODES.items()}.get(self.r(1), '?')
+
+    def has_iq(self):
+        """True when the design in the FPGA has the I/Q mode (newer designs; an older one reads 8 back as 0)."""
+        old = self.r(1)
+        self.w(1, 8)
+        ok = self.r(1) == 8
+        self.w(1, old)
+        return ok
+
+    def push_iq(self, i, q):
+        """Mode 'iq': complex samples, I and Q as int16 arrays (or lists) at the input rate. The FPGA low-passes
+        them at 15 kHz, so a signal can use +-15 kHz around the carrier. Only push audio_free() samples."""
+        self.push([((int(b) & 0xFFFF) << 16) | (int(a) & 0xFFFF) for a, b in zip(i, q)])
 
     def setup(self, preemph=None, **flags):
         """Switch parts on or off: tx, stereo, rds, pilot, mute, tones, narrow (the 300 .. 2700 Hz voice

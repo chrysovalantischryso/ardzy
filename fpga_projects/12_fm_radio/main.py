@@ -1,5 +1,6 @@
 # 12 FM radio: the radio service. It sets up the transmitter the way radio.json says (FM, NFM, AM, USB,
-# LSB, DSB, carrier, CW, RTTY, PSK31, beacons, sweeps), plays songs, pictures (SSTV) and network sound
+# LSB, DSB, carrier, CW, RTTY, PSK31/63/125/250, QRSS, Hellschreiber, WSPR, beacons, sweeps, pictures in
+# an SDR's waterfall, APRS packets, DTMF, radiofax), plays songs, pictures (SSTV) and network sound
 # (AES67) through the sound chain (processing and delay, audio_chain.py), keeps the RDS data going
 # (station name and radio text with lists, loops, scrolling and variables) and writes status.json.
 # The radio's page in the Ardzy app (Ready projects, FM radio, Open) writes radio.json and reads
@@ -17,9 +18,12 @@ import threading
 import time
 import traceback
 from blocks import Bus, Radio, require
+import numpy as np
 import aes67
 import audio_chain
+import audio_modes
 import modes
+import paint
 import rds
 import sstv
 
@@ -31,7 +35,9 @@ RUN = '/dev/shm/ardzy_radio' if os.path.isdir('/dev/shm') else HERE
 STATUS, MPX = os.path.join(RUN, 'status.json'), os.path.join(RUN, 'mpx.json')
 MPX_LIVE = os.path.join(RUN, 'mpx_live.json')  # the app's live spectrum (its own file: other readers of mpx.json stay undisturbed)
 CAPTURE = os.path.join(RUN, 'capture.json')     # {"id": n}: the app asks for an MPX capture (in RAM, not in radio.json)
-DIGITAL = ('cw', 'rtty', 'psk31', 'beacon', 'sweep')
+DIGITAL = ('cw', 'rtty', 'psk31', 'psk63', 'psk125', 'psk250', 'qrss', 'hell', 'wspr', 'beacon', 'sweep')
+GEN = ('paint', 'aprs', 'dtmf', 'wefax')                # made on the ARM, sent through the FPGA's sound FIFO
+GEN_CFG = {'paint': 'paint', 'aprs': 'packet', 'dtmf': 'dtmf', 'wefax': 'wefax'}
 SOUND = ('fm', 'nfm', 'am', 'usb', 'lsb', 'dsb')      # the modes that send sound
 HW_MODE = {'fm': 'fm', 'nfm': 'fm', 'am': 'am', 'usb': 'usb', 'lsb': 'lsb', 'dsb': 'dsb', 'carrier': 'carrier', 'off': 'off'}
 SSTV_RATE = 48000                                       # (made at the chain's own rate: no resampling)
@@ -39,7 +45,8 @@ SSTV_RATE = 48000                                       # (made at the chain's o
 DEFAULT = {
     'rev': 0,
     'on': False,
-    'mode': 'fm',                      # fm, nfm, am, usb, lsb, dsb, carrier, cw, rtty, psk31, beacon, sweep
+    'mode': 'fm',                      # fm, nfm, am, usb, lsb, dsb, carrier, cw, rtty, psk31 .. psk250, qrss,
+                                       # hell, wspr, beacon, sweep, paint, aprs, dtmf, wefax
     'freq_mhz': 96.0,
     'power': 1.0,                      # 0..1: the carrier's strength at the pin (see clean_power)
     'fm': {'stereo': True, 'preemph': 50, 'deviation_khz': 75.0, 'audio': 0.87, 'pilot': 0.09, 'rds_level': 0.04},
@@ -65,7 +72,17 @@ DEFAULT = {
     'digital': {'text': 'CQ CQ DE ARDZY', 'wpm': 18, 'baud': 45.45, 'shift': 170.0, 'offset_hz': 0.0,
                 'melody': 'C4 E4 G4 C5*2 - G4 C5*2', 'tempo': 140,
                 'sweep_start_khz': -50.0, 'sweep_stop_khz': 50.0, 'sweep_step_khz': 1.0, 'sweep_dwell_ms': 50,
+                'qrss_dot_s': 3.0, 'dfcw_hz': 0.0, 'hell_wide': False,
+                'wspr_call': '', 'wspr_locator': '', 'wspr_dbm': 10, 'wspr_every_min': 10,
                 'repeat_s': 10.0, 'id': 0},
+    # a picture in an SDR's waterfall (see paint.py)
+    'paint': dict(paint.DEFAULT),
+    # APRS: AX.25 packets as 1200 baud AFSK in NFM
+    'packet': {'call': 'N0CALL', 'dest': 'APZARD', 'path': 'WIDE1-1', 'text': '>Ardzy radio test',
+               'position': False, 'lat': 0.0, 'lon': 0.0, 'symbol': '/-', 'deviation_khz': 3.0, 'repeat_s': 60.0, 'id': 0},
+    'dtmf': {'digits': '123A', 'tone_ms': 100, 'gap_ms': 100, 'deviation_khz': 3.0, 'repeat_s': 0.0, 'id': 0},
+    # radiofax: a grey picture (fax_image.pgm) at 60 / 90 / 120 / 240 lines a minute, sent in USB or NFM
+    'wefax': {'image': 'fax_image.pgm', 'lpm': 120, 'ioc': 576, 'phasing_s': 30.0, 'via': 'usb', 'repeat_s': 0.0, 'id': 0},
     'capture': 0,                      # change it to ask for an MPX capture (written to mpx.json)
 }
 
@@ -150,6 +167,10 @@ class Service:
         self.hist_t = 0.0
         self.sstv_key, self.sstv_t0, self.sstv_len, self.sstv_next, self.sstv_name = None, 0.0, 0.0, 0.0, ''
         self.net, self.net_key, self.net_error, self.net_streams = None, None, '', []
+        self.has_iq = self.r.has_iq()                     # the I/Q mode (pictures up to 28 kHz wide)
+        self.gen, self.gen_buf, self.gen_key, self.gen_active, self.painter = None, None, None, False, None
+        self.gen_t0, self.gen_len, self.gen_next, self.gen_what, self.gen_info, self.gen_hw = None, 0.0, 0.0, '', None, ''
+        self.sym_start = 0.0                              # WSPR: when its slot begins
         try:
             self.disco = aes67.Discovery()
         except OSError as e:
@@ -183,8 +204,8 @@ class Service:
         if cc and abs(float(cc) - time.time()) < 30:
             self.clock_ok = True
         try:
+            self.error = ''                              # (apply may report a problem with the new settings)
             self.apply(new)
-            self.error = ''
         except Exception as e:
             self.error = 'settings: %s' % e
             traceback.print_exc()
@@ -197,8 +218,8 @@ class Service:
     def apply(self, c):
         old, self.cfg = self.cfg, c
         r = self.r
-        for name in c.get('delete', []):                 # the app removes songs this way
-            if name == os.path.basename(name) and name.lower().endswith('.wav') and name != self.track:
+        for name in c.get('delete', []):                 # the app removes songs (and pictures) this way
+            if name == os.path.basename(name) and name.lower().endswith(('.wav', '.pgm')) and name != self.track:
                 try:
                     os.remove(os.path.join(HERE, name))
                 except OSError:
@@ -213,10 +234,25 @@ class Service:
         self.wr_once('tones', r.tones, float(au['tone_l']), float(au['tone_r']))
         self.power_eff = clean_power(float(c['power']), float(c['freq_mhz']) * 1e6)
         r.power(self.power_eff, key=(mode == 'carrier'))
-        r.setup(tx=mode != 'off', stereo=bool(fm['stereo']) and mode == 'fm', rds=bool(rd['on']) and mode == 'fm',
-                pilot=True, preemph=int(fm['preemph']) if mode == 'fm' else 0, tones=au['source'] == 'tones',
-                mute=au['source'] == 'silence', narrow=mode == 'nfm' or (mode == 'am' and bool(c['am']['voice'])))
-        r.mode(HW_MODE.get(mode, 'symbols'))
+        if mode in GEN:
+            hw, narrow, dev = self.gen_hardware(c)
+            if not self.gen_active:                      # (songs and the sound chain stop; the FIFO is ours)
+                self.stop_track()
+                self.gen_active = True
+            r.deviation(dev * 1000)
+            r.volume(1.0)
+            r.input_rate(r.FS_AUDIO)                     # the samples pass unchanged
+            r.setup(tx=True, stereo=False, rds=False, pilot=False, preemph=0, tones=False, mute=False, narrow=narrow)
+            r.mode(hw)
+            self.gen_hw = hw
+        else:
+            if self.gen_active:
+                self.gen, self.gen_buf, self.painter, self.gen_key, self.gen_active = None, None, None, None, False
+                self.pipe.reset()                        # (48000 again, the FIFO emptied)
+            r.setup(tx=mode != 'off', stereo=bool(fm['stereo']) and mode == 'fm', rds=bool(rd['on']) and mode == 'fm',
+                    pilot=True, preemph=int(fm['preemph']) if mode == 'fm' else 0, tones=au['source'] == 'tones',
+                    mute=au['source'] == 'silence', narrow=mode == 'nfm' or (mode == 'am' and bool(c['am']['voice'])))
+            r.mode(HW_MODE.get(mode, 'symbols'))
         # the sound chain: processing and delay
         pr = c['process']
         self.pipe.chain.set(**{k: pr[k] for k in DEFAULT['process']})
@@ -230,8 +266,8 @@ class Service:
             self.start_picture()
         self.sstv_key = key if au['source'] == 'sstv' and mode in SOUND else None
         # songs
-        if (au['source'] == 'network' and c['mode'] in SOUND) or (au['source'] == 'sstv' and mode in SOUND):
-            pass                                         # (the stream / the picture goes on)
+        if mode in GEN or (au['source'] == 'network' and c['mode'] in SOUND) or (au['source'] == 'sstv' and mode in SOUND):
+            pass                                         # (the stream / the picture goes on; GEN: the FIFO is the signal's)
         elif au['source'] not in ('playlist', 'sstv') or (au['source'] == 'playlist' and old['audio']['source'] != 'playlist') \
                 or au['playlist'] != old['audio']['playlist'] or au['shuffle'] != old['audio']['shuffle'] or mode not in SOUND:
             self.stop_track()
@@ -248,10 +284,22 @@ class Service:
         key = (mode, json.dumps(dg, sort_keys=True), c['freq_mhz'], c['power'])
         if mode in DIGITAL and key != self.sym_key:
             r.symbols_flush()
-            self.symbols, self.sym_i, self.next_send = self.make_symbols(mode, dg, self.power_eff), 0, 0.0
+            try:
+                self.symbols = modes.quantize(self.make_symbols(mode, dg, self.power_eff))
+            except ValueError as e:
+                self.symbols, self.error = [], str(e)
+            self.sym_i, self.next_send = 0, 0.0
+            self.sym_start = modes.wspr_next_start(time.time() + 0.5) if mode == 'wspr' else 0.0
         elif mode not in DIGITAL:
             self.symbols = []
         self.sym_key = key
+        # signals made here (a picture in the waterfall, packets, DTMF, radiofax): new settings start them again
+        if mode in GEN:
+            sect = c[GEN_CFG[mode]]
+            gkey = (mode, c['on'], json.dumps(sect, sort_keys=True), c['freq_mhz'], c['power'], self.gen_image_mtime(c), self.gen_hw)
+            if gkey != self.gen_key:
+                self.gen_key = gkey
+                self.start_gen()
         self.applied_rev = c.get('rev')
         print('settings %s: %s %.3f MHz, power %.2f%s' % (
             c.get('rev'), mode.upper(), float(c['freq_mhz']), float(c['power']),
@@ -346,8 +394,14 @@ class Service:
             return modes.cw(d['text'], wpm=float(d['wpm']), offset_hz=off, level=power)
         if mode == 'rtty':
             return modes.rtty(d['text'], baud=float(d['baud']), shift=float(d['shift']), offset_hz=off, level=power)
-        if mode == 'psk31':
-            return modes.psk31(d['text'], offset_hz=off, level=power)
+        if mode in modes.PSK_BAUDS:
+            return modes.psk31(d['text'], offset_hz=off, level=power, baud=modes.PSK_BAUDS[mode])
+        if mode == 'qrss':
+            return modes.qrss(d['text'], dot_s=float(d['qrss_dot_s']), offset_hz=off, dfcw_hz=float(d['dfcw_hz']), level=power)
+        if mode == 'hell':
+            return modes.hell(d['text'], offset_hz=off, level=power, wide=bool(d['hell_wide']))
+        if mode == 'wspr':
+            return modes.wspr(d['wspr_call'], d['wspr_locator'], int(d['wspr_dbm']), offset_hz=off, level=power)
         if mode == 'beacon':
             return modes.beacon(d['melody'], base_hz=off, tempo=float(d['tempo']), level=power)
         return modes.sweep(float(d['sweep_start_khz']) * 1000, float(d['sweep_stop_khz']) * 1000,
@@ -480,8 +534,116 @@ class Service:
             return
         self.feed_from_player()
 
+    # ------------------------------------------------------------------ signals made here (GEN modes)
+    def gen_hardware(self, c):
+        """(FPGA mode, voice filter, FM deviation kHz) for a generated signal."""
+        mode = c['mode']
+        if mode == 'paint':
+            return ('iq' if c['paint'].get('kind') != 'usb' and self.has_iq else 'usb'), False, 5.0
+        if mode == 'wefax' and c['wefax'].get('via') != 'fm':
+            return 'usb', False, 5.0
+        sect = c[GEN_CFG[mode]]
+        return 'fm', True, float(sect.get('deviation_khz', 3.0))
+
+    def gen_image_mtime(self, c):
+        name = {'paint': c['paint'].get('image', 'paint_image.pgm'), 'wefax': c['wefax'].get('image', 'fax_image.pgm')}.get(c['mode'])
+        try:
+            return os.path.getmtime(os.path.join(HERE, os.path.basename(name))) if name else None
+        except OSError:
+            return None
+
+    def gen_picture(self, name, fallback):
+        try:
+            return paint.read_pgm(os.path.join(HERE, os.path.basename(name))), ''
+        except (OSError, ValueError) as e:
+            return fallback(), 'picture %s: %s (sending the test picture)' % (name, e)
+
+    def start_gen(self):
+        """Start (or start again) the signal of the current GEN mode."""
+        c, r = self.cfg, self.r
+        mode, fs = c['mode'], r.FS_AUDIO
+        r.audio_flush()
+        self.gen, self.gen_buf, self.painter, self.gen_t0, self.gen_next = None, None, None, None, 0.0
+        if not c['on']:
+            return
+        lvl = max(0.05, self.power_eff) if self.gen_hw in ('iq', 'usb') else 1.0   # (FM: the power is the pulse width)
+        try:
+            if mode == 'paint':
+                img, err = self.gen_picture(c['paint'].get('image', 'paint_image.pgm'), paint.test_picture)
+                s = dict(c['paint'], kind='usb' if self.gen_hw == 'usb' else 'iq')
+                s['level'] = float(s.get('level', 0.95)) * lvl
+                self.painter = paint.Painter(img, s).start()
+                self.gen = self.painter.words()
+                self.gen_len = self.painter.seconds()
+                self.gen_info = paint.info(img.shape[1], img.shape[0], s)
+                self.gen_what = 'a picture in the waterfall, %d x %d, %s' % (img.shape[1], img.shape[0],
+                                                                              'I/Q' if self.gen_hw == 'iq' else 'USB')
+                if s.get('kind') != 'usb' and self.gen_hw == 'usb':
+                    err = 'this FPGA design has no I/Q mode: the picture goes in USB (2.4 kHz). Upload the radio again.'
+                self.error = err
+            elif mode == 'aprs':
+                pk = c['packet']
+                info = pk['text']
+                if pk.get('position'):
+                    info = audio_modes.aprs_position(float(pk['lat']), float(pk['lon']), pk['text'].lstrip('>'), pk.get('symbol', '/-'))
+                x = audio_modes.aprs_audio(pk['call'], info, pk['path'], pk['dest'] or 'APZARD', fs=fs)
+                self.gen, self.gen_len = audio_modes.chunks(x), len(x) / fs
+                self.gen_what = 'APRS packet %s' % audio_modes.ax25_text(audio_modes.ax25_frame(
+                    pk['call'], pk['dest'] or 'APZARD', [p.strip() for p in pk['path'].split(',') if p.strip()], info))
+                self.gen_info = None
+            elif mode == 'dtmf':
+                d = c['dtmf']
+                x = audio_modes.dtmf_audio(d['digits'], fs=fs, tone_ms=float(d['tone_ms']), gap_ms=float(d['gap_ms']))
+                self.gen, self.gen_len, self.gen_what, self.gen_info = audio_modes.chunks(x), len(x) / fs, 'DTMF %s' % d['digits'], None
+            elif mode == 'wefax':
+                w = c['wefax']
+                img, err = self.gen_picture(w.get('image', 'fax_image.pgm'), lambda: paint.test_picture(450, 300))
+                wf = audio_modes.Wefax(img, lpm=int(w['lpm']), ioc=int(w['ioc']), phasing_s=float(w['phasing_s']), level=0.6 * lvl)
+                self.gen, self.gen_len = wf.words(fs), wf.seconds()
+                self.gen_what = 'radiofax %d lines a minute, IOC %d, %d lines' % (int(w['lpm']), int(w['ioc']), img.shape[0])
+                self.gen_info = None
+                self.error = err
+            print('sending: %s (%.1f s)' % (self.gen_what, self.gen_len), flush=True)
+        except (ValueError, KeyError, TypeError) as e:
+            self.gen, self.error = None, '%s: %s' % (mode, e)
+
+    def feed_generated(self):
+        c = self.cfg
+        if not c['on']:
+            return
+        r = self.r
+        if self.gen is None:
+            rep = float(c[GEN_CFG[c['mode']]].get('repeat_s', 0) or 0)
+            if self.gen_next == 0.0 and self.gen_t0 is not None and r.audio_free() >= r.AUDIO_FIFO - 16:
+                self.gen_next = time.time() + rep if rep > 0 else -1
+            if self.gen_next > 0 and time.time() >= self.gen_next:
+                self.start_gen()
+            return
+        if self.painter is not None and not self.painter.ready.is_set():
+            return                                       # (still finding the picture's loudest line)
+        if self.painter is not None and self.painter.error:
+            self.error, self.gen = 'picture: ' + self.painter.error, None
+            return
+        free = r.audio_free()
+        while free > 256:
+            if self.gen_buf is None or not len(self.gen_buf):
+                nxt = next(self.gen, None)
+                if nxt is None:
+                    self.gen = None
+                    break
+                self.gen_buf = np.asarray(nxt, dtype=np.uint32)
+            if self.gen_t0 is None:
+                self.gen_t0 = time.time()
+            n = min(free, len(self.gen_buf))
+            r.push(self.gen_buf[:n].tolist())
+            self.gen_buf = self.gen_buf[n:]
+            free -= n
+
     def feed_audio(self):
         c = self.cfg
+        if c['mode'] in GEN:
+            self.feed_generated()
+            return
         src = c['audio']['source']
         if src == 'network' and c['mode'] in SOUND:
             if self.net:
@@ -505,13 +667,26 @@ class Service:
         if not c['on'] or c['mode'] not in DIGITAL or not self.symbols:
             return
         now = time.time()
+        wspr = c['mode'] == 'wspr'
+        if wspr and not self.clock_is_set():
+            self.error = 'WSPR needs the right time: connect the Ardzy app (it sets the clock) or give the board network time'
+            return
         if self.sym_i >= len(self.symbols):
+            if wspr:
+                every = max(2, int(c['digital']['wspr_every_min'] or 0)) * 60
+                if self.next_send == 0.0 and self.r.symbols_free() == 512:
+                    self.next_send = modes.wspr_next_start(self.sym_start + every - 1) if c['digital']['wspr_every_min'] else -1
+                if self.next_send > 0 and now >= self.next_send - 2:
+                    self.sym_start, self.sym_i, self.next_send = self.next_send, 0, 0.0
+                return
             rep = float(c['digital']['repeat_s'])
             if self.next_send == 0.0 and self.r.symbols_free() == 512:
                 self.next_send = now + rep if rep > 0 else -1
             if self.next_send > 0 and now >= self.next_send:
                 self.sym_i, self.next_send = 0, 0.0
             return
+        if wspr and self.sym_i == 0 and now < self.sym_start:
+            return                                       # (the slot has not begun)
         free = self.r.symbols_free()
         while free > 0 and self.sym_i < len(self.symbols):
             self.r.symbol(*self.symbols[self.sym_i])
@@ -549,9 +724,19 @@ class Service:
         dig = None
         if mode in DIGITAL and self.symbols:
             left = modes.duration_s(self.symbols[self.sym_i:])
-            dig = {'sent': self.sym_i, 'total': len(self.symbols), 'busy': r.symbols_free() < 512 or self.sym_i < len(self.symbols),
+            waiting = mode == 'wspr' and self.sym_i == 0 and now < self.sym_start
+            dig = {'sent': self.sym_i, 'total': len(self.symbols), 'busy': not waiting and (r.symbols_free() < 512 or self.sym_i < len(self.symbols)),
                    'length_s': round(modes.duration_s(self.symbols), 1), 'left_s': round(left, 1),
-                   'next_in_s': round(max(0, self.next_send - now), 1) if self.next_send > 0 else None}
+                   'next_in_s': round(max(0, self.next_send - now), 1) if self.next_send > 0 else
+                   round(self.sym_start - now, 1) if waiting else None}
+        gen = None
+        if mode in GEN:
+            busy = self.gen is not None or (self.gen_t0 is not None and r.audio_free() < r.AUDIO_FIFO - 16)
+            preparing = self.painter is not None and not self.painter.ready.is_set()
+            gen = {'what': self.gen_what, 'sending': busy and not preparing, 'preparing': preparing, 'hw': self.gen_hw,
+                   'pos_s': round(now - self.gen_t0, 1) if self.gen_t0 else 0.0, 'len_s': round(self.gen_len, 1),
+                   'next_in_s': round(max(0, self.gen_next - now), 1) if self.gen_next > 0 else None,
+                   'info': self.gen_info, 'have_image': self.gen_image_mtime(c) is not None}
         hist = [h for h in self.pipe.chain.history if h[0] > self.hist_t]
         if hist:
             self.hist_t = hist[-1][0]
@@ -577,7 +762,8 @@ class Service:
             'power_lowest': round(clean_power(0.001, float(c['freq_mhz']) * 1e6), 3), 'locked': r.locked(), 'rf_hz': r.rf_hz(),
             'pin_high': round(r.rf_duty(), 4),
             'peaks': {k: round(v, 3) for k, v in peaks.items()},
-            'deviation_khz': round(peaks['mpx'] * dev, 1) if mode in ('fm', 'nfm') else None,
+            'deviation_khz': round(peaks['mpx'] * dev, 1) if mode in ('fm', 'nfm') else
+            round(peaks['mpx'] * float(c[GEN_CFG[mode]].get('deviation_khz', 3)), 1) if mode in GEN and self.gen_hw == 'fm' else None,
             'audio_fifo': r.AUDIO_FIFO - r.audio_free(), 'underruns_per_s': round(self.under_rate),
             'gaps': self.gaps if src in ('playlist', 'sstv', 'network') else None,
             'chain': dict(chain, delay_set_s=self.pipe.delay_s, delay_now_s=self.pipe.delay_now(), filling=self.pipe.delay_s > 0 and not self.pipe.ready() and self.pipe.t_push is not None and time.time() - self.pipe.t_push < 1,
@@ -591,7 +777,7 @@ class Service:
                            'rt_items': [t for t, _ in items], 'rt_i': self.rt_i % len(items),
                            'rt_next_s': round(max(0, self.rt_t - now), 1) if len(items) > 1 else None,
                            'rtplus': self.rdsm.st.rtplus if self.rdsm else []},
-            'rds_seen': self.rds_seen, 'digital': dig,
+            'rds_seen': self.rds_seen, 'digital': dig, 'generated': gen, 'has_iq': self.has_iq,
             'network': {'streams': [{k: x[k] for k in ('name', 'address', 'port', 'encoding', 'rate', 'channels', 'from')}
                                     for x in self.net_streams],
                         'receiver': self.net.state() if self.net else None, 'error': self.net_error},

@@ -13,9 +13,18 @@ const PTY_NAMES = ['None', 'News', 'Current affairs', 'Information', 'Sport', 'E
 const RMODES = [['fm', 'WFM: FM broadcast (stereo / mono, RDS)'], ['nfm', 'NFM: narrow FM (walkie-talkie style)'],
   ['am', 'AM (medium and short wave)'], ['usb', 'USB: upper side band'], ['lsb', 'LSB: lower side band'],
   ['dsb', 'DSB: double side band, no carrier'], ['carrier', 'Carrier only (tuning, tests)'], ['cw', 'CW: Morse code'],
-  ['rtty', 'RTTY: radio teletype'], ['psk31', 'PSK31'], ['beacon', 'Beacon: a melody for SSB receivers'],
-  ['sweep', 'Sweep: steps across a range']];
-const DIGITAL_MODES = ['cw', 'rtty', 'psk31', 'beacon', 'sweep'];
+  ['rtty', 'RTTY: radio teletype'], ['psk31', 'PSK31'], ['psk63', 'PSK63'], ['psk125', 'PSK125'], ['psk250', 'PSK250'],
+  ['qrss', 'QRSS / DFCW: slow Morse for waterfalls'], ['hell', 'Hellschreiber (Feld Hell): text drawn like a fax'],
+  ['wspr', 'WSPR: weak-signal beacon (WSJT-X)'], ['beacon', 'Beacon: a melody for SSB receivers'],
+  ['sweep', 'Sweep: steps across a range'], ['paint', 'Picture in the waterfall (SDR#, SDR++)'],
+  ['wefax', 'Radiofax (WEFAX): a picture, line by line'], ['aprs', 'APRS: AX.25 packets, 1200 baud'],
+  ['dtmf', 'DTMF: telephone key tones']];
+const RMODE_GROUPS = [['Sound', ['fm', 'nfm', 'am', 'usb', 'lsb', 'dsb', 'carrier']],
+  ['Text and beacons', ['cw', 'rtty', 'psk31', 'psk63', 'psk125', 'psk250', 'qrss', 'hell', 'wspr', 'beacon', 'sweep']],
+  ['Pictures and data', ['paint', 'wefax', 'aprs', 'dtmf']]];
+const DIGITAL_MODES = ['cw', 'rtty', 'psk31', 'psk63', 'psk125', 'psk250', 'qrss', 'hell', 'wspr', 'beacon', 'sweep'];
+const GEN_MODES = ['paint', 'wefax', 'aprs', 'dtmf'];
+const PSK_MODES = ['psk31', 'psk63', 'psk125', 'psk250'];
 const SOUND_MODES = ['fm', 'nfm', 'am', 'usb', 'lsb', 'dsb'];
 const SSTV_MODES = [['martin1', 'Martin 1 (114 s, the most used)'], ['scottie1', 'Scottie 1 (110 s)'], ['robot36', 'Robot 36 (36 s, quick)']];
 const LISTEN = {
@@ -127,7 +136,8 @@ function radioBuild() {
           <button class="small" data-step="-0.1">-0.1</button><button class="small" data-step="-0.05">-0.05</button>
           <button class="small" data-step="0.05">+0.05</button><button class="small" data-step="0.1">+0.1</button>
         </div>
-        <div class="row"><select data-k="mode" class="grow">${RMODES.map(([v, t]) => `<option value="${v}">${esc(t)}</option>`).join('')}</select></div>
+        <div class="row"><select data-k="mode" class="grow">${RMODE_GROUPS.map(([g, ms]) => `<optgroup label="${esc(g)}">` +
+          ms.map(v => `<option value="${v}">${esc(RMODES.find(m => m[0] === v)[1])}</option>`).join('') + '</optgroup>').join('')}</select></div>
         <div class="row"><span class="cs-lbl">Power</span><input type="range" data-k="power" data-t="num" min="0" max="1" step="0.01" class="grow">
           <span id="radPowTxt" class="pv"></span></div>
         <div class="hint" id="radPowNote"></div><div class="hint" id="radBandHint"></div>
@@ -328,7 +338,17 @@ function radioBuild() {
 
   <div class="dcard" id="radDigCard"><h3>Digital modes<span class="grow"></span><button class="small primary" id="radSendNow">Send now</button></h3>
     <div class="rctl">
-      <label class="dg dg-cw dg-rtty dg-psk31">Message</label><textarea class="dg dg-cw dg-rtty dg-psk31" data-k="digital.text" rows="3" style="width:100%;font:inherit"></textarea>
+      <label class="dg dg-cw dg-rtty dg-psk31 dg-psk63 dg-psk125 dg-psk250 dg-qrss dg-hell">Message</label><textarea class="dg dg-cw dg-rtty dg-psk31 dg-psk63 dg-psk125 dg-psk250 dg-qrss dg-hell" data-k="digital.text" rows="3" style="width:100%;font:inherit"></textarea>
+      <label class="dg dg-qrss">Dot</label><div class="row dg dg-qrss">${inp('digital.qrss_dot_s', 'step="0.5" min="0.2" max="120" style="width:70px"', 'number')} seconds
+        <span class="hint">QRSS3 = 3, QRSS10 = 10, QRSS30 = 30</span></div>
+      <label class="dg dg-qrss">DFCW</label><div class="row dg dg-qrss">dash ${inp('digital.dfcw_hz', 'step="1" min="0" max="50" style="width:60px"', 'number')} Hz above a dot
+        <span class="hint">0 = normal on / off Morse; 3 to 5 Hz = DFCW (dots and dashes the same length)</span></div>
+      <label class="dg dg-hell">Letters</label><div class="row dg dg-hell">${chk('digital.hell_wide', 'wide (every column twice: easier to read on a waterfall)')}</div>
+      <label class="dg dg-wspr">Call sign</label><div class="row dg dg-wspr">${inp('digital.wspr_call', 'maxlength="6" style="width:90px;font-family:var(--mono);text-transform:uppercase" placeholder="your call"')}
+        locator ${inp('digital.wspr_locator', 'maxlength="4" style="width:60px;font-family:var(--mono);text-transform:uppercase" placeholder="KM17"')}
+        power <select data-k="digital.wspr_dbm" data-t="int">${[0, 3, 7, 10, 13, 17, 20, 23, 27, 30, 33, 37, 40].map(d => `<option value="${d}">${d} dBm</option>`).join('')}</select></div>
+      <label class="dg dg-wspr">Slots</label><div class="row dg dg-wspr">every ${inp('digital.wspr_every_min', 'step="2" min="0" max="120" style="width:60px"', 'number')} minutes
+        <span class="hint">0 = once; 10 is usual (WSPR asks for at most 20 % of the time on air)</span></div>
       <label class="dg dg-cw">Speed</label><div class="row dg dg-cw">${inp('digital.wpm', 'step="1" min="5" max="60" style="width:64px"', 'number')} words per minute</div>
       <label class="dg dg-rtty">RTTY</label><div class="row dg dg-rtty">${inp('digital.baud', 'step="0.01" min="10" max="300" style="width:80px"', 'number')} baud,
         shift ${inp('digital.shift', 'step="1" min="10" max="1000" style="width:70px"', 'number')} Hz</div>
@@ -339,12 +359,13 @@ function radioBuild() {
         ${inp('digital.sweep_stop_khz', 'step="1" style="width:70px"', 'number')} kHz, step ${inp('digital.sweep_step_khz', 'step="0.1" min="0.01" style="width:60px"', 'number')} kHz,
         ${inp('digital.sweep_dwell_ms', 'step="1" min="1" style="width:60px"', 'number')} ms each</div>
       <label>Offset</label><div class="row">${inp('digital.offset_hz', 'step="10" style="width:90px"', 'number')} Hz from the frequency above</div>
-      <label>Repeat</label><div class="row">every ${inp('digital.repeat_s', 'step="1" min="0" style="width:70px"', 'number')} s <span class="hint">(0 = once)</span></div>
+      <label class="dg-norep">Repeat</label><div class="row dg-norep">every ${inp('digital.repeat_s', 'step="1" min="0" style="width:70px"', 'number')} s <span class="hint">(0 = once)</span></div>
     </div>
     <div class="bar" id="radDigProg"><i style="width:0%"></i></div><div class="hint" id="radDigTxt"></div>
-    <p class="rnote">Listen with an SDR (RTL-SDR with SDR# or SDR++) in USB mode, about 1 kHz below the frequency, and decode
-    RTTY and PSK31 with fldigi. CW: any receiver in CW or SSB mode.</p>
+    <p class="rnote" id="radDigListen">Listen with an SDR (RTL-SDR with SDR# or SDR++) in USB mode, about 1 kHz below the frequency, and decode
+    RTTY and PSK with fldigi. CW: any receiver in CW or SSB mode.</p>
   </div>
+  ${radioMoreCards()}
 
   <div class="dcard wide"><h3>How it works</h3>
     <p class="hint">All of it is digital, inside the FPGA: the ARM writes settings, sound samples and RDS data into the block's registers.
@@ -428,6 +449,7 @@ function radioWire() {
   $('specGo').onclick = () => radioSpectrum();
   $('specAuto').onchange = e => { RAD.specAuto = e.target.checked; if (RAD.specAuto) radioSpectrum(); };
   $('radGuide3').onclick = e => { e.preventDefault(); galleryGuide(RADIO_PROJECT); };
+  radioMoreWire();
 }
 
 function radioSend(delay) {
@@ -477,6 +499,8 @@ function radioFormInfo() {
   $('radAmCard').style.display = mode === 'am' ? '' : 'none';
   $('radDigCard').style.display = dig ? '' : 'none';
   document.querySelectorAll('#radDigCard .dg').forEach(e => e.style.display = e.classList.contains('dg-' + mode) ? '' : 'none');
+  document.querySelectorAll('#radDigCard .dg-norep').forEach(e => e.style.display = mode === 'wspr' ? 'none' : '');
+  radioMoreInfo(c);
   $('psChars').textContent = (c.rds.ps || '').length + ' of 8';
   $('rtChars').textContent = (c.rds.rt || '').length + ' of 64';
   const tot = c.fm.audio + (c.fm.stereo ? c.fm.pilot : 0) + (c.rds.on ? c.fm.rds_level : 0);
@@ -581,6 +605,7 @@ function radioLive() {
     $('radDigTxt').textContent = d.busy ? `sending: ${d.length_s} s message, about ${d.left_s} s still to queue`
       : d.next_in_s != null ? `sent; again in ${d.next_in_s} s` : 'sent (press Send now to send it again)';
   }
+  radioMoreLive(st);
   if (RAD.specAuto && Date.now() - RAD.lastSpec > 1200 && !document.hidden) radioSpectrum();
 }
 

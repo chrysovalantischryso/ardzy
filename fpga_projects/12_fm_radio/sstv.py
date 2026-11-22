@@ -6,8 +6,12 @@ receiver which mode follows. Any receiver decodes it: a phone app (Robot36) list
 MMSSTV / QSSTV / SDR++ with an SDR in FM, AM or USB.
 
     Martin 1   320 x 256, colours G, B, R per line          114 s   (VIS 44)
+    Martin 2   the same, twice as fast                       58 s   (VIS 40)
     Scottie 1  320 x 256, G, B, then sync, then R           110 s   (VIS 60)
-    Robot 36   320 x 240, brightness + colour difference    36 s    (VIS 8)
+    Scottie 2  the same, faster                              72 s   (VIS 56)
+    Scottie DX the same, slow: the best for weak signals    270 s   (VIS 76)
+    Robot 36   320 x 240, brightness + colour difference     36 s   (VIS 8)
+    PD 90      320 x 256, two lines share their colour       90 s   (VIS 99)
 
 The picture comes as raw RGB bytes, 320 x 256 x 3 (the Ardzy app makes them from any image file).
 """
@@ -17,9 +21,15 @@ import math
 W, H = 320, 256
 MODES = {
     'martin1': {'name': 'Martin 1', 'vis': 44, 'seconds': 114.3},
+    'martin2': {'name': 'Martin 2', 'vis': 40, 'seconds': 58.1},
     'scottie1': {'name': 'Scottie 1', 'vis': 60, 'seconds': 109.6},
+    'scottie2': {'name': 'Scottie 2', 'vis': 56, 'seconds': 72.0},
+    'scottiedx': {'name': 'Scottie DX', 'vis': 76, 'seconds': 269.8},
     'robot36': {'name': 'Robot 36', 'vis': 8, 'seconds': 36.0},
+    'pd90': {'name': 'PD 90', 'vis': 99, 'seconds': 90.9},
 }
+MARTIN_SCAN = {'martin1': 0.146432, 'martin2': 0.073216}
+SCOTTIE_SCAN = {'scottie1': 0.13824, 'scottie2': 0.088064, 'scottiedx': 0.3456}
 
 
 def freq(v):
@@ -49,16 +59,34 @@ def segments(rgb, mode):
         o = y * W * 3
         return rgb[o + c:o + W * 3:3]
     segs = vis(MODES[mode]['vis'])
-    if mode == 'martin1':
+    if mode in MARTIN_SCAN:
+        sc = MARTIN_SCAN[mode]
         for y in range(H):
             segs += [(1200, 0.004862), (1500, 0.000572)]
             for c in (1, 2, 0):                                # G, B, R
-                segs += _scan(chan(y, c), 0.146432) + [(1500, 0.000572)]
-    elif mode == 'scottie1':
+                segs += _scan(chan(y, c), sc) + [(1500, 0.000572)]
+    elif mode in SCOTTIE_SCAN:
+        sc = SCOTTIE_SCAN[mode]
         segs.append((1200, 0.009))                            # the first line's sync
         for y in range(H):
-            segs += [(1500, 0.0015)] + _scan(chan(y, 1), 0.13824) + [(1500, 0.0015)] + _scan(chan(y, 2), 0.13824)
-            segs += [(1200, 0.009), (1500, 0.0015)] + _scan(chan(y, 0), 0.13824)
+            segs += [(1500, 0.0015)] + _scan(chan(y, 1), sc) + [(1500, 0.0015)] + _scan(chan(y, 2), sc)
+            segs += [(1200, 0.009), (1500, 0.0015)] + _scan(chan(y, 0), sc)
+    elif mode == 'pd90':
+        def yuv(y):
+            o = y * W * 3
+            ys, us, vs = [], [], []
+            for x in range(W):
+                r, g, b = rgb[o + 3 * x], rgb[o + 3 * x + 1], rgb[o + 3 * x + 2]
+                ys.append(16 + (65.738 * r + 129.057 * g + 25.064 * b) / 256)
+                vs.append(128 + (112.439 * r - 94.154 * g - 18.285 * b) / 256)    # R-Y
+                us.append(128 + (-37.945 * r - 74.494 * g + 112.439 * b) / 256)   # B-Y
+            return ys, us, vs
+        for y in range(0, H, 2):                              # a pair of lines: Y, R-Y, B-Y (shared), Y
+            y0, u0, v0 = yuv(y)
+            y1, u1, v1 = yuv(y + 1)
+            segs += [(1200, 0.020), (1500, 0.00208)]
+            segs += _scan(y0, 0.17024) + _scan([(a + b) / 2 for a, b in zip(v0, v1)], 0.17024)
+            segs += _scan([(a + b) / 2 for a, b in zip(u0, u1)], 0.17024) + _scan(y1, 0.17024)
     elif mode == 'robot36':
         for y in range(240):
             src = y * H // 240
