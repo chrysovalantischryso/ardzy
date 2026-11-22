@@ -145,6 +145,10 @@ a Windows PC, and an Ethernet cable or a 3.3 V USB-UART adapter (CP2102, CH340, 
 The default login is **root / root**: change it (App: System, Settings; or `passwd` over SSH, or
 `password = ...` in `ardzy.txt` on the card) before you connect the board to a network you share.
 
+Step by step with drawings (flashing, `ardzy.txt`, jumpers, what the LEDs mean, the UART console on J12,
+the U-Boot prompt, updates, safe mode, troubleshooting): **document 09, "Flash, boot, use, and the UART
+console"** ([`docs/09_Flash_Boot_Use.html`](docs/09_Flash_Boot_Use.html)).
+
 ## Other boards: EBAZ4205
 
 The EBAZ4205 (from Ebang miners) has the same chip as the S9, 256 MB DDR3, Ethernet, two LEDs, two buttons
@@ -169,7 +173,9 @@ and has tested it in the emulator; **it has not been tested on a real EBAZ4205 y
 ## Documentation
 
 The full illustrated guides are in [`docs/`](docs/index.html): the hardware, every pin, the board
-reference manual, the app, the FPGA projects and the lessons.
+reference manual, the app, the FPGA projects, the lessons, how to connect things (08) and how to flash,
+boot and use the board with its UART console (09). They are HTML pages: GitHub shows their source, so
+download the repository (Code, Download ZIP) or clone it and open `docs/index.html` in a browser.
 
 ## Build it yourself
 

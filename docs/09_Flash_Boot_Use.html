@@ -86,7 +86,7 @@ what the LEDs mean, how to use the serial console (UART) with a USB-UART adapter
 <tr><td><code>Ardzy-0.3.1-BETA-Setup.exe</code></td><td>Installs the Ardzy app on Windows (Start menu + Desktop shortcut, uninstaller in Apps)</td><td>Yes</td></tr>
 <tr><td><code>Ardzy-0.3.1-sdcard.img.xz</code></td><td>The board's whole system for the SD card: boot loader, Linux, Debian 13, Ardzy tools</td><td>Yes</td></tr>
 <tr><td><code>Ardzy-0.3.1-BETA-windows.zip</code></td><td>The same app without installing (unzip and run Ardzy.exe)</td><td>Only instead of Setup</td></tr>
-<tr><td><code>Ardzy-0.3.1-update.tar.gz</code></td><td>Update for a board that already runs Ardzy 0.2 or 0.3 (no re-flash)</td><td>Only for updates</td></tr>
+<tr><td><code>Ardzy-0.3.1-update.tar.gz</code></td><td>Update for a board that already runs Ardzy 0.3 (no re-flash). Older boards: <a href="#update">section 14</a></td><td>Only for updates</td></tr>
 <tr><td><code>SHA256SUMS.txt</code></td><td>Check numbers for the downloads</td><td>Optional</td></tr>
 </table></div>
 
@@ -440,8 +440,16 @@ Full wiring for each device: <a href="08_Connecting.html">document 8, How to con
 
 <h2 id="update">14. Updates and safe mode</h2>
 <h3>Update without re-flashing</h3>
-<p>App: <b>System</b> view &rarr; <b>Settings and update</b> &rarr; choose <code>Ardzy-0.3.1-update.tar.gz</code>. Your projects and settings stay. Most updates need no restart.
+<p>App: <b>System</b> view &rarr; <b>Settings and update</b> &rarr; <b>Install update</b> &rarr; choose <code>Ardzy-0.3.1-update.tar.gz</code>. Your projects and settings stay. Most updates need no restart.
 On the board the same is <code>ardzy update Ardzy-0.3.1-update.tar.gz</code>.</p>
+<p>Updates go one version at a time. The board's version: <code>cat /etc/ardzy-release</code> on the board, or the app's System view, Settings and update:</p>
+<div class="tablewrap"><table>
+<tr><th>Board runs</th><th>Install, in this order</th><th>From the release</th></tr>
+<tr><td>0.3</td><td><code>Ardzy-0.3.1-update.tar.gz</code></td><td>0.3.1</td></tr>
+<tr><td>0.2</td><td><code>Ardzy-0.3-update.tar.gz</code>, then the 0.3.1 update</td><td>0.3, then 0.3.1</td></tr>
+<tr><td>0.1</td><td><code>Ardzy-0.2-update.tar.gz</code> (new kernel, then Restart), then the 0.3 and 0.3.1 updates</td><td>0.2, 0.3, 0.3.1</td></tr>
+</table></div>
+<p>Or simply write a new card with the 0.3.1 image (copy your projects off the board first).</p>
 <h3>A new kernel that does not start goes back by itself</h3>
 <p>When an update brings a new Linux kernel, the old one is kept as <code>zImage.old</code>. The first start of the new one is a trial: if the board does not reach "boot OK"
 (90 seconds after the start), the next start uses the old kernel again and the console says <code>Ardzy: the new kernel did not start last time: using the previous one</code>.</p>
