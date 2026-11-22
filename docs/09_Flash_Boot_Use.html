@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ardzy: flash, boot, use, UART console</title>
+<style>
+  :root { --text: #18211c; --muted: #5b6a62; --line: #d6ddd9; --accent: #13894a; --bg: #ffffff; --soft: #f3f5f4;
+          --gnd: #3b3f3d; --pwr: #c42b2b; --rx: #1d5fa8; --tx: #13894a; --warnc: #e08a00; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.6 "Segoe UI", system-ui, sans-serif; color: var(--text); background: var(--bg); }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 22px 26px 60px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 20px; margin: 34px 0 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 22px 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 14px; }
+  .warn { background: #fff4e5; border-left: 4px solid var(--warnc); padding: 10px 14px; border-radius: 6px; margin: 12px 0; }
+  .tip { background: #e9f6ee; border-left: 4px solid var(--accent); padding: 10px 14px; border-radius: 6px; margin: 12px 0; }
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 14px; font-size: 14px; }
+  th, td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: var(--soft); }
+  code, pre { font-family: "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+  code { background: var(--soft); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  pre code, pre { overflow-wrap: normal; }
+  p, li, td { overflow-wrap: anywhere; }
+  pre { background: #0f1512; color: #cfeedd; padding: 12px 14px; border-radius: 8px; overflow-x: auto; line-height: 1.45; }
+  pre .c { color: #7f9a8b; }
+  nav.toc { background: var(--soft); border-radius: 8px; padding: 10px 16px; margin: 14px 0; line-height: 2; }
+  nav.toc a { color: var(--accent); text-decoration: none; margin-right: 14px; white-space: nowrap; }
+  ol.steps > li { margin: 6px 0; }
+  .check { list-style: none; padding-left: 4px; }
+  .check li::before { content: "[ ] "; font-family: Consolas, monospace; color: var(--accent); }
+  svg { max-width: 100%; height: auto; }
+  svg text { font-family: "Segoe UI", system-ui, sans-serif; }
+  .small { font-size: 13px; color: var(--muted); }
+  a { color: var(--accent); }
+  @media (max-width: 720px) { .wrap { padding: 14px 14px 40px; } h1 { font-size: 22px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<p><a href="index.html" style="text-decoration:none">&larr; All documents</a> &nbsp;<span class="small">Document 9 &middot; Project 2_Ardzy &middot; Ardzy 0.3.1</span></p>
+<h1>Ardzy: flash, boot, use, and the UART console</h1>
+<p class="lead">Everything from an empty microSD card to your first program on the board, step by step. Also how the board starts,
+what the LEDs mean, how to use the serial console (UART) with a USB-UART adapter, how to update safely, and what to do when something does not work.</p>
+
+<nav class="toc">
+  <a href="#need">1. What you need</a>
+  <a href="#files">2. Get the files</a>
+  <a href="#flash">3. Flash the SD card</a>
+  <a href="#settings">4. Board settings (ardzy.txt)</a>
+  <a href="#jumpers">5. Boot jumpers</a>
+  <a href="#boot">6. Power on and boot</a>
+  <a href="#leds">7. What the LEDs mean</a>
+  <a href="#connect">8. Connect from the PC</a>
+  <a href="#uart">9. UART console (J12)</a>
+  <a href="#uboot">10. The U-Boot prompt</a>
+  <a href="#serial1">11. The other UART (Serial1)</a>
+  <a href="#use">12. Use it</a>
+  <a href="#cli">13. Command line</a>
+  <a href="#update">14. Updates and safe mode</a>
+  <a href="#off">15. Turn it off</a>
+  <a href="#trouble">16. Troubleshooting</a>
+</nav>
+
+<h2 id="need">1. What you need</h2>
+<ul class="check">
+  <li>The Antminer S9 control board (Zynq XC7Z010).</li>
+  <li>A 12 V power supply for J14 (the 6-pin PCIe-style connector) or J15 / J16. A PC power supply or any 12 V brick of 1 A or more is fine: the board alone takes much less.</li>
+  <li>A microSD card, 4 GB or bigger. The image is 2.5 GB and grows to fill the card at the first start.</li>
+  <li>A microSD card reader for the PC.</li>
+  <li>A Windows PC (10 or 11) for the Ardzy app.</li>
+  <li><b>One</b> way to talk to the board (both is best):
+    <ul>
+      <li>an Ethernet cable, to your router or straight to the PC, and/or</li>
+      <li>a <b>3.3 V</b> USB-UART adapter (CP2102, CH340, FT232) and 3 jumper wires. J12 is often not soldered: you may need a 3-pin 2.54 mm header.</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="files">2. Get the files</h2>
+<p>From the release page <a href="https://github.com/chrysovalantischryso/ardzy/releases">github.com/chrysovalantischryso/ardzy/releases</a> (version 0.3.1 BETA):</p>
+<div class="tablewrap"><table>
+<tr><th>File</th><th>What it is</th><th>Do you need it?</th></tr>
+<tr><td><code>Ardzy-0.3.1-BETA-Setup.exe</code></td><td>Installs the Ardzy app on Windows (Start menu + Desktop shortcut, uninstaller in Apps)</td><td>Yes</td></tr>
+<tr><td><code>Ardzy-0.3.1-sdcard.img.xz</code></td><td>The board's whole system for the SD card: boot loader, Linux, Debian 13, Ardzy tools</td><td>Yes</td></tr>
+<tr><td><code>Ardzy-0.3.1-BETA-windows.zip</code></td><td>The same app without installing (unzip and run Ardzy.exe)</td><td>Only instead of Setup</td></tr>
+<tr><td><code>Ardzy-0.3.1-update.tar.gz</code></td><td>Update for a board that already runs Ardzy 0.2 or 0.3 (no re-flash)</td><td>Only for updates</td></tr>
+<tr><td><code>SHA256SUMS.txt</code></td><td>Check numbers for the downloads</td><td>Optional</td></tr>
+</table></div>
+
+<div class="tip"><b>.img is not .iso.</b> The SD card file is a disk image (<code>.img</code>, packed as <code>.img.xz</code>). You do not copy it onto the card like a normal file and you do not "burn" it like an ISO: a writer program writes it to the card byte by byte. You do not need to unpack the <code>.xz</code> first: the Ardzy app and balenaEtcher read it as it is.</div>
+
+<p>To check a download is complete, in PowerShell:</p>
+<pre>Get-FileHash .\Ardzy-0.3.1-sdcard.img.xz      <span class="c"># compare with the line in SHA256SUMS.txt</span></pre>
+
+<p>Install the app: run <code>Ardzy-0.3.1-BETA-Setup.exe</code>. It installs for your user only (no admin needed) into
+<code>%LOCALAPPDATA%\Programs\Ardzy</code>. If Windows SmartScreen says "Windows protected your PC": More info, Run anyway (the program is not signed).</p>
+
+<h2 id="flash">3. Flash the SD card</h2>
+<div class="warn"><b>Writing an image erases the whole card.</b> Copy anything you want to keep off it first. Both ways below only show removable cards (1 to 256 GB), so your PC's own disks are not in the list, but still check the size before you click Write.</div>
+
+<h3>Way A (easiest): the Ardzy app</h3>
+<ol class="steps">
+  <li>Put the microSD card in the PC's card reader.</li>
+  <li>Start Ardzy and click <b>SD card</b> in the header. The "Write an SD card" window opens.</li>
+  <li>1. Board and system image: Board = Antminer S9, <b>Choose file</b>: <code>Ardzy-0.3.1-sdcard.img.xz</code>.</li>
+  <li>2. microSD card: choose your card (check the size; <b>Refresh</b> if you put it in after opening the window).</li>
+  <li>Set the board settings: board name (default <code>ardzy</code>), a new root password, the network ("automatic" is right for almost everyone), the time zone, SSH, and what to load at power-on. The app writes them into <code>ardzy.txt</code> on the card (see <a href="#settings">section 4</a>).</li>
+  <li>Leave "check the card after writing (recommended)" ticked and click <b>Write card</b>. Windows asks for administrator permission (writing a whole disk needs it). It takes a few minutes.</li>
+  <li>The app reads the card back and compares it. Wait until it says the card was written and checked.</li>
+  <li>If Windows pops up "You need to format the disk in drive X: before you can use it": click <b>Cancel</b>. That is the Linux partition, which Windows cannot read. Never format it.</li>
+  <li>Take the card out.</li>
+</ol>
+
+<h3>Way B: balenaEtcher (or any image writer)</h3>
+<ol class="steps">
+  <li>Install balenaEtcher from <a href="https://etcher.balena.io">etcher.balena.io</a>.</li>
+  <li><b>Flash from file</b>: <code>Ardzy-0.3.1-sdcard.img.xz</code>.</li>
+  <li><b>Select target</b>: your microSD card (check the size!).</li>
+  <li><b>Flash</b>. Etcher checks the card itself afterwards.</li>
+  <li>Windows "format the disk?" pop-up: <b>Cancel</b>.</li>
+  <li>Optional: open the small FAT drive that appears (the boot partition) and edit <code>ardzy.txt</code> with Notepad (name, password, network).</li>
+</ol>
+
+<h3>What is on the card</h3>
+<svg viewBox="0 0 860 120" role="img" aria-label="SD card layout: boot partition FAT and root partition ext4">
+  <rect x="10" y="20" width="250" height="70" rx="6" fill="#e9f6ee" stroke="#13894a"/>
+  <text x="135" y="45" text-anchor="middle" font-size="15" font-weight="600" fill="#18211c">Partition 1: boot (FAT)</text>
+  <text x="135" y="66" text-anchor="middle" font-size="12" fill="#5b6a62">BOOT.bin, u-boot.img, uboot.env, boot.scr,</text>
+  <text x="135" y="82" text-anchor="middle" font-size="12" fill="#5b6a62">zImage, system.dtb, ardzy.txt</text>
+  <rect x="270" y="20" width="580" height="70" rx="6" fill="#eef3fb" stroke="#1d5fa8"/>
+  <text x="560" y="45" text-anchor="middle" font-size="15" font-weight="600" fill="#18211c">Partition 2: root (ext4): Debian 13 + Ardzy</text>
+  <text x="560" y="66" text-anchor="middle" font-size="12" fill="#5b6a62">/opt/ardzy/projects (your projects), /var/lib/ardzy (state, logs)</text>
+  <text x="560" y="82" text-anchor="middle" font-size="12" fill="#5b6a62">grows to the whole card at the first start</text>
+  <text x="10" y="112" font-size="12" fill="#5b6a62">Windows can only see partition 1. That is normal.</text>
+</svg>
+
+<h2 id="settings">4. Board settings: ardzy.txt</h2>
+<p>A plain text file on the boot partition. The app writes it when it makes a card, and changes it live when you change settings in the app.
+You can also edit it on the PC with Notepad. It is applied at every boot when it changed.</p>
+<pre>hostname = ardzy
+password =
+network  = auto
+timezone = Europe/Athens
+ssh      = on
+at_boot  = pin-control</pre>
+<div class="tablewrap"><table>
+<tr><th>Key</th><th>Values</th><th>Default</th><th>What it does</th></tr>
+<tr><td><code>hostname</code></td><td>letters, digits, <code>-</code></td><td><code>ardzy</code></td><td>Board name on the network: <code>&lt;hostname&gt;.local</code></td></tr>
+<tr><td><code>password</code></td><td>any text</td><td>(empty)</td><td>New root password. Applied once at the next boot, then erased from the file so it is not left in plain text.</td></tr>
+<tr><td><code>network</code></td><td><code>auto</code> / <code>static</code> / <code>linklocal</code></td><td><code>auto</code></td><td>auto = DHCP from a router, or link-local when there is none (direct cable to a PC)</td></tr>
+<tr><td><code>address</code>, <code>gateway</code>, <code>dns</code></td><td><code>192.168.1.50/24</code>, <code>192.168.1.1</code>, <code>1.1.1.1</code></td><td>(empty)</td><td>Only with <code>network = static</code></td></tr>
+<tr><td><code>timezone</code></td><td><code>Europe/Athens</code>, <code>UTC</code>, ...</td><td><code>UTC</code></td><td>Board clock time zone. The app also sets the board's clock when it connects (the board has no clock battery).</td></tr>
+<tr><td><code>ssh</code></td><td><code>on</code> / <code>off</code></td><td><code>on</code></td><td>SSH login (PuTTY)</td></tr>
+<tr><td><code>at_boot</code></td><td><code>pin-control</code> / <code>none</code> / a project name</td><td><code>pin-control</code></td><td>What goes into the FPGA at power-on: the pin-control design (I/O view, Arduino sketches), nothing, or one of your projects</td></tr>
+</table></div>
+<p class="small">The board's MAC address (its network ID) is chosen at the first start and then kept in <code>uboot.env</code>, so your router always sees the same board.</p>
+
+<h2 id="jumpers">5. Boot jumpers: SD card or the original firmware</h2>
+<p>Four 3-pin jumpers JP1 to JP4 tell the chip where to boot from. They are read only at power-on.
+For Ardzy, <b>JP2 = 1 and JP4 = 1</b> (JP1 and JP3 = 0). For the original Bitmain firmware in the NAND chip, only JP2 = 1.</p>
+<div class="tablewrap"><table>
+<tr><th>Boot from</th><th>JP1</th><th>JP2</th><th>JP3</th><th>JP4</th><th>Notes</th></tr>
+<tr style="background:#e9f6ee"><td><b>microSD card (Ardzy)</b></td><td>0</td><td><b>1</b></td><td>0</td><td><b>1</b></td><td>Use this</td></tr>
+<tr><td>NAND flash (original Bitmain firmware)</td><td>0</td><td>1</td><td>0</td><td>0</td><td>Ardzy never writes the NAND, so the original firmware is still there</td></tr>
+<tr><td>JTAG only</td><td>0</td><td>0</td><td>0</td><td>0</td><td>For Vivado Hardware Manager</td></tr>
+</table></div>
+<svg viewBox="0 0 860 150" role="img" aria-label="Jumper settings for SD card boot">
+  <text x="10" y="20" font-size="13" fill="#5b6a62">SD card boot (Ardzy): the cap position marked "1" on JP2 and JP4, the position "0" on JP1 and JP3</text>
+  <g font-size="13" fill="#18211c">
+    <g transform="translate(40,40)">
+      <text x="45" y="0" text-anchor="middle" font-weight="600">JP1</text>
+      <circle cx="15" cy="30" r="8" fill="#fff" stroke="#3b3f3d"/><circle cx="45" cy="30" r="8" fill="#fff" stroke="#3b3f3d"/><circle cx="75" cy="30" r="8" fill="#fff" stroke="#3b3f3d"/>
+      <rect x="35" y="18" width="52" height="24" rx="5" fill="#3b3f3d" opacity="0.85"/>
+      <text x="45" y="72" text-anchor="middle">0</text>
+    </g>
+    <g transform="translate(240,40)">
+      <text x="45" y="0" text-anchor="middle" font-weight="600">JP2</text>
+      <circle cx="15" cy="30" r="8" fill="#fff" stroke="#3b3f3d"/><circle cx="45" cy="30" r="8" fill="#fff" stroke="#3b3f3d"/><circle cx="75" cy="30" r="8" fill="#fff" stroke="#3b3f3d"/>
+      <rect x="3" y="18" width="52" height="24" rx="5" fill="#13894a" opacity="0.9"/>
+      <text x="45" y="72" text-anchor="middle" font-weight="600" fill="#13894a">1</text>
+    </g>
+    <g transform="translate(440,40)">
+      <text x="45" y="0" text-anchor="middle" font-weight="600">JP3</text>
+      <circle cx="15" cy="30" r="8" fill="#fff" stroke="#3b3f3d"/><circle cx="45" cy="30" r="8" fill="#fff" stroke="#3b3f3d"/><circle cx="75" cy="30" r="8" fill="#fff" stroke="#3b3f3d"/>
+      <rect x="35" y="18" width="52" height="24" rx="5" fill="#3b3f3d" opacity="0.85"/>
+      <text x="45" y="72" text-anchor="middle">0</text>
+    </g>
+    <g transform="translate(640,40)">
+      <text x="45" y="0" text-anchor="middle" font-weight="600">JP4</text>
+      <circle cx="15" cy="30" r="8" fill="#fff" stroke="#3b3f3d"/><circle cx="45" cy="30" r="8" fill="#fff" stroke="#3b3f3d"/><circle cx="75" cy="30" r="8" fill="#fff" stroke="#3b3f3d"/>
+      <rect x="3" y="18" width="52" height="24" rx="5" fill="#13894a" opacity="0.9"/>
+      <text x="45" y="72" text-anchor="middle" font-weight="600" fill="#13894a">1</text>
+    </g>
+  </g>
+  <text x="10" y="140" font-size="12" fill="#5b6a62">Drawing only: which side is "1" is printed on the board's silkscreen. Check it there; the Map view in the app shows where the jumpers are.</text>
+</svg>
+<div class="tip">If you are not sure about the jumpers: a wrong setting does no harm. The board simply does not start from the card (no text at all on the UART console, see <a href="#trouble">troubleshooting</a>). Change the jumpers only with the power off.</div>
+
+<h2 id="boot">6. Power on and boot</h2>
+<ol class="steps">
+  <li>Power off. Card in the microSD slot J11 (contacts down, it clicks in).</li>
+  <li>Plug in the Ethernet cable and/or the USB-UART adapter (<a href="#uart">section 9</a>).</li>
+  <li>Plug in 12 V. The power-good LED D15 lights at once.</li>
+  <li>Wait. A normal start takes about 30 to 40 seconds. <b>The first start takes about 2 minutes</b>: it makes the SSH keys, grows the root partition to the whole card, chooses and saves the MAC address, and applies <code>ardzy.txt</code>.</li>
+  <li>The bicolor LED D3 turns <b>green</b>: Ardzy is ready.</li>
+</ol>
+
+<h3>What happens inside, in order</h3>
+<svg viewBox="0 0 880 250" role="img" aria-label="Boot chain from BootROM to Ardzy services">
+  <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5b6a62"/></marker></defs>
+  <g font-size="12">
+    <rect x="10" y="20" width="150" height="80" rx="7" fill="#f3f5f4" stroke="#5b6a62"/>
+    <text x="85" y="42" text-anchor="middle" font-weight="600" font-size="13">1. BootROM</text>
+    <text x="85" y="60" text-anchor="middle" fill="#5b6a62">inside the chip</text>
+    <text x="85" y="76" text-anchor="middle" fill="#5b6a62">reads JP1-JP4,</text>
+    <text x="85" y="92" text-anchor="middle" fill="#5b6a62">loads BOOT.bin</text>
+
+    <rect x="185" y="20" width="150" height="80" rx="7" fill="#e9f6ee" stroke="#13894a"/>
+    <text x="260" y="42" text-anchor="middle" font-weight="600" font-size="13">2. U-Boot SPL</text>
+    <text x="260" y="60" text-anchor="middle" fill="#5b6a62">clocks, pins,</text>
+    <text x="260" y="76" text-anchor="middle" fill="#5b6a62">512 MB DDR3 setup,</text>
+    <text x="260" y="92" text-anchor="middle" fill="#5b6a62">loads u-boot.img</text>
+
+    <rect x="360" y="20" width="150" height="80" rx="7" fill="#e9f6ee" stroke="#13894a"/>
+    <text x="435" y="42" text-anchor="middle" font-weight="600" font-size="13">3. U-Boot</text>
+    <text x="435" y="60" text-anchor="middle" fill="#5b6a62">reads uboot.env,</text>
+    <text x="435" y="76" text-anchor="middle" fill="#5b6a62">2 s to stop it,</text>
+    <text x="435" y="92" text-anchor="middle" fill="#5b6a62">runs boot.scr</text>
+
+    <rect x="535" y="20" width="150" height="80" rx="7" fill="#eef3fb" stroke="#1d5fa8"/>
+    <text x="610" y="42" text-anchor="middle" font-weight="600" font-size="13">4. Linux 6.18</text>
+    <text x="610" y="60" text-anchor="middle" fill="#5b6a62">zImage + system.dtb,</text>
+    <text x="610" y="76" text-anchor="middle" fill="#5b6a62">console ttyPS0</text>
+    <text x="610" y="92" text-anchor="middle" fill="#5b6a62">at 115200</text>
+
+    <rect x="710" y="20" width="160" height="80" rx="7" fill="#eef3fb" stroke="#1d5fa8"/>
+    <text x="790" y="42" text-anchor="middle" font-weight="600" font-size="13">5. Debian 13</text>
+    <text x="790" y="60" text-anchor="middle" fill="#5b6a62">systemd, network,</text>
+    <text x="790" y="76" text-anchor="middle" fill="#5b6a62">SSH, web page,</text>
+    <text x="790" y="92" text-anchor="middle" fill="#5b6a62">login prompt</text>
+
+    <line x1="160" y1="60" x2="183" y2="60" stroke="#5b6a62" marker-end="url(#ar)"/>
+    <line x1="335" y1="60" x2="358" y2="60" stroke="#5b6a62" marker-end="url(#ar)"/>
+    <line x1="510" y1="60" x2="533" y2="60" stroke="#5b6a62" marker-end="url(#ar)"/>
+    <line x1="685" y1="60" x2="708" y2="60" stroke="#5b6a62" marker-end="url(#ar)"/>
+
+    <rect x="185" y="140" width="685" height="92" rx="7" fill="#fff" stroke="#d6ddd9"/>
+    <text x="200" y="162" font-weight="600" font-size="13">6. Ardzy services (after Linux is up)</text>
+    <text x="200" y="182" fill="#18211c">ardzy-config: applies ardzy.txt if it changed</text>
+    <text x="200" y="199" fill="#18211c">ardzy-board: LEDs, buzzer, buttons; D3 green = ready (red = safe mode)</text>
+    <text x="200" y="216" fill="#18211c">ardzy-autoload: loads the FPGA (pin-control or your at_boot project); ardzy-web: the API for the app on port 80</text>
+    <text x="540" y="230" fill="#5b6a62" font-size="11"></text>
+    <line x1="790" y1="100" x2="790" y2="138" stroke="#5b6a62" marker-end="url(#ar)"/>
+  </g>
+</svg>
+<p class="small">The FPGA is empty until step 6. When the design is loaded the FPGA DONE LED D1 lights. 90 seconds after the start the board writes "boot OK" (used by safe mode and safe kernel updates, <a href="#update">section 14</a>).</p>
+
+<h3>What the console shows (shortened, your numbers differ)</h3>
+<pre>U-Boot SPL 2026.07
+Trying to boot from MMC1
+
+U-Boot 2026.07
+DRAM:  512 MiB
+Hit any key to stop autoboot:  2           <span class="c"># press a key here for the U-Boot prompt (section 10)</span>
+Ardzy: loading Linux from SD
+Starting kernel ...
+
+[    0.000000] Linux version 6.18.0-xilinx-s9 ...
+...
+[  OK  ] Reached target multi-user.target
+
+Debian GNU/Linux 13 ardzy ttyPS0
+
+ardzy login:</pre>
+
+<h2 id="leds">7. What the LEDs mean</h2>
+<div class="tablewrap"><table>
+<tr><th>LED</th><th>Colour</th><th>On</th><th>Off</th></tr>
+<tr><td>D15</td><td>green</td><td>12 V is in and all supplies are good</td><td>No power, or a supply problem</td></tr>
+<tr><td>D1</td><td>green</td><td>The FPGA has a design loaded (DONE)</td><td>FPGA empty (normal until Linux loads it)</td></tr>
+<tr><td>D3</td><td><b>green</b></td><td>Ardzy is ready</td><td rowspan="2">Still booting, or Linux did not start</td></tr>
+<tr><td>D3</td><td><b>red</b></td><td>Safe mode: the last boot did not finish, so your at_boot project was not loaded this time</td></tr>
+<tr><td>D2</td><td>green</td><td colspan="2">Yours: <code>ardzy led ps on</code>, or <code>LED_D2</code> (pin 62) in sketches</td></tr>
+<tr><td>D5 to D8</td><td>green</td><td colspan="2">The 4 FPGA LEDs LED0 to LED3: yours (I/O view, sketches, FPGA designs). <code>LED_BUILTIN</code> = LED0</td></tr>
+<tr><td>Ethernet jack</td><td>green / yellow</td><td colspan="2">Link and activity, from the network chip</td></tr>
+</table></div>
+
+<h2 id="connect">8. Connect from the PC</h2>
+<h3>Over the network</h3>
+<p>Two ways to cable it. Both work with no settings:</p>
+<div class="tablewrap"><table>
+<tr><th>Cable</th><th>What the board gets</th><th>How the app finds it</th></tr>
+<tr><td>Board to your router (same network as the PC)</td><td>An IPv4 address from the router (DHCP)</td><td>By itself; also <code>ardzy.local</code></td></tr>
+<tr><td>Board straight to a PC Ethernet port</td><td>Link-local addresses (IPv4 169.254.x.x and IPv6 fe80::...)</td><td>By itself over IPv6 link-local; also <code>ardzy.local</code></td></tr>
+</table></div>
+<ol class="steps">
+  <li>Start Ardzy. In a few seconds the board button (top right) shows your board as connected.</li>
+  <li>If not: click the board button, <b>Scan again</b>, or type <code>ardzy.local</code> (or the IP address your router shows) under "Or connect by name / IP" and <b>Connect</b>.</li>
+</ol>
+<p>Without the app:</p>
+<ul>
+  <li>Browser: <code>http://ardzy.local</code> (the board's own web page).</li>
+  <li>SSH: PuTTY, host <code>ardzy.local</code>, port 22, login <code>root</code>, password <code>root</code> (or the one you set). Or in PowerShell: <code>ssh root@ardzy.local</code></li>
+</ul>
+<div class="warn"><b>Change the password</b> if it is still <code>root</code> and the board is on a network others use: type <code>passwd</code> on the board, or set it in the app's board settings.</div>
+
+<h3>Over the USB-UART cable (no network needed)</h3>
+<p>Wire the adapter to J12 as in <a href="#uart">section 9</a>, then in the app: board button (top right) &rarr; <b>Or over a USB-UART cable</b> &rarr; choose the COM port &rarr; <b>Connect over cable</b>.
+The app logs in on the console, starts a small link program on the board and switches the line to 921600 baud by itself (about 87 KB/s). Everything works over it: upload, Monitor, I/O, Terminal. When the app disconnects, the normal login prompt comes back.</p>
+
+<h2 id="uart">9. The UART console on J12</h2>
+<p>J12 is the board's serial console (Zynq UART1, Linux <code>ttyPS0</code>). It shows <b>every</b> boot message from the very first line, and gives you a login prompt.
+It is the best tool when something does not start, and it works with no network at all.</p>
+
+<h3>Wiring</h3>
+<svg viewBox="0 0 860 250" role="img" aria-label="J12 wiring to a USB-UART adapter: adapter TX to J12 pin 1, GND to pin 2, adapter RX to pin 3">
+  <g font-size="13">
+    <rect x="30" y="30" width="230" height="190" rx="8" fill="#f3f5f4" stroke="#5b6a62"/>
+    <text x="145" y="55" text-anchor="middle" font-weight="600" font-size="15">Board: J12</text>
+    <text x="145" y="74" text-anchor="middle" fill="#5b6a62" font-size="12">3-pin header, 3.3 V logic</text>
+    <rect x="200" y="92" width="24" height="24" fill="#fff" stroke="#18211c"/><text x="190" y="109" text-anchor="end">pin 1  RX (into board)</text>
+    <circle cx="212" cy="144" r="12" fill="#fff" stroke="#18211c"/><text x="190" y="149" text-anchor="end">pin 2  GND</text>
+    <circle cx="212" cy="184" r="12" fill="#fff" stroke="#18211c"/><text x="190" y="189" text-anchor="end">pin 3  TX (out of board)</text>
+
+    <rect x="600" y="30" width="230" height="190" rx="8" fill="#eef3fb" stroke="#1d5fa8"/>
+    <text x="715" y="55" text-anchor="middle" font-weight="600" font-size="15">USB-UART adapter</text>
+    <text x="715" y="74" text-anchor="middle" fill="#5b6a62" font-size="12">CP2102 / CH340 / FT232, set to 3V3</text>
+    <circle cx="628" cy="104" r="10" fill="#fff" stroke="#18211c"/><text x="648" y="109">TX</text>
+    <circle cx="628" cy="144" r="10" fill="#fff" stroke="#18211c"/><text x="648" y="149">GND</text>
+    <circle cx="628" cy="184" r="10" fill="#fff" stroke="#18211c"/><text x="648" y="189">RX</text>
+    <circle cx="628" cy="210" r="7" fill="#fff" stroke="#c42b2b"/><text x="648" y="214" fill="#c42b2b" font-size="12">5V / 3V3: not connected</text>
+
+    <line x1="224" y1="104" x2="618" y2="104" stroke="#13894a" stroke-width="3"/>
+    <line x1="224" y1="144" x2="618" y2="144" stroke="#3b3f3d" stroke-width="3"/>
+    <line x1="224" y1="184" x2="618" y2="184" stroke="#1d5fa8" stroke-width="3"/>
+    <text x="420" y="97" text-anchor="middle" fill="#13894a" font-size="12">adapter TX &rarr; board RX</text>
+    <text x="420" y="137" text-anchor="middle" fill="#3b3f3d" font-size="12">GND to GND</text>
+    <text x="420" y="177" text-anchor="middle" fill="#1d5fa8" font-size="12">board TX &rarr; adapter RX</text>
+  </g>
+  <text x="30" y="242" font-size="12" fill="#5b6a62">Pin 1 is usually the square pad. TX always goes to RX. Do not connect the adapter's 5V or 3V3 power pin: the board has its own 12 V supply.</text>
+</svg>
+<div class="warn"><b>3.3 V only.</b> If your adapter has a 5V / 3V3 jumper, set it to <b>3V3</b>. A 5 V signal can damage the level shifter on the board. RS-232 (a real COM port on the back of a PC, like COM1) is <b>not</b> 3.3 V and must not be connected directly.</div>
+
+<h3>Settings</h3>
+<div class="tablewrap"><table>
+<tr><th>Speed</th><td>115200 baud</td></tr>
+<tr><th>Format</th><td>8 data bits, no parity, 1 stop bit (8N1)</td></tr>
+<tr><th>Flow control</th><td>None</td></tr>
+<tr><th>Port</th><td>Windows Device Manager &rarr; Ports (COM &amp; LPT) shows it, for example "Silicon Labs CP210x ... (COM3)". CH340 may need its driver from the maker.</td></tr>
+</table></div>
+
+<h3>Three ways to use it</h3>
+<div class="tablewrap"><table>
+<tr><th>Tool</th><th>How</th><th>Best for</th></tr>
+<tr><td>Ardzy app, bottom tab <b>USB serial</b></td><td>Choose the COM port (Refresh ports if it is new), 115200, <b>Open</b></td><td>Watching the boot log, logging in by hand</td></tr>
+<tr><td>Ardzy app, <b>cable link</b></td><td>Board button &rarr; Or over a USB-UART cable &rarr; Connect over cable</td><td>Using the whole app without a network</td></tr>
+<tr><td>PuTTY</td><td>Connection type <b>Serial</b>, Serial line <code>COM3</code>, Speed <code>115200</code>, Open. Press Enter once.</td><td>A plain terminal, the U-Boot prompt</td></tr>
+</table></div>
+<p>Only one program can open a COM port at a time: close PuTTY before the app uses the cable, and the other way round.</p>
+
+<h3>First test</h3>
+<ol class="steps">
+  <li>Board powered off. Wire the adapter, plug it into the PC, open the port at 115200.</li>
+  <li>Power on the board. Within a second you should see <code>U-Boot SPL 2026.07</code>.</li>
+  <li>When it stops at <code>ardzy login:</code>, type <code>root</code>, Enter, then the password.</li>
+  <li>Try: <code>ardzy status</code>, <code>ip addr</code> (shows the board's IP addresses), <code>ardzy beep</code>.</li>
+</ol>
+<p>Long lines wrap strangely? The serial line does not know your window size: type <code>stty cols 120 rows 40</code> (your window's size).</p>
+
+<h2 id="uboot">10. The U-Boot prompt (advanced)</h2>
+<p>When the console shows <code>Hit any key to stop autoboot: 2</code>, press any key within 2 seconds. You get the boot loader's prompt <code>ardzy-s9&gt;</code>.
+It is only needed for repairs and curiosity; normal use never needs it.</p>
+<div class="tablewrap"><table>
+<tr><th>Command</th><th>What it does</th></tr>
+<tr><td><code>boot</code></td><td>Continue the normal start</td></tr>
+<tr><td><code>printenv</code></td><td>Show the settings (uboot.env), for example the MAC address and the update flags</td></tr>
+<tr><td><code>mmc info</code>, <code>ls mmc 0:1</code></td><td>Is the card seen? Which files are on the boot partition?</td></tr>
+<tr><td><code>bdinfo</code></td><td>Memory size and addresses</td></tr>
+<tr><td><code>reset</code></td><td>Restart the board</td></tr>
+</table></div>
+<div class="warn">Do not use <code>saveenv</code>, <code>env default</code> or any <code>nand</code> command unless you know why. <code>saveenv</code> after changing things can change the MAC address or the update state; <code>nand erase</code> destroys the original Bitmain firmware.</div>
+
+<h2 id="serial1">11. The other UART: Serial1 on the connector pins</h2>
+<p>Not the same as J12. Serial1 is a UART <b>inside the FPGA</b> (pin-control design) for your own programs: GPS, ESP32, Arduino, a serial module, a PC terminal.
+Default pins: <b>TX = J1 pin 11, RX = J1 pin 12</b>, GND = J1 pin 9; any other connector pins with <code>Serial1.setPins(rx, tx)</code>. Any speed (tested 9600 to 1 000 000 baud).</p>
+<pre>void setup() {
+  Serial1.begin(9600);          <span class="c">// the FPGA UART on J1 pins 11 / 12</span>
+  Serial.begin(115200);         <span class="c">// "Serial" = the app's Monitor tab</span>
+}
+void loop() {
+  while (Serial1.available()) Serial.write(Serial1.read());   <span class="c">// show what the device sends</span>
+}</pre>
+<p>Ready examples in the app (Code view &rarr; Examples): <b>UartLoopback</b> (test with no wire at all), <b>UsbUartAdapter</b>, <b>ArduinoLink</b>, <b>ESP32Link</b>, <b>GPSReader</b>. The Tools view also has a UART terminal on any pins.
+Full wiring for each device: <a href="08_Connecting.html">document 8, How to connect things</a>.</p>
+
+<h2 id="use">12. Use it: your first programs</h2>
+<h3>Blink an LED (Arduino C++)</h3>
+<ol class="steps">
+  <li>Code view &rarr; <b>Examples</b> &rarr; 01.Basics &rarr; <b>Blink</b> (or a new project of your own).</li>
+  <li>Click <b>Upload</b> (Ctrl+U). The board compiles it (a few seconds), loads the pin-control FPGA design, and runs it. The first FPGA LED (LED0, <code>LED_BUILTIN</code>) blinks.</li>
+  <li>Output of <code>Serial.print</code> shows in the bottom tab <b>Monitor</b>; numbers draw in <b>Plotter</b>; <code>name:value</code> lines in <b>Watch</b>.</li>
+  <li><b>Stop</b> ends the program. Upload again after any change.</li>
+</ol>
+<h3>Other ways in</h3>
+<div class="tablewrap"><table>
+<tr><th>View</th><th>What you do there</th></tr>
+<tr><td><b>Code</b></td><td>Projects in Arduino C++, Python, C, Verilog (FPGA), shell and more; Upload, Monitor, Build FPGA, Simulate</td></tr>
+<tr><td><b>Blocks</b></td><td>Snap blocks together like Scratch; they become a sketch, or an FPGA design</td></tr>
+<tr><td><b>I/O</b></td><td>Switch every FPGA pin by hand: output, input, PWM; the LEDs and the fans</td></tr>
+<tr><td><b>Tools</b></td><td>Logic analyzer, signal generator, frequency meter, UART terminal, I2C scanner</td></tr>
+<tr><td><b>Ready projects</b></td><td>19 FPGA projects (LED strips, VGA, FM radio, SHA-256, AI ...): Upload, self-test, read the guide, copy and change</td></tr>
+<tr><td><b>Learn</b></td><td>10 lessons from logic gates to your own instrument</td></tr>
+<tr><td><b>Map</b></td><td>The board drawn: where every part and pin is</td></tr>
+<tr><td><b>Board / System</b></td><td>Chip, clocks, temperature, voltages, memory, network; Linux processes, services, logs</td></tr>
+</table></div>
+<h3>Start a project at power-on</h3>
+<p>In the app: tick <b>at boot</b> next to Upload, or on the board <code>ardzy load myproject --default</code>. Back to normal: untick it, or <code>ardzy default none</code>.</p>
+
+<h2 id="cli">13. On the board: the ardzy command</h2>
+<p>Over SSH, the Terminal tab, or the UART console:</p>
+<div class="tablewrap"><table>
+<tr><th>Command</th><th>What it does</th></tr>
+<tr><td><code>ardzy status</code></td><td>What is loaded and running</td></tr>
+<tr><td><code>ardzy list</code></td><td>Projects on the board (<code>/opt/ardzy/projects</code>)</td></tr>
+<tr><td><code>ardzy load &lt;name&gt; [--default]</code></td><td>Program the FPGA and start the program (<code>--default</code>: also at every boot)</td></tr>
+<tr><td><code>ardzy stop</code> / <code>ardzy restart</code></td><td>Stop / restart the program (the FPGA keeps its design)</td></tr>
+<tr><td><code>ardzy log -f</code></td><td>Program output, live (like the Monitor)</td></tr>
+<tr><td><code>ardzy pin-control</code></td><td>Load the pin-control design (I/O view, sketches)</td></tr>
+<tr><td><code>ardzy default &lt;name&gt;|none</code></td><td>Project loaded at boot</td></tr>
+<tr><td><code>ardzy config</code> / <code>ardzy config key=value</code></td><td>Show / change the <code>ardzy.txt</code> settings</td></tr>
+<tr><td><code>ardzy led green|red|ps on|off</code></td><td>Status LEDs</td></tr>
+<tr><td><code>ardzy beep [seconds]</code></td><td>Buzzer</td></tr>
+<tr><td><code>ardzy buttons -w</code></td><td>Watch the IP and Reset buttons</td></tr>
+<tr><td><code>ardzy peek 0x41200000</code> / <code>ardzy poke &lt;addr&gt; &lt;value&gt;</code></td><td>Read / write 32-bit registers (only addresses your FPGA design has: an empty address can hang the board)</td></tr>
+<tr><td><code>ardzy update &lt;bundle.tar.gz&gt;</code></td><td>Install a system update</td></tr>
+</table></div>
+
+<h2 id="update">14. Updates and safe mode</h2>
+<h3>Update without re-flashing</h3>
+<p>App: <b>System</b> view &rarr; <b>Settings and update</b> &rarr; choose <code>Ardzy-0.3.1-update.tar.gz</code>. Your projects and settings stay. Most updates need no restart.
+On the board the same is <code>ardzy update Ardzy-0.3.1-update.tar.gz</code>.</p>
+<h3>A new kernel that does not start goes back by itself</h3>
+<p>When an update brings a new Linux kernel, the old one is kept as <code>zImage.old</code>. The first start of the new one is a trial: if the board does not reach "boot OK"
+(90 seconds after the start), the next start uses the old kernel again and the console says <code>Ardzy: the new kernel did not start last time: using the previous one</code>.</p>
+<h3>Safe mode</h3>
+<p>If your at_boot project hangs the board, the boot never reaches "boot OK". At the next start Ardzy does <b>not</b> load that project, D3 is red, and <code>ardzy status</code> says SAFE MODE.
+Fix the project, then <code>ardzy load &lt;name&gt;</code> (that also ends safe mode). So a bad project can never lock you out.</p>
+<h3>Re-flash</h3>
+<p>Writing the card again (<a href="#flash">section 3</a>) always gives a fresh board. It erases your projects on the card: copy them first (they are also in your workspace on the PC if you made them in the app).</p>
+
+<h2 id="off">15. Turn it off</h2>
+<p>The card is written to while Linux runs. Pulling the power during a write can damage files. Best:</p>
+<ol class="steps">
+  <li>App: <b>Board</b> view &rarr; System card &rarr; <b>Power off</b>, or on the board: <code>poweroff</code>.</li>
+  <li>Wait about 10 seconds (the console says <code>reboot: Power down</code>).</li>
+  <li>Unplug 12 V. After Power off the board stays off until you switch the 12 V off and on again.</li>
+</ol>
+<p>Restart instead: <b>Reboot board</b> in the same card, or <code>reboot</code>.</p>
+
+<h2 id="trouble">16. Troubleshooting</h2>
+<div class="tablewrap"><table>
+<tr><th>What you see</th><th>Likely cause</th><th>What to do</th></tr>
+<tr><td>D15 off</td><td>No 12 V</td><td>Check the supply and the connector (J14 / J15 / J16)</td></tr>
+<tr><td>D15 on, nothing on the console, D3 never lights</td><td>Jumpers, card, or the console wiring</td><td>JP2 = 1, JP4 = 1 (power off to change). Write the card again. Swap the TX and RX wires (it does no harm).</td></tr>
+<tr><td>Console shows nothing at all</td><td>TX / RX swapped, wrong COM port, port in use</td><td>Swap the 2 wires; check Device Manager; close other programs (PuTTY, the app's cable link)</td></tr>
+<tr><td>Console shows garbage characters</td><td>Wrong speed, or a missing GND wire</td><td>115200 8N1; GND to J12 pin 2</td></tr>
+<tr><td>Console shows the boot, but typing does nothing</td><td>Adapter TX not connected to J12 pin 1</td><td>Check that wire; press Enter</td></tr>
+<tr><td>Stops after "Trying to boot from MMC1"</td><td>Bad card or bad write</td><td>Write the card again (the app checks it), or try another card</td></tr>
+<tr><td>Stops at the <code>ardzy-s9&gt;</code> prompt</td><td>A key was pressed during the 2 s, or the card has no boot.scr</td><td>Type <code>boot</code>. If it still stops, write the card again</td></tr>
+<tr><td>App does not find the board</td><td>Board still booting, different network, PC firewall</td><td>Wait 2 min (first start); try <code>ardzy.local</code>; use the USB-UART cable link; on the console <code>ip addr</code> shows the addresses</td></tr>
+<tr><td><code>ardzy.local</code> does not resolve</td><td>The PC has no mDNS on that network</td><td>Use the IP from <code>ip addr</code> or your router's list; the app also finds it over IPv6</td></tr>
+<tr><td>D3 red</td><td>Safe mode: your at_boot project hung the last boot</td><td><code>ardzy status</code>; fix the project; <code>ardzy load &lt;name&gt;</code></td></tr>
+<tr><td>Windows asks to format a disk</td><td>The Linux partition of the card</td><td>Cancel. Never format it.</td></tr>
+<tr><td>Board hangs when a program reads a register</td><td>Address not in the FPGA design (or the FPGA is empty)</td><td>Power cycle; load the right design first; the app's Upload checks this for you</td></tr>
+</table></div>
+<p>Still stuck? Copy the whole console text from power-on and open an issue on <a href="https://github.com/chrysovalantischryso/ardzy/issues">GitHub</a>.</p>
+
+<p class="small" style="margin-top:30px">Related: <a href="04_Board_Manual.html">4. Board manual</a> (every part, boot straps, power) &middot; <a href="08_Connecting.html">8. How to connect things</a> (wiring for devices) &middot; <a href="03_Pins_Plan.html">3. Pins plan</a>.</p>
+</div>
+</body>
+</html>
