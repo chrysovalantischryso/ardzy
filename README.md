@@ -147,7 +147,8 @@ The default login is **root / root**: change it (App: System, Settings; or `pass
 
 Step by step with drawings (flashing, `ardzy.txt`, jumpers, what the LEDs mean, the UART console on J12,
 the U-Boot prompt, updates, safe mode, troubleshooting): **document 09, "Flash, boot, use, and the UART
-console"** ([`docs/09_Flash_Boot_Use.html`](docs/09_Flash_Boot_Use.html)).
+console"** ([read it online](https://chrysovalantischryso.github.io/ardzy/09_Flash_Boot_Use.html)).
+All the guides: https://chrysovalantischryso.github.io/ardzy/
 
 ## Other boards: EBAZ4205
 
@@ -174,8 +175,8 @@ and has tested it in the emulator; **it has not been tested on a real EBAZ4205 y
 
 The full illustrated guides are in [`docs/`](docs/index.html): the hardware, every pin, the board
 reference manual, the app, the FPGA projects, the lessons, how to connect things (08) and how to flash,
-boot and use the board with its UART console (09). They are HTML pages: GitHub shows their source, so
-download the repository (Code, Download ZIP) or clone it and open `docs/index.html` in a browser.
+boot and use the board with its UART console (09). Read them online at
+**https://chrysovalantischryso.github.io/ardzy/** (or open `docs/index.html` from a download of the repository).
 
 ## Build it yourself
 
